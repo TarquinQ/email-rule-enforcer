@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<emailenforcer>
+	<config_serverinfo>
+		<connection>
+			<protocol>IMAP4<protocol> <!--IMAP4 by default (only IMAP at present!) -->
+			<server_name>full.domain.name</server_name> <!-- Or IP -->
+			<server_port></server_port> <!-- Leave blank for protocol default -->
+			<use_tls>yes</use_tls> <!-- default: no -->
+		</connection>
+		<folderinfo>
+			<initial_folder>INBOX</initial_folder> <!-- default: INBOX -->
+			<delete_folder>Trash</delete_folder> <!-- default: Trash -->
+		</folderinfo>
+		<sending_email>
+			<protocol>SMTP<protocol> <!--SMTP by default (only SMTP at present!) -->
+			<server_name>full.domain.name</server_name> <!-- Or IP -->
+			<server_port></server_port> <!-- Leave blank for protocol default -->
+			<use_tls>yes</use_tls> <!-- default: no -->
+			<auth_required>yes</auth_required> <!-- default: no -->
+		</sending_email>
+	</config_serverinfo>
+</emailenforcer>

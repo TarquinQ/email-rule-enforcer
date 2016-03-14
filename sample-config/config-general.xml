@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<emailenforcer>
+	<config_general>
+		<behaviour>
+			<empty_trash_on_exit>no</empty_trash_on_exit> <!-- default: no -->
+			<mark_as_read_on_move>yes</mark_as_read_on_move> <!-- default: yes -->
+		</behaviour>
+		<notification_email_on_completion>
+			<recipient_email>admin@domain.com</recipient_email>
+			<subject>Successfully completed mailbox rule enforcement</subject>
+			<body_prefix>Report below</body_prefix>
+			<attach_log>yes</attach_log>  <!-- default: yes -->
+		</notification_email_on_completion>
+		<logging>
+			<log_level>7</log_level>  <!-- 0-7 low-high; default: 3 -->
+			<logfile>
+				<log_folder>.\logs\</log_folder>  <!-- trailing slash can be omitted -->
+				<log_filename_prepend>log-test</log_filename_prepend>  <!-- First bit of log filename -->
+				<append_date>yes</append_date>  <!-- ISO format, including current time; default: yes -->
+				<filename_extension>.log</filename_extension>  <!-- default: .log -->
+				<tee_to_screen>yes<tee_to_screen>  <!-- Display on screen as well as log file; default: yes -->
+				<continue_on_log_fail>no<continue_on_log_fail>  <!-- Continue even if log file is not writeable; default: no -->
+			</logfile>
+		</logging>
+	</config_general>
+</emailenforcer>

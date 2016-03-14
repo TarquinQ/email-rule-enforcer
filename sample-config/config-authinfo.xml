@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<emailenforcer>
+	<config_authinfo>
+		<connection_auth>
+			<username>username</username>
+			<password>password</password>
+		</connection_auth>
+		<sending_email_auth>
+			<username>username</username>
+			<password>password</password>
+		</sending_email_auth>
+	</config_authinfo>
+</emailenforcer>
