@@ -18,8 +18,8 @@
 				<log_filename_prepend>log-test</log_filename_prepend>  <!-- First bit of log filename -->
 				<append_date>yes</append_date>  <!-- ISO format, including current time; default: yes -->
 				<filename_extension>.log</filename_extension>  <!-- default: .log -->
-				<tee_to_screen>yes</tee_to_screen>  <!-- Display on screen as well as log file; default: yes -->
-				<continue_on_log_fail>no</continue_on_log_fail>  <!-- Continue even if log file is not writeable; default: no -->
+				<tee_to_screen>yes<tee_to_screen>  <!-- Display on screen as well as log file; default: yes -->
+				<continue_on_log_fail>no<continue_on_log_fail>  <!-- Continue even if log file is not writeable; default: no -->
 			</logfile>
 		</logging>
 	</config_general>
