@@ -2,6 +2,7 @@ import argparse
 import sys
 import os.path
 import xml.etree.ElementTree as ET
+from supportingfunctions import die_with_errormsg
 
 
 class parse_args():
@@ -44,19 +45,18 @@ class parse_args():
     def _exit_with_error(self, msg, errnum=1):
         print(str(msg) + "\n")
         self._parser.print_help()
-        sys.exit(errnum)
+        die_with_errormsg('', errnum)
 
 
 class config_files_xml():
-    def __init__(self, parent_args):
-        self._parent_args = parent_args
-        self.config_filepath_list = parent_args.config_filepath_list[:]
+    def __init__(self, config_filepath_list):
+        self.config_filepath_list = config_filepath_list[:]
         self._num_config_files = len(self.config_filepath_list)
         self.config_file_contents = dict()
         self.config_xmltrees = dict()
         self.short_configpath_list = [None] * self._num_config_files
         self._indexed_short_pathlist = [None] * self._num_config_files
-        self.full_config_tree = None
+        self.full_config_tree = ET.fromstring('<emailenforcer></emailenforcer>')
 
         self._generate_filepath_shortlists()
         self._read_config_files_contents()
@@ -90,15 +90,12 @@ class config_files_xml():
             try:
                 self.config_xmltrees[shortfilename_to_parse] = ET.fromstring(filecontents_to_parse)
             except ET.ParseError as xmlError:
-                print ("\n****\nERROR: XML Config File cannot be read due to malformed XML file.\n")
-                print ("Error in file: " + filename_to_parse)
-                print ("Error returned is xmlerror code " + str(xmlError.code) + ": " + str(xmlError) + "\n\n*****")
-                self._parent_args._exit_with_error("", 3)
+                errormsg = "\n****\nERROR: XML Config File cannot be read due to malformed XML file.\n"
+                errormsg = "Error in file: " + filename_to_parse + '\n'
+                errormsg = "Error returned is xmlerror code " + str(xmlError.code) + ": " + str(xmlError) + "\n\n*****\n"
+                die_with_errormsg("", 3)
 
-            if self.full_config_tree is None:
-                self.full_config_tree = ET.fromstring(filecontents_to_parse)
-            else:
-                self.full_config_tree.extend(ET.fromstring(filecontents_to_parse))
+            self.full_config_tree.extend(ET.fromstring(filecontents_to_parse))
 
     def debug_print_config_file_details(self):
         print ("Now dumping all config file details and contents.\n")
