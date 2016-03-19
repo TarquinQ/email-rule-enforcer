@@ -79,12 +79,15 @@ class config_files_xml():
 
     def _parse_config_files_xml(self):
         for index in range(self._num_config_files):
-            self.config_xmltrees[self._indexed_short_pathlist[index]] = xmltree.fromstring(self.config_filepath_list[index])
+            filename_to_parse = self.config_filepath_list[index]
+            shortfilename_to_parse = self._indexed_short_pathlist[index]
+            filecontents_to_parse = self.config_file_contents[self._indexed_short_pathlist[index]]
+
             try:
-                self.config_xmltrees[self._indexed_short_pathlist[index]] = xmltree.fromstring(self.config_filepath_list[index])
+                self.config_xmltrees[shortfilename_to_parse] = xmltree.fromstring(filecontents_to_parse)
             except xmltree.ParseError as xmlError:
                 print ("\n****\nERROR: XML Config File cannot be read due to malformed XML file.\n")
-                print ("Error in file: " + self.config_filepath_list[index])
+                print ("Error in file: " + filename_to_parse)
                 print ("Error returned is xmlerror code " + str(xmlError.code) + ": " + str(xmlError) + "\n\n*****")
                 self._parent_args._exit_with_error("", 3)
 
