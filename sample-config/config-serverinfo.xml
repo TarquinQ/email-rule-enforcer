@@ -12,7 +12,7 @@
 			<delete_folder>Trash</delete_folder> <!-- default: Trash -->
 		</folderinfo>
 		<sending_email>
-			<protocol>SMTP<protocol> <!--SMTP by default (only SMTP at present!) -->
+			<protocol>SMTP</protocol> <!--SMTP by default (only SMTP at present!) -->
 			<server_name>full.domain.name</server_name> <!-- Or IP -->
 			<server_port></server_port> <!-- Leave blank for protocol default -->
 			<use_tls>yes</use_tls> <!-- default: no -->
