@@ -7,7 +7,7 @@ import xml.etree.ElementTree as xmltree
 class parse_args():
     def __init__(self, prog_version=0):
         parser = argparse.ArgumentParser(description=('Enforces rules against a remote email mailbox, version ' + str(prog_version)))
-        parser.add_argument('-d', "--debug-level", metavar="debug_level", dest="debug_level", help="Debug verbosity level, 0-7 low-high", type=int)
+        parser.add_argument('-d', "--debug-level", metavar="debug_level", dest="debug_level", help="Debug verbosity level, 0-7 low-high", type=int, default=3)
         parser.add_argument('-c', "--conf-file", metavar="config_file_path", dest="conf_file", help="Path to the config file", action='append')
 
         self._parser = parser
@@ -51,36 +51,40 @@ class config_files_xml():
     def __init__(self, parent_args):
         self._parent_args = parent_args
         self.config_filepath_list = parent_args.config_filepath_list[:]
-        self.__empty_list = [None] * len(self.config_filepath_list)
-        self.config_file_contents = self.__empty_list[:]
+        self._num_config_files = len(self.config_filepath_list)
+        self.config_file_contents = dict()
+        self.config_xmltrees = dict()
 
-        self._generate_filepath_shortlist()
+        self._generate_filepath_shortlists()
         self._read_config_files_contents()
         self._parse_config_files_xml()
 
-    def _generate_filepath_shortlist(self):
-        self.short_config_list = self.__empty_list[:]
+    def _generate_filepath_shortlists(self):
+        self.short_configpath_list = [None] * self._num_config_files
+        self._indexed_short_pathlist = [None] * self._num_config_files
         for index, config_filename in enumerate(self.config_filepath_list):
             if '/' in config_filename:
-                self.short_config_list[index] = config_filename.split('/')[1]
+                self.short_configpath_list[index] = str(config_filename.split('/')[-1:])
             elif "\\" in config_filename:
-                self.short_config_list[index] = config_filename.split("\\")[1]
+                self.short_configpath_list[index] = str(config_filename.split("\\")[-1:])
             else:
-                self.short_config_list[index] = config_filename
+                self.short_configpath_list[index] = str(config_filename)
+            self._indexed_short_pathlist[index] = str(index) + '_' + str(self.short_configpath_list[index])  # To ensure uniqueness
 
     def _read_config_files_contents(self):
         for index, config_file in enumerate(self.config_filepath_list):
             # NB: we have read all of these files earlier in this program, so no error handling applied here
             with open(config_file) as f:
-                self.config_file_contents[index] = f.read()
+                self.config_file_contents[self._indexed_short_pathlist[index]] = f.read()
 
     def _parse_config_files_xml(self):
-        self.config_xmltrees = self.__empty_list[:]
-        for index, filecontents in enumerate(self.config_file_contents):
+        for index in range(self._num_config_files):
+            self.config_xmltrees[self._indexed_short_pathlist[index]] = xmltree.fromstring(self.config_filepath_list[index])
             try:
-                self.config_xmltrees[index] = xmltree.fromstring(filecontents)
+                self.config_xmltrees[self._indexed_short_pathlist[index]] = xmltree.fromstring(self.config_filepath_list[index])
             except xmltree.ParseError as xmlError:
                 print ("\n****\nERROR: XML Config File cannot be read due to malformed XML file.\n")
+                print ("Error in file: " + self.config_filepath_list[index])
                 print ("Error returned is xmlerror code " + str(xmlError.code) + ": " + str(xmlError) + "\n\n*****")
                 self._parent_args._exit_with_error("", 3)
 
