@@ -5,9 +5,9 @@ prog_version = '0.01-inital-build'
 
 
 sysvargs = parse_args(prog_version=prog_version)
+config_files = sysvargs.config_files
 
-print (sysvargs.config_files)
-print (sysvargs.debug_level)
+config_files.debug_print_config_file_details()
 
 # for each contents:
 # 	parseXML(contents)

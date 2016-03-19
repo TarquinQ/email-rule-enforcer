@@ -1,7 +1,7 @@
 import argparse
 import sys
 import os.path
-import xml.etree.ElementTree as xmltree
+import xml.etree.ElementTree as ET
 
 
 class parse_args():
@@ -54,22 +54,26 @@ class config_files_xml():
         self._num_config_files = len(self.config_filepath_list)
         self.config_file_contents = dict()
         self.config_xmltrees = dict()
+        self.short_configpath_list = [None] * self._num_config_files
+        self._indexed_short_pathlist = [None] * self._num_config_files
+        self.full_config_tree = None
 
         self._generate_filepath_shortlists()
         self._read_config_files_contents()
         self._parse_config_files_xml()
 
     def _generate_filepath_shortlists(self):
-        self.short_configpath_list = [None] * self._num_config_files
-        self._indexed_short_pathlist = [None] * self._num_config_files
         for index, config_filename in enumerate(self.config_filepath_list):
+            print ('Now parsing config_filename: ', config_filename)
             if '/' in config_filename:
-                self.short_configpath_list[index] = str(config_filename.split('/')[-1:])
+                shortname = config_filename.split('/')[-1]
             elif "\\" in config_filename:
-                self.short_configpath_list[index] = str(config_filename.split("\\")[-1:])
+                shortname = config_filename.split("\\")[-1]
             else:
-                self.short_configpath_list[index] = str(config_filename)
-            self._indexed_short_pathlist[index] = str(index) + '_' + str(self.short_configpath_list[index])  # To ensure uniqueness
+                shortname = config_filename
+            print ('config shortname is: ', shortname)
+            self.short_configpath_list[index] = shortname
+            self._indexed_short_pathlist[index] = str(index) + '_' + shortname  # To ensure name uniqueness
 
     def _read_config_files_contents(self):
         for index, config_file in enumerate(self.config_filepath_list):
@@ -84,13 +88,43 @@ class config_files_xml():
             filecontents_to_parse = self.config_file_contents[self._indexed_short_pathlist[index]]
 
             try:
-                self.config_xmltrees[shortfilename_to_parse] = xmltree.fromstring(filecontents_to_parse)
-            except xmltree.ParseError as xmlError:
+                self.config_xmltrees[shortfilename_to_parse] = ET.fromstring(filecontents_to_parse)
+            except ET.ParseError as xmlError:
                 print ("\n****\nERROR: XML Config File cannot be read due to malformed XML file.\n")
                 print ("Error in file: " + filename_to_parse)
                 print ("Error returned is xmlerror code " + str(xmlError.code) + ": " + str(xmlError) + "\n\n*****")
                 self._parent_args._exit_with_error("", 3)
 
+            if self.full_config_tree is None:
+                self.full_config_tree = ET.fromstring(filecontents_to_parse)
+            else:
+                self.full_config_tree.extend(ET.fromstring(filecontents_to_parse))
+
+    def debug_print_config_file_details(self):
+        print ("Now dumping all config file details and contents.\n")
+        print ("Number of config files: " + str(self._num_config_files))
+        print ("List of config files: ", self.config_filepath_list)
+        print ('\n')
+
+        for index in range(self._num_config_files):
+            filename_to_parse = self.config_filepath_list[index]
+            shortfilename_to_parse = self._indexed_short_pathlist[index]
+            filecontents_to_parse = self.config_file_contents[self._indexed_short_pathlist[index]]
+            config_xmltree = self.config_xmltrees[shortfilename_to_parse]
+
+            print ("Config file {0}: {1}".format(index, filename_to_parse))
+            print ("Config file shortname: {0}".format(shortfilename_to_parse))
+            print ("Config file contents:")
+            print (filecontents_to_parse)
+            print ("Config file XML tree:")
+            print (config_xmltree)
+            print (ET.dump(config_xmltree))
+            print ('\n')
+
+        print ("Global XML tree:")
+        print (self.full_config_tree)
+        print (ET.dump(self.full_config_tree))
+        print (ET.tostring(self.full_config_tree))
 
 
 # for each config file:
