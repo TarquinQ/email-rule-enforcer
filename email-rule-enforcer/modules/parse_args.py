@@ -6,7 +6,7 @@ import xml.etree.ElementTree as xmltree
 
 class parse_args():
     def __init__(self, prog_version=0):
-        parser = argparse.ArgumentParser(description='Enforces rules against a remote email mailbox', version=str(prog_version))
+        parser = argparse.ArgumentParser(description=('Enforces rules against a remote email mailbox, version ' + str(prog_version)))
         parser.add_argument('-d', "--debug-level", metavar="debug_level", dest="debug_level", help="Debug verbosity level, 0-7 low-high", type=int)
         parser.add_argument('-c', "--conf-file", metavar="config_file_path", dest="conf_file", help="Path to the config file", action='append')
 
@@ -29,13 +29,14 @@ class parse_args():
                 self._exit_with_error("ERROR: a specified configuration file does not exist: %s" % possible_file, 3)
 
             # We now read in all config files & ensure we can read them.
-            # Whilst this seems a bit wasteful, since we need to re-read them again soon,
-            #  this is ok since we know all config files will be short and OS-cached for next reading.
+            # Whilst this seems a bit wasteful, since we don't keep the read files yet need to re-read them again soon,
+            #  this is ok since we know all config files will be small and OS-cached for next reading.
+            # This saves passing around extra objects at this stage
             try:
                 with open(possible_file) as f:
                     contents = f.read()
             except IOError as e:
-                print "I/O error({0}): {1}".format(e.errno, e.strerror)
+                print ("I/O error({0}): {1}".format(e.errno, e.strerror))
                 self._exit_with_error("\nERROR: a specified configuration file could not be read from disk: %s" % possible_file, 3)
             except:
                 self._exit_with_error(("ERROR: Unexpected error reading config file %s.\n" % possible_file) + str(sys.exc_info()[0]), 3)
@@ -49,16 +50,16 @@ class parse_args():
 class config_files_xml():
     def __init__(self, parent_args):
         self._parent_args = parent_args
-        self.config_filepath_list = parent_args.config_filepath_list.copy()
-        self.__empty_config_list = [None] * len(self.config_filepath_list)
-        self.config_file_contents = self.__empty_config_list.copy()
+        self.config_filepath_list = parent_args.config_filepath_list[:]
+        self.__empty_list = [None] * len(self.config_filepath_list)
+        self.config_file_contents = self.__empty_list[:]
 
         self._generate_filepath_shortlist()
         self._read_config_files_contents()
         self._parse_config_files_xml()
 
     def _generate_filepath_shortlist(self):
-        self.short_config_list = self.__empty_config_list.copy()
+        self.short_config_list = self.__empty_list[:]
         for index, config_filename in enumerate(self.config_filepath_list):
             if '/' in config_filename:
                 self.short_config_list[index] = config_filename.split('/')[1]
@@ -74,13 +75,14 @@ class config_files_xml():
                 self.config_file_contents[index] = f.read()
 
     def _parse_config_files_xml(self):
-        self.config_xmltrees = self.__empty_config_list.copy()
+        self.config_xmltrees = self.__empty_list[:]
         for index, filecontents in enumerate(self.config_file_contents):
             try:
                 self.config_xmltrees[index] = xmltree.fromstring(filecontents)
-            except ParserError as e:
-                print "XML Parse Error({0}): {1}".format(e.errno, e.strerror)
-                self._parent_args._exit_with_error("\nERROR: a specified XML configuration file could not be read as valid XML.", 3)
+            except xmltree.ParseError as xmlError:
+                print ("\n****\nERROR: XML Config File cannot be read due to malformed XML file.\n")
+                print ("Error returned is xmlerror code " + str(xmlError.code) + ": " + str(xmlError) + "\n\n*****")
+                self._parent_args._exit_with_error("", 3)
 
 
 
