@@ -2,7 +2,7 @@
 <emailenforcer>
 	<config_serverinfo>
 		<connection>
-			<protocol>IMAP4<protocol> <!--IMAP4 by default (only IMAP at present!) -->
+			<protocol>IMAP4</protocol> <!--IMAP4 by default (only IMAP at present!) -->
 			<server_name>full.domain.name</server_name> <!-- Or IP -->
 			<server_port></server_port> <!-- Leave blank for protocol default -->
 			<use_tls>yes</use_tls> <!-- default: no -->
