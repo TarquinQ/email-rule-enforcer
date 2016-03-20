@@ -12,13 +12,23 @@
 			<attach_log>yes</attach_log>  <!-- default: yes -->
 		</notification_email_on_completion>
 		<logging>
-			<log_level>7</log_level>  <!-- 0-7 low-high; default: 3 -->
+			<!-- Log Levels run from 0-4, low-high: these correspond to DEBUG, INFO, WARNING, ERROR, CRITICAL -->
+			<log_level>2</log_level>  <!-- Console Log; default: 3 -->
 			<logfile>
 				<log_folder>.\logs\</log_folder>  <!-- trailing slash can be omitted -->
-				<log_filename_prepend>log-test</log_filename_prepend>  <!-- First bit of log filename -->
-				<append_date>yes</append_date>  <!-- ISO format, including current time; default: yes -->
+				<log_filename>log-test</log_filename>  <!-- First bit of log filename -->
+				<append_date_to_filename>yes</append_date_to_filename>  <!-- ISO format, including current time; default: yes -->
+				<filename_extension>.log</filename_extension>  <!-- default: .log -->
+				<logfile_level>4</logfile_level>  <!-- 0-7 low-high; default: 3 -->
+				<continue_on_log_fail>no</continue_on_log_fail>  <!-- Continue even if log file is not writeable; default: no -->
+			</logfile>
+			<logfile_debug>
+				<log_folder>.\logs\</log_folder>  <!-- trailing slash can be omitted -->
+				<log_filename>log-test</log_filename>  <!-- First bit of log filename -->
+				<append_date_to_filename>yes</append_date_to_filename>  <!-- ISO format, including current time; default: yes -->
 				<filename_extension>.log</filename_extension>  <!-- default: .log -->
 				<tee_to_screen>yes</tee_to_screen>  <!-- Display on screen as well as log file; default: yes -->
+				<logfile_level>7</logfile_level>  <!-- 0-7 low-high; default: 3 -->
 				<continue_on_log_fail>no</continue_on_log_fail>  <!-- Continue even if log file is not writeable; default: no -->
 			</logfile>
 		</logging>
