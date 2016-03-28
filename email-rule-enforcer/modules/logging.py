@@ -30,37 +30,96 @@ class log_messages(metaclass=Singleton):
     ])
 
     # Console Log
-    log_to_console = True
-    loglevel_console = 20  # Python Default is 30; we want more info as well
-
     handler_console = logging.StreamHandler(sys.stdout)
     formatter_console = logging.Formatter('%(message)s')
     handler_console.setFormatter(formatter_console)
     logger_console = logging.getLogger('console')
     logger_console.addHandler(handler_console)
-    logger_logfile.setLevel(10)
+    loglevel_console = 20
+    logger_logfile.setLevel(loglevel_console)
 
-    handler_logfile = logging.NullHandler()
+    # Logfile Log
+    handler_logfile_null = logging.NullHandler()
     formatter_logfile = logging.Formatter('%(message)s')
-    handler_logfile.setFormatter(formatter_logfile)
+    handler_logfile_null.setFormatter(formatter_logfile)
     logger_logfile = logging.getLogger('logfile')
-    logger_logfile.addHandler(handler_logfile)
-    logger_logfile.setLevel(20)
-
-    handler_debug = logging.NullHandler()
-    formatter_debug = logging.Formatter('%(asctime)s - %(message)s')
-    handler_debug.setFormatter(formatter_debug)
-    logger_debug = logging.getLogger('debug')
-    logger_debug.addHandler(handler_debug)
-    logger_debug.setLevel(10)
+    logger_logfile.addHandler(handler_logfile_null)
+    loglevel_logfile = 20
+    logger_logfile.setLevel(loglevel_logfile)
 
     logfile_directory = None
     logfile_filename = None
     logfile_filepath = None
 
+    # Debug Log
+    handler_debug_null = logging.NullHandler()
+    formatter_debug = logging.Formatter('%(asctime)s - %(message)s')
+    handler_debug_null.setFormatter(formatter_debug)
+    logger_debug = logging.getLogger('debug')
+    cls.logger__logfiledebug.addHandler(handler_debug_null)
+    logger_debug.setLevel(cls.logger__logfile)
+
     debug_directory = None
     debug_filename = None
     debug_filepath = None
+
+    @classmethod
+    def log(cls, lvl, msg):
+        cls.log_to_console(lvl, msg)
+        cls.log_to_logfile(lvl, msg)
+        cls.log_to_debug(lvl, msg)
+
+    @classmethod
+    def log_to_logfile(cls, lvl, msg):
+        cls.logger_logfile.log(lvl, msg)
+
+    @classmethod
+    def log_to_console(cls, lvl, msg):
+        cls.logger_console.log(lvl, msg)
+
+    @classmethod
+    def log_to_debug(cls, lvl, msg):
+        cls.logger_debug.log(lvl, msg)
+
+    @classmethod
+    def log_exception(cls, msg):
+        cls.logger_console.exception(msg)
+        cls.logger_logfile.(msg)
+        cls.logger_debug.exception(msg)
+
+    @classmethod
+    def setlevel_console(cls, level):
+        cls.logger_console.setLevel(level)
+
+    @classmethod
+    def setlevel_logfile(cls, level):
+        cls.setlevel_logfile
+        cls.logger_logfile.setLevel(level)
+
+    @classmethod
+    def setlevel_debug(cls, level):
+        cls.logger_debug.setLevel(level)
+
+    @classmethod
+    def add_logfile(cls, filepath=None, log_level=20, append=False, die_if_file_fails=False):
+        cls.logfile_filepath = filepath
+        if append:
+            logfile_mode = 'a'
+        else:
+            logfile_mode = 'w'
+        cls.loglevel_logfile = log_level
+
+        try:
+            cls.handler_logfile = cls._get_new_filehandler(cls.logger_logfile, cls.formatter_logfile, cls.logfile_filepath, logfile_mode, die_if_file_fails)
+            if cls.handler_logfile:
+                cls.logger_logfile.addHandler(cls.handler_logfile)
+
+        except:
+            if die_if_file_fails:
+                cls.log_exception('FATAL: Died when opening log file: ', filepath)
+                die_with_errormsg('FATAL: Died when opening log file: ', filepath)
+            else:
+                cls.log('ERROR: Failed to open log file: ', filepath, '\nContinuing with program anyway.')
 
     @classmethod
     def _get_new_filehandler(cls, logger_instance, formatter, filepath, append=False, die_if_file_fails=False):
@@ -74,6 +133,7 @@ class log_messages(metaclass=Singleton):
         except:
             if die_if_file_fails:
                 cls.log_exception('FATAL: Died when opening log file: ', filepath)
+                die_with_errormsg('FATAL: Died when opening log file: ', filepath)
             else:
                 cls.log('ERROR: Failed to open log file: ', filepath, '\nContinuing with program anyway.')
                 new_handler = None
@@ -84,20 +144,18 @@ class log_messages(metaclass=Singleton):
         return new_handler
 
     @classmethod
-    def log(cls, lvl, msg):
-        cls.logger_console.log(lvl, msg)
-        cls.logger_logfile.log(lvl, msg)
-        cls.logger_debug.log(lvl, msg)
+    def generate_logfile_fullpath(cls, log_directory, filename_pre, filename_post='', filename_extension='.log', insert_datetime=True, specific_logname=None):
+        if not log_directory.endswith('\\'):
+            log_directory = log_directory + '\\'
 
-    @classmethod
-    def log_exception(cls, msg):
-        cls.logger_console.exception(msg)
-        cls.logger_logfile.(msg)
-        cls.logger_debug.exception(msg)
+        if specific_logname:
+            filename = specific_logname
+        else:
+            filename = cls.generate_logfilename(filename_pre, filename_post, filename_extension, insert_datetime, None)
 
-    @classmethod
-    def setlevel_console(cls, level):
-        cls.logger_console.setLevel(level)
+        filepath = log_directory + filename
+
+        return filepath
 
     @staticmethod
     def generate_logfilename(filename_pre, filename_post='', filename_extension='.log', insert_datetime=True, specific_logname=None):
@@ -129,19 +187,3 @@ class log_messages(metaclass=Singleton):
 
         return ret_val
 
-    @classmethod
-    def setup_logfile(cls, log_directory, filename_pre, filename_post='', filename_extension='.log', insert_datetime=True, specific_logname=None,
-    append=False, log_level=20, die_if_file_fails=False):
-        if log_directory.endswith('\\'):
-            log_directory = log_directory[:-1]
-        cls.logfile_directory = log_directory
-        cls.logfile_filename = cls.generate_logfilename(filename_pre, filename_post, filename_extension, insert_datetime, specific_logname)
-        cls.logfile_filepath = cls.logfile_directory + '\\' + cls.logfile_filename
-        if append:
-            cls.logfile_mode = 'a'
-        else:
-            cls.logfile_mode = 'w'
-        cls.loglevel_logfile = log_level
-
-        try:
-            pass
