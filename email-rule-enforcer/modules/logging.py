@@ -3,7 +3,8 @@ import sys
 from collections import OrderedDict
 from .supportingfunctions import die_with_errormsg
 from .supportingfunctions import get_ISOTimestamp_ForLogFilename
-import .supportingfunctions_file_operations as fileops
+from .supportingfunctions import generate_logfile_fullpath
+from .supportingfunctions import generate_logfilename
 
 
 class Singleton(type):
@@ -100,29 +101,70 @@ class log_messages(metaclass=Singleton):
     def setlevel_debug(cls, level):
         cls.logger_debug.setLevel(level)
 
-    @classmethod
-    def add_logfile(cls, filepath=None, log_level=20, append=False, die_if_file_fails=False):
-        cls.logfile_filepath = filepath
-        if append:
-            logfile_mode = 'a'
+
+# This class wraps around the std Logger class, and builds logs
+# the way we want to.
+class log_controller():
+    def __init__(self, name, log_level=20, filepath=None):
+        # Sets up a new logger, and sets it to Null by default
+        self.name = name
+        self.logger = logging.getLogger(name)
+        self.formatter_default = self.get_formatter_plainmsg()
+        self.handler_null = logging.NullHandler()
+        self.handler_null.setFormater(self.formatter_default)
+        self.logger.addHandler(handler_logfile_null)
+        self.set_loglevel(log_level)
+        if filepath:
+            self.filepath = filepath
         else:
-            logfile_mode = 'w'
-        cls.loglevel_logfile = log_level
+            self.set_logger_console()
+
+    def get_formatter_default(self):
+        return self.get_formatter_plainmsg()
+
+    @staticmethod
+    def get_formatter_plainmsg():
+        return logging.Formatter('%(message)s')
+
+    @staticmethod
+    def get_formatter_msgwithtime():
+        return logging.Formatter('%(asctime)s - %(message)s')
+
+    @staticmethod
+    def get_handler_console():
+        return logging.StreamHandler(sys.stdout)
+
+    def set_logger_console(self):
+        self.handler_console = self.get_handler_console()
+        self.formatter = self.get_formatter_plainmsg()
+        self.handler_console.setFormatter(self.formatter)
+        self.logger.addHandler(self.handler_console)
+
+    def set_loglevel(self, log_level=None):
+        if log_level: self.log_level = log_level
+        self.logger.setLevel(self.log_level)
+
+    def add_logfile(self, filepath, append=False, formatter=None, die_if_file_fails=False):
+        self.filepath = filepath
+        if formatter:
+            self.formatter_file = formatter
+        else:
+            self.formatter_file = get_formatter_default()
 
         try:
-            cls.handler_logfile = cls._get_new_filehandler(cls.logger_logfile, cls.formatter_logfile, cls.logfile_filepath, logfile_mode, die_if_file_fails)
-            if cls.handler_logfile:
-                cls.logger_logfile.addHandler(cls.handler_logfile)
-
+            new_handler = self._get_new_filehandler(self.logfile_filepath, append, die_if_file_fails)
+            if new_handler:
+                self.handler_file = new_handler
+                self.handler_file.setFormatter(self.formatter_file)
+                self.logger.addHandler(self.handler_file)
         except:
             if die_if_file_fails:
-                cls.log_exception('FATAL: Died when opening log file: ', filepath)
+                self.log_exception('FATAL: Died when opening log file: ', filepath)
                 die_with_errormsg('FATAL: Died when opening log file: ', filepath)
             else:
-                cls.log('ERROR: Failed to open log file: ', filepath, '\nContinuing with program anyway.')
+                self.log('ERROR: Failed to open log file: ', filepath, '\nContinuing with program anyway.')
 
-    @classmethod
-    def _get_new_filehandler(cls, logger_instance, formatter, filepath, append=False, die_if_file_fails=False):
+    def _get_new_filehandler(self, filepath, append=False, die_if_file_fails=False):
         if append:
             mode = 'a'
         else:
@@ -132,58 +174,17 @@ class log_messages(metaclass=Singleton):
             new_handler = logging.FileHandler(filepath, mode, encoding='utf8')
         except:
             if die_if_file_fails:
-                cls.log_exception('FATAL: Died when opening log file: ', filepath)
+                self.log_exception('FATAL: Died when opening log file: ', filepath)
                 die_with_errormsg('FATAL: Died when opening log file: ', filepath)
             else:
-                cls.log('ERROR: Failed to open log file: ', filepath, '\nContinuing with program anyway.')
+                self.log('ERROR: Failed to open log file: ', filepath, '\nContinuing with program anyway.')
                 new_handler = None
-
-        if new_handler:
-            new_handler.setFormatter(formatter)
 
         return new_handler
 
-    @classmethod
-    def generate_logfile_fullpath(cls, log_directory, filename_pre, filename_post='', filename_extension='.log', insert_datetime=True, specific_logname=None):
-        if not log_directory.endswith('\\'):
-            log_directory = log_directory + '\\'
+    def log(self, lvl, msg):
+        self.logger.log(lvl, msg)
 
-        if specific_logname:
-            filename = specific_logname
-        else:
-            filename = cls.generate_logfilename(filename_pre, filename_post, filename_extension, insert_datetime, None)
-
-        filepath = log_directory + filename
-
-        return filepath
-
-    @staticmethod
-    def generate_logfilename(filename_pre, filename_post='', filename_extension='.log', insert_datetime=True, specific_logname=None):
-        if specific_logname:
-            return specific_logname
-
-        ret_val = ''
-
-        if filename_pre.endswith('.'):
-            filename_pre = filename_pre[:-1]
-
-        if append_datetime:
-            timestamp = get_ISOTimestamp_ForLogFilename()
-            timeval = '-' + timestamp + '-'
-            if filename_pre.endswith('-'):
-                filename_pre = filename_pre[:-1]
-            if filename_post.startswith('-'):
-                filename_pre = filename_pre[1:]
-        else:
-            timeval = ''
-
-        if filename_post.endswith('.'):
-            filename_pre = filename_pre[:-1]
-
-        if not filename_extension.startswith('.'):
-            filename_extension = '.' + filename_extension
-
-        ret_val = filename_pre + timestamp + filename_extension
-
-        return ret_val
+    def log_exception(self, msg):
+        self.logger.exception(msg)
 
