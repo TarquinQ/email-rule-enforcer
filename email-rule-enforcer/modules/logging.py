@@ -16,102 +16,110 @@ class Singleton(type):
         return cls._instances[cls]
 
 
-def get_logger_instance():
-    return logging.getLogger()
-
-
 class log_messages(metaclass=Singleton):
-    log_levels = OrderedDict([
-        (50, 'CRITICAL'),
-        (40, 'ERROR'),
-        (30, 'WARNING'),
-        (20, 'INFO'),
-        (10, 'DEBUG'),
-        (0, 'NOTSET')
-    ])
+    """Provides unified console and file logging for whole app"""
+    name_console = 'console'
+    name_logfile = 'logfile'
+    name_debugfile = 'debugfile'
+    controller_console = log_controller(name_console)
+    controller_console.set_logger_console()
+    controller_logfile = log_controller(name_logfile)
+    controller_debugfile = log_controller(name_debugfile)
+    log_controllers = dict(name_console: controller_console, name_logfile: controller_logfile, name_debugfile: controller_debugfile)
 
-    # Console Log
-    handler_console = logging.StreamHandler(sys.stdout)
-    formatter_console = logging.Formatter('%(message)s')
-    handler_console.setFormatter(formatter_console)
-    logger_console = logging.getLogger('console')
-    logger_console.addHandler(handler_console)
-    loglevel_console = 20
-    logger_logfile.setLevel(loglevel_console)
-
-    # Logfile Log
-    handler_logfile_null = logging.NullHandler()
-    formatter_logfile = logging.Formatter('%(message)s')
-    handler_logfile_null.setFormatter(formatter_logfile)
-    logger_logfile = logging.getLogger('logfile')
-    logger_logfile.addHandler(handler_logfile_null)
-    loglevel_logfile = 20
-    logger_logfile.setLevel(loglevel_logfile)
-
-    logfile_directory = None
-    logfile_filename = None
-    logfile_filepath = None
-
-    # Debug Log
-    handler_debug_null = logging.NullHandler()
-    formatter_debug = logging.Formatter('%(asctime)s - %(message)s')
-    handler_debug_null.setFormatter(formatter_debug)
-    logger_debug = logging.getLogger('debug')
-    cls.logger__logfiledebug.addHandler(handler_debug_null)
-    logger_debug.setLevel(cls.logger__logfile)
-
-    debug_directory = None
-    debug_filename = None
-    debug_filepath = None
+    # General Methods to operate on all log_controllers
+    @classmethod
+    def log(cls, lvl, msg, *args, **kwargs):
+        for log_controller in cls.log_controllers.values():
+            log_controller.logger.log(lvl, msg, *args, **kwargs)
 
     @classmethod
-    def log(cls, lvl, msg):
-        cls.log_to_console(lvl, msg)
-        cls.log_to_logfile(lvl, msg)
-        cls.log_to_debug(lvl, msg)
+    def debug(cls, msg, *args, **kwargs):
+        for log_controller in cls.log_controllers.values():
+            log_controller.logger.debug(msg, *args, **kwargs)
 
     @classmethod
-    def log_to_logfile(cls, lvl, msg):
-        cls.logger_logfile.log(lvl, msg)
+    def info(cls, msg, *args, **kwargs):
+        for log_controller in cls.log_controllers.values():
+            log_controller.logger.info(msg, *args, **kwargs)
 
     @classmethod
-    def log_to_console(cls, lvl, msg):
-        cls.logger_console.log(lvl, msg)
+    def warning(cls, msg, *args, **kwargs):
+        for log_controller in cls.log_controllers.values():
+            log_controller.logger.warning(msg, *args, **kwargs)
 
     @classmethod
-    def log_to_debug(cls, lvl, msg):
-        cls.logger_debug.log(lvl, msg)
+    def error(cls, msg, *args, **kwargs):
+        for log_controller in cls.log_controllers.values():
+            log_controller.logger.error(msg, *args, **kwargs)
 
     @classmethod
-    def log_exception(cls, msg):
-        cls.logger_console.exception(msg)
-        cls.logger_logfile.(msg)
-        cls.logger_debug.exception(msg)
+    def critical(cls, msg, *args, **kwargs):
+        for log_controller in cls.log_controllers.values():
+            log_controller.logger.critical(msg, *args, **kwargs)
 
     @classmethod
-    def setlevel_console(cls, level):
-        cls.logger_console.setLevel(level)
+    def exception(cls, msg, *args, **kwargs):
+        for log_controller in cls.log_controllers.values():
+            log_controller.logger.exception(msg, *args, **kwargs)
+
+    # Methods to operate on specific log_controllers
+    @classmethod
+    def log_to_logfile(cls, lvl, msg, *args, **kwargs):
+        cls.controller_logfile.logger.log(lvl, msg, *args, **kwargs)
 
     @classmethod
-    def setlevel_logfile(cls, level):
-        cls.setlevel_logfile
-        cls.logger_logfile.setLevel(level)
+    def log_to_console(cls, lvl, msg, *args, **kwargs):
+        cls.controller_console.logger.log(lvl, msg, *args, **kwargs)
 
     @classmethod
-    def setlevel_debug(cls, level):
-        cls.logger_debug.setLevel(level)
+    def log_to_debug(cls, lvl, msg, *args, **kwargs):
+        cls.controller_debugfile.logger.log(lvl, msg, *args, **kwargs)
+
+    # Methods to operate on named controllers
+    @classmethod
+    def set_loglevel_namedcontr(cls, contr_name, log_level):
+        cls.log_controllers[contr_name].logger.set_loglevel(log_level)
+
+    @classmethod
+    def log_to_namedcontr(cls, contr_name, lvl, msg, *args, *kwargs):
+        cls.log_controllers[contr_name].logger.log(lvl, msg, *args, *kwargs)
+
+    @classmethod
+    def add_logfile_to_namedcontr(cls, contr_name, filepath, append=False, formatter=None, die_if_file_fails=False):
+        cls.log_controllers[contr_name].add_logfile(filepath, append, formatter, die_if_file_fails)
+
+    # Methods to set up specific log_controllers
+    @classmethod
+    def set_loglevel_console(cls, log_level):
+        cls.set_loglevel_namedcontr(cls.name_console, lvl)
+
+    @classmethod
+    def set_loglevel_logfile(cls, log_level):
+        cls.set_loglevel_namedcontr(cls.name_logfile, lvl)
+
+    @classmethod
+    def set_loglevel_debugfile(cls, log_level):
+        cls.set_loglevel_namedcontr(cls.name_debugfile, lvl)
+
+    @classmethod
+    def add_filepath_to_logfile(cls, filepath, append=False, formatter=None, die_if_file_fails=False):
+        cls.add_logfile_to_namedcontr(cls, cls.name_logfile, filepath, append=False, formatter=None, die_if_file_fails=False)
+
+    @classmethod
+    def add_filepath_to_debugfile(cls, filepath, append=False, formatter=None, die_if_file_fails=False):
+        cls.add_logfile_to_namedcontr(cls, cls.name_debugfile, filepath, append=False, formatter=None, die_if_file_fails=False)
 
 
-# This class wraps around the std Logger class, and builds logs
-# the way we want to.
 class log_controller():
+    """Wraps around the standard Logger class, and builds logs the way we want to."""
     def __init__(self, name, log_level=20, filepath=None):
         # Sets up a new logger, and sets it to Null by default
         self.name = name
         self.logger = logging.getLogger(name)
         self.formatter_default = self.get_formatter_plainmsg()
         self.handler_null = logging.NullHandler()
-        self.handler_null.setFormater(self.formatter_default)
+        self.handler_null.setFormatter(self.formatter_default)
         self.logger.addHandler(handler_logfile_null)
         self.set_loglevel(log_level)
         if filepath:
@@ -135,6 +143,7 @@ class log_controller():
         return logging.StreamHandler(sys.stdout)
 
     def set_logger_console(self):
+        """Enables output from this log_controller to the console, via stdout"""
         self.handler_console = self.get_handler_console()
         self.formatter = self.get_formatter_plainmsg()
         self.handler_console.setFormatter(self.formatter)
@@ -145,6 +154,7 @@ class log_controller():
         self.logger.setLevel(self.log_level)
 
     def add_logfile(self, filepath, append=False, formatter=None, die_if_file_fails=False):
+        """Enables output from this log_controller to a filename"""
         self.filepath = filepath
         if formatter:
             self.formatter_file = formatter
@@ -182,9 +192,13 @@ class log_controller():
 
         return new_handler
 
-    def log(self, lvl, msg):
-        self.logger.log(lvl, msg)
 
-    def log_exception(self, msg):
-        self.logger.exception(msg)
+# log_levels = OrderedDict([
+#     (50, 'CRITICAL'),
+#     (40, 'ERROR'),
+#     (30, 'WARNING'),
+#     (20, 'INFO'),
+#     (10, 'DEBUG'),
+#     (0, 'NOTSET')
+# ])
 
