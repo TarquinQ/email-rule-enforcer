@@ -1,6 +1,5 @@
 import logging
 import sys
-from collections import OrderedDict
 from .supportingfunctions import die_with_errormsg
 from .supportingfunctions import get_ISOTimestamp_ForLogFilename
 from .supportingfunctions import generate_logfile_fullpath
@@ -16,101 +15,6 @@ class Singleton(type):
         return cls._instances[cls]
 
 
-class log_messages(metaclass=Singleton):
-    """Provides unified console and file logging for whole app"""
-    name_console = 'console'
-    name_logfile = 'logfile'
-    name_debugfile = 'debugfile'
-    controller_console = log_controller(name_console)
-    controller_console.set_logger_console()
-    controller_logfile = log_controller(name_logfile)
-    controller_debugfile = log_controller(name_debugfile)
-    log_controllers = dict(name_console: controller_console, name_logfile: controller_logfile, name_debugfile: controller_debugfile)
-
-    # General Methods to operate on all log_controllers
-    @classmethod
-    def log(cls, lvl, msg, *args, **kwargs):
-        for log_controller in cls.log_controllers.values():
-            log_controller.logger.log(lvl, msg, *args, **kwargs)
-
-    @classmethod
-    def debug(cls, msg, *args, **kwargs):
-        for log_controller in cls.log_controllers.values():
-            log_controller.logger.debug(msg, *args, **kwargs)
-
-    @classmethod
-    def info(cls, msg, *args, **kwargs):
-        for log_controller in cls.log_controllers.values():
-            log_controller.logger.info(msg, *args, **kwargs)
-
-    @classmethod
-    def warning(cls, msg, *args, **kwargs):
-        for log_controller in cls.log_controllers.values():
-            log_controller.logger.warning(msg, *args, **kwargs)
-
-    @classmethod
-    def error(cls, msg, *args, **kwargs):
-        for log_controller in cls.log_controllers.values():
-            log_controller.logger.error(msg, *args, **kwargs)
-
-    @classmethod
-    def critical(cls, msg, *args, **kwargs):
-        for log_controller in cls.log_controllers.values():
-            log_controller.logger.critical(msg, *args, **kwargs)
-
-    @classmethod
-    def exception(cls, msg, *args, **kwargs):
-        for log_controller in cls.log_controllers.values():
-            log_controller.logger.exception(msg, *args, **kwargs)
-
-    # Methods to operate on specific log_controllers
-    @classmethod
-    def log_to_logfile(cls, lvl, msg, *args, **kwargs):
-        cls.controller_logfile.logger.log(lvl, msg, *args, **kwargs)
-
-    @classmethod
-    def log_to_console(cls, lvl, msg, *args, **kwargs):
-        cls.controller_console.logger.log(lvl, msg, *args, **kwargs)
-
-    @classmethod
-    def log_to_debug(cls, lvl, msg, *args, **kwargs):
-        cls.controller_debugfile.logger.log(lvl, msg, *args, **kwargs)
-
-    # Methods to operate on named controllers
-    @classmethod
-    def set_loglevel_namedcontr(cls, contr_name, log_level):
-        cls.log_controllers[contr_name].logger.set_loglevel(log_level)
-
-    @classmethod
-    def log_to_namedcontr(cls, contr_name, lvl, msg, *args, *kwargs):
-        cls.log_controllers[contr_name].logger.log(lvl, msg, *args, *kwargs)
-
-    @classmethod
-    def add_logfile_to_namedcontr(cls, contr_name, filepath, append=False, formatter=None, die_if_file_fails=False):
-        cls.log_controllers[contr_name].add_logfile(filepath, append, formatter, die_if_file_fails)
-
-    # Methods to set up specific log_controllers
-    @classmethod
-    def set_loglevel_console(cls, log_level):
-        cls.set_loglevel_namedcontr(cls.name_console, lvl)
-
-    @classmethod
-    def set_loglevel_logfile(cls, log_level):
-        cls.set_loglevel_namedcontr(cls.name_logfile, lvl)
-
-    @classmethod
-    def set_loglevel_debugfile(cls, log_level):
-        cls.set_loglevel_namedcontr(cls.name_debugfile, lvl)
-
-    @classmethod
-    def add_filepath_to_logfile(cls, filepath, append=False, formatter=None, die_if_file_fails=False):
-        cls.add_logfile_to_namedcontr(cls, cls.name_logfile, filepath, append=False, formatter=None, die_if_file_fails=False)
-
-    @classmethod
-    def add_filepath_to_debugfile(cls, filepath, append=False, formatter=None, die_if_file_fails=False):
-        cls.add_logfile_to_namedcontr(cls, cls.name_debugfile, filepath, append=False, formatter=None, die_if_file_fails=False)
-
-
 class log_controller():
     """Wraps around the standard Logger class, and builds logs the way we want to."""
     def __init__(self, name, log_level=20, filepath=None):
@@ -120,7 +24,7 @@ class log_controller():
         self.formatter_default = self.get_formatter_plainmsg()
         self.handler_null = logging.NullHandler()
         self.handler_null.setFormatter(self.formatter_default)
-        self.logger.addHandler(handler_logfile_null)
+        self.logger.addHandler(self.handler_null)
         self.set_loglevel(log_level)
         if filepath:
             self.filepath = filepath
@@ -191,6 +95,101 @@ class log_controller():
                 new_handler = None
 
         return new_handler
+
+
+class log_messages(metaclass=Singleton):
+    """Provides unified console and file logging for whole app"""
+    name_console = 'console'
+    name_logfile = 'logfile'
+    name_debugfile = 'debugfile'
+    controller_console = log_controller(name_console)
+    controller_console.set_logger_console()
+    controller_logfile = log_controller(name_logfile)
+    controller_debugfile = log_controller(name_debugfile)
+    log_controllers = {name_console: controller_console, name_logfile: controller_logfile, name_debugfile: controller_debugfile}
+
+    # General Methods to operate on all log_controllers
+    @classmethod
+    def log(cls, lvl, msg, *args, **kwargs):
+        for log_controller in cls.log_controllers.values():
+            log_controller.logger.log(lvl, msg, *args, **kwargs)
+
+    @classmethod
+    def debug(cls, msg, *args, **kwargs):
+        for log_controller in cls.log_controllers.values():
+            log_controller.logger.debug(msg, *args, **kwargs)
+
+    @classmethod
+    def info(cls, msg, *args, **kwargs):
+        for log_controller in cls.log_controllers.values():
+            log_controller.logger.info(msg, *args, **kwargs)
+
+    @classmethod
+    def warning(cls, msg, *args, **kwargs):
+        for log_controller in cls.log_controllers.values():
+            log_controller.logger.warning(msg, *args, **kwargs)
+
+    @classmethod
+    def error(cls, msg, *args, **kwargs):
+        for log_controller in cls.log_controllers.values():
+            log_controller.logger.error(msg, *args, **kwargs)
+
+    @classmethod
+    def critical(cls, msg, *args, **kwargs):
+        for log_controller in cls.log_controllers.values():
+            log_controller.logger.critical(msg, *args, **kwargs)
+
+    @classmethod
+    def exception(cls, msg, *args, **kwargs):
+        for log_controller in cls.log_controllers.values():
+            log_controller.logger.exception(msg, *args, **kwargs)
+
+    # Methods to operate on specific log_controllers
+    @classmethod
+    def log_to_logfile(cls, lvl, msg, *args, **kwargs):
+        cls.controller_logfile.logger.log(lvl, msg, *args, **kwargs)
+
+    @classmethod
+    def log_to_console(cls, lvl, msg, *args, **kwargs):
+        cls.controller_console.logger.log(lvl, msg, *args, **kwargs)
+
+    @classmethod
+    def log_to_debug(cls, lvl, msg, *args, **kwargs):
+        cls.controller_debugfile.logger.log(lvl, msg, *args, **kwargs)
+
+    # Methods to operate on named controllers
+    @classmethod
+    def _set_loglevel_namedcontr(cls, contr_name, log_level):
+        cls.log_controllers[contr_name].logger.set_loglevel(log_level)
+
+    @classmethod
+    def _log_to_namedcontr(cls, contr_name, lvl, msg, *args, **kwargs):
+        cls.log_controllers[contr_name].logger.log(lvl, msg, *args, **kwargs)
+
+    @classmethod
+    def _add_logfile_to_namedcontr(cls, contr_name, filepath, append=False, formatter=None, die_if_file_fails=False):
+        cls.log_controllers[contr_name].add_logfile(filepath, append, formatter, die_if_file_fails)
+
+    # Methods to set up specific log_controllers
+    @classmethod
+    def set_loglevel_console(cls, log_level):
+        cls._set_loglevel_namedcontr(cls.name_console, lvl)
+
+    @classmethod
+    def set_loglevel_logfile(cls, log_level):
+        cls._set_loglevel_namedcontr(cls.name_logfile, lvl)
+
+    @classmethod
+    def set_loglevel_debugfile(cls, log_level):
+        cls._set_loglevel_namedcontr(cls.name_debugfile, lvl)
+
+    @classmethod
+    def add_filepath_to_logfile(cls, filepath, append=False, formatter=None, die_if_file_fails=False):
+        cls._add_logfile_to_namedcontr(cls, cls.name_logfile, filepath, append=False, formatter=None, die_if_file_fails=False)
+
+    @classmethod
+    def add_filepath_to_debugfile(cls, filepath, append=False, formatter=None, die_if_file_fails=False):
+        cls._add_logfile_to_namedcontr(cls, cls.name_debugfile, filepath, append=False, formatter=None, die_if_file_fails=False)
 
 
 # log_levels = OrderedDict([

@@ -1,6 +1,7 @@
 import modules.python_require_min_pyversion  # checks for py >= 3.4, which we need for newer IMAP TLS support
 import modules.parse_args as parse_args
 import modules.get_xml_configs as get_xml_configs
+import modules.logging
 
 
 prog_version = '0.01-inital-build'
