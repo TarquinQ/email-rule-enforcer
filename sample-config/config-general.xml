@@ -30,7 +30,7 @@
 				<tee_to_screen>yes</tee_to_screen>  <!-- Display on screen as well as log file; default: yes -->
 				<logfile_level>7</logfile_level>  <!-- 0-7 low-high; default: 3 -->
 				<continue_on_log_fail>no</continue_on_log_fail>  <!-- Continue even if log file is not writeable; default: no -->
-			</logfile>
+			</logfile_debug>
 		</logging>
 	</config_general>
 </emailenforcer>
