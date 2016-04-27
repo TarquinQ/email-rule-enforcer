@@ -1,22 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <emailenforcer>
 	<config_serverinfo>
-		<connection>
-			<protocol>IMAP4</protocol> <!--IMAP4 by default (only IMAP at present!) -->
+		<connection_imap>
 			<server_name>full.domain.name</server_name> <!-- Or IP -->
-			<server_port></server_port> <!-- Leave blank for protocol default -->
+			<server_port>993</server_port>  <!-- Optional: Leave out for protocol default (which will differ SSL vs non-SSL) -->
 			<use_tls>yes</use_tls> <!-- default: no -->
-		</connection>
-		<folderinfo>
-			<initial_folder>INBOX</initial_folder> <!-- default: INBOX -->
-			<delete_folder>Trash</delete_folder> <!-- default: Trash -->
-		</folderinfo>
-		<sending_email>
-			<protocol>SMTP</protocol> <!--SMTP by default (only SMTP at present!) -->
-			<server_name>full.domain.name</server_name> <!-- Or IP -->
-			<server_port></server_port> <!-- Leave blank for protocol default -->
-			<use_tls>yes</use_tls> <!-- default: no -->
+			<username>sample</username>  <!-- Optional here; may be included in authconfig section instead -->
+			<password>sample</password>  <!-- Optional here; may be included in authconfig section instead -->
+			<initial_folder>INBOX</initial_folder> <!-- Optional: default: INBOX -->
+			<deletions_folder>Trash</deletions_folder> <!-- Optional: default: Trash -->
+		</connection_imap>
+		<sending_email_smtp> <!-- Optional. However, config will fail validation if email notification is set or any rules require Forwarding -->  
+			<server_name>full.domain.name</server_name> <!-- Or IP.  Special Value: "same_as_imap" -->
+			<server_port>465</server_port>  <!-- Optional: Leave out for protocol default (which will differ SSL vs non-SSL) -->
+			<use_tls>yes</use_tls> <!-- Optional: default: no -->
 			<auth_required>yes</auth_required> <!-- default: no -->
-		</sending_email>
+			<username>sample</username>  <!-- Optional here; may be included in authconfig section instead -->
+			<password>sample</password>  <!-- Optional here; may be included in authconfig section instead -->
+		</sending_email_smtp>
 	</config_serverinfo>
 </emailenforcer>

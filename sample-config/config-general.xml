@@ -1,35 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <emailenforcer>
 	<config_general>
-		<behaviour>
+		<mailhandling_behaviour>
 			<empty_trash_on_exit>no</empty_trash_on_exit> <!-- default: no -->
 			<mark_as_read_on_move>yes</mark_as_read_on_move> <!-- default: yes -->
-		</behaviour>
-		<notification_email_on_completion>
-			<recipient_email>admin@domain.com</recipient_email>
+		</mailhandling_behaviour>
+		<notification_email_on_completion>  <!-- Optional -->
+			<recipient_email>admin@domain.com</recipient_email>  <!-- Can have multiple recipients, one line per email -->
+			<!-- <recipient_email>other.admin@domain2.com</recipient_email>  <!-- Can have multiple recipients, one line per email -->
 			<subject>Successfully completed mailbox rule enforcement</subject>
-			<body_prefix>Report below</body_prefix>
-			<attach_log>yes</attach_log>  <!-- default: yes -->
+			<body_prefix>Report below</body_prefix>  <!-- Optional -->
+			<attach_log>yes</attach_log>  <!-- optional; default: yes -->
 		</notification_email_on_completion>
 		<logging>
-			<!-- Log Levels run from 0-4, low-high: these correspond to DEBUG, INFO, WARNING, ERROR, CRITICAL -->
-			<log_level>2</log_level>  <!-- Console Log; default: 3 -->
-			<logfile>
-				<log_folder>.\logs\</log_folder>  <!-- trailing slash can be omitted -->
-				<log_filename>log-test</log_filename>  <!-- First bit of log filename -->
+			<!-- Log Levels run from 1-5, verbose-quiet: these correspond to DEBUG, INFO, WARNING, ERROR, CRITICAL -->
+			<console_level>2</console_level>  <!-- Console Log; Optional; default: 2 -->
+			<logfile>  <!-- Optional -->
+				<log_folder>..\logs\</log_folder>  <!-- trailing slash can be omitted -->
+				<log_filename>log-sample</log_filename>  <!-- First bit of log filename -->
 				<append_date_to_filename>yes</append_date_to_filename>  <!-- ISO format, including current time; default: yes -->
 				<filename_extension>.log</filename_extension>  <!-- default: .log -->
-				<logfile_level>4</logfile_level>  <!-- 0-7 low-high; default: 3 -->
 				<continue_on_log_fail>no</continue_on_log_fail>  <!-- Continue even if log file is not writeable; default: no -->
+				<logfile_level>2</logfile_level>  <!-- 1-5 verbose-quiet; default: 2 -->
 			</logfile>
 			<logfile_debug>
-				<log_folder>.\logs\</log_folder>  <!-- trailing slash can be omitted -->
-				<log_filename>log-test</log_filename>  <!-- First bit of log filename -->
+				<log_folder>..\logs\</log_folder>  <!-- trailing slash can be omitted -->
+				<log_filename>debug-sample</log_filename>  <!-- First bit of log filename -->
 				<append_date_to_filename>yes</append_date_to_filename>  <!-- ISO format, including current time; default: yes -->
 				<filename_extension>.log</filename_extension>  <!-- default: .log -->
-				<tee_to_screen>yes</tee_to_screen>  <!-- Display on screen as well as log file; default: yes -->
-				<logfile_level>7</logfile_level>  <!-- 0-7 low-high; default: 3 -->
 				<continue_on_log_fail>no</continue_on_log_fail>  <!-- Continue even if log file is not writeable; default: no -->
+				<logfile_level>1</logfile_level>  <!-- 1-5 verbose-quiet; default: 1 -->
 			</logfile_debug>
 		</logging>
 	</config_general>
