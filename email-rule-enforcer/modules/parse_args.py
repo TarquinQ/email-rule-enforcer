@@ -6,9 +6,9 @@ from .supportingfunctions import die_with_errormsg
 
 
 class parse_args():
-    def __init__(self, prog_version=0):
-        parser = argparse.ArgumentParser(description=('Enforces rules against a remote email mailbox, version ' + str(prog_version)))
-        parser.add_argument('-d', "--debug-level", metavar="debug_level", dest="debug_level", help="Debug verbosity level, 0-7 low-high", type=int, default=3)
+    def __init__(self):
+        parser = argparse.ArgumentParser(description=('Enforces rules against a remote email mailbox'))
+        parser.add_argument('-d', "--debug-output-level", metavar="output_level", dest="output_level", help="Output verbosity level, 1-5 verbose-quiet", type=int)
         parser.add_argument('-c', "--conf-file", metavar="config_file_path", dest="conf_file", help="Path to the config file", action='append')
 
         self._parser = parser
