@@ -1,6 +1,11 @@
 # Project-specific files:
 notes.txt
 scratch.py
+venv/
+logs/
+private/
+scratch/
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
