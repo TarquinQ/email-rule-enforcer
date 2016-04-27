@@ -69,3 +69,11 @@ def generate_logfilename(filename_pre, filename_post='', filename_extension='.lo
 
     return ret_val
 
+
+def convert_text_to_boolean(text):
+    if text.lower() in ['yes', 'y', 'true', 'defintely', 'totally']:
+        return True
+    if text.lower() in ['no', 'n', 'false', 'nuh-uh no way']:
+        return False
+    return None
+
