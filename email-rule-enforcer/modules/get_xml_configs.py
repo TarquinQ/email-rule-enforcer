@@ -1,7 +1,7 @@
 import sys
 import xml.etree.ElementTree as ET
 from .supportingfunctions import die_with_errormsg
-from .logging import log_messages as log_msg
+from .logging import log_messages as log
 
 
 class config_files_xml():
@@ -20,14 +20,14 @@ class config_files_xml():
 
     def _generate_filepath_shortlists(self):
         for index, config_filename in enumerate(self.config_filepath_list):
-            log_msg.info('Now parsing config_filename: %s', config_filename)
+            log.info('Now parsing config_filename: %s', config_filename)
             if '/' in config_filename:
                 shortname = config_filename.split('/')[-1]
             elif "\\" in config_filename:
                 shortname = config_filename.split("\\")[-1]
             else:
                 shortname = config_filename
-            log_msg.debug('config shortname is:  %s', shortname)
+            log.debug('config shortname is:  %s', shortname)
             self.short_configpath_list[index] = shortname
             self._indexed_short_pathlist[index] = str(index) + '_' + shortname  # To ensure name uniqueness
 
@@ -38,21 +38,20 @@ class config_files_xml():
                 self.config_file_contents[self._indexed_short_pathlist[index]] = f.read()
 
     def _parse_config_files_xml(self):
-        log_msg.debug("Now parsing all config file contents")
+        log.debug("Now parsing all config file contents")
         for index in range(self._num_config_files):
             filename_to_parse = self.config_filepath_list[index]
             shortfilename_to_parse = self._indexed_short_pathlist[index]
             filecontents_to_parse = self.config_file_contents[self._indexed_short_pathlist[index]]
-
-        try:
-            self.config_xmltrees[shortfilename_to_parse] = ET.fromstring(filecontents_to_parse)
-        except ET.ParseError as xmlError:
-            log_msg.critical("\n****\nERROR: XML Config File cannot be read due to malformed XML file.\n")
-            log_msg.critical("Error in file:  %s", filename_to_parse)
-            log_msg.critical("Error returned is xmlerror code " + str(xmlError.code) + ": " + str(xmlError) + "\n\n*****\n")
-            die_with_errormsg("", 3)
-
-        self.full_config_tree.extend(ET.fromstring(filecontents_to_parse))
+            try:
+                self.config_xmltrees[shortfilename_to_parse] = ET.fromstring(filecontents_to_parse)
+            except ET.ParseError as xmlError:
+                log.critical("\n****\nERROR: XML Config File cannot be read due to malformed XML file.\n")
+                log.critical("Error in file:  %s", filename_to_parse)
+                log.critical("Error returned is xmlerror code " + str(xmlError.code) + ": " + str(xmlError) + "\n\n*****\n")
+                die_with_errormsg("", 3)
+            # No error handling, as previous ET.fromstring operation succeeded or died
+            self.full_config_tree.extend(ET.fromstring(filecontents_to_parse))
 
     def debug_print_config_file_details(self):
         print ("Now dumping all config file details and contents.\n")
@@ -81,9 +80,9 @@ class config_files_xml():
         print (ET.tostring(self.full_config_tree))
 
     def log_config_file_details(self, log_level=10):
-        log_msg.log(log_level, "Now dumping all config file details and contents.\n")
-        log_msg.log(log_level, "Number of config files:  %s", self._num_config_files)
-        log_msg.log(log_level, "List of config files:  %s", self.config_filepath_list)
+        log.log(log_level, "Now dumping all config file details and contents.\n")
+        log.log(log_level, "Number of config files:  %s", self._num_config_files)
+        log.log(log_level, "List of config files:  %s", self.config_filepath_list)
 
         for index in range(self._num_config_files):
             filename_to_parse = self.config_filepath_list[index]
@@ -91,13 +90,13 @@ class config_files_xml():
             filecontents_to_parse = self.config_file_contents[self._indexed_short_pathlist[index]]
             config_xmltree = self.config_xmltrees[shortfilename_to_parse]
 
-            log_msg.log(log_level, "Config file  %s:  %s", index, filename_to_parse)
-            log_msg.log(log_level, "Config file shortname:  %s", shortfilename_to_parse)
-            log_msg.log(log_level, "Config file contents:")
-            log_msg.log(log_level, "%s", filecontents_to_parse)
-            log_msg.log(log_level, "Config file XML tree:")
-            log_msg.log(log_level, "%s", config_xmltree)
-            log_msg.log(log_level, "%s", ET.dump(config_xmltree))
+            log.log(log_level, "Config file  %s:  %s", index, filename_to_parse)
+            log.log(log_level, "Config file shortname:  %s", shortfilename_to_parse)
+            log.log(log_level, "Config file contents:")
+            log.log(log_level, "%s", filecontents_to_parse)
+            log.log(log_level, "Config file XML tree:")
+            log.log(log_level, "%s", config_xmltree)
+            log.log(log_level, "%s", ET.dump(config_xmltree))
 
         print ("Global XML tree:")
         print (self.full_config_tree)
