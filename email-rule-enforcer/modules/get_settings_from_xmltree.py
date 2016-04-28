@@ -88,25 +88,34 @@ class logfile_settings():
         return True
 
 
-def validate_config(config):
-    pass
-
-
 def set_defaults(config):
     """This function sets defaults for all settings which can be set by default"""
-    config['defaults_are_set'] = True
-    config['imap_username'] = None
-    config['imap_password'] = None
-    config['smtp_username'] = None
-    config['smtp_username'] = None
+
+    # General behaviour
     config['empty_trash_on_exit'] = False
     config['mark_as_read_on_move'] = True
+    config['send_notification_email_on_completion'] = False
     config['notification_email_on_completion'] = None
     config['console_loglevel'] = 2
-    config['imap_initial_folder'] = 'INBOX'
-    config['imap_deletions_folder'] = 'Trash'
+
+    # IMAP Defaults
+    config['imap_server_name'] = None
+    config['imap_username'] = None
+    config['imap_password'] = None
     config['imap_use_tls'] = False
     config['imap_server_port'] = None
+    config['imap_initial_folder'] = 'INBOX'
+    config['imap_deletions_folder'] = 'Trash'
+
+    # SMTP Defaults
+    config['smtp_server_name'] = None
+    config['smtp_username'] = None
+    config['smtp_password'] = None
+    config['smtp_use_tls'] = False
+    config['smtp_server_port'] = None
+    config['smtp_auth_required'] = False
+
+    config['defaults_are_set'] = True
 
 
 def parse_config_tree(xml_config_tree, config):
@@ -116,7 +125,7 @@ def parse_config_tree(xml_config_tree, config):
         if node_found:
             configdict[key] = node_found.text
 
-    def set_boolean_if_xml_exists(configdict, key, Node, xpath):
+    def set_boolean_if_xmlnode_exists(configdict, key, Node, xpath):
         """Set a config value only if the value is in the xml"""
         node_found = Node.find(xpath)
         if node_found:
@@ -148,6 +157,7 @@ def parse_config_tree(xml_config_tree, config):
                     if attach_yn is not None:
                         sendme.set_attach_log(attach_yn)
                 config['notification_email_on_completion'] = sendme
+                config['send_notification_email_on_completion'] = True
 
         def parse_logfile_settings(config, Node):
             """Parses the logfile xml section"""
@@ -166,8 +176,8 @@ def parse_config_tree(xml_config_tree, config):
                 for subnode in Node.findall('./continue_on_log_fail'):
                     logset.set_continute_on_log_fail(convert_text_to_boolean(subnode.text))
 
-        set_boolean_if_xml_exists(config, 'empty_trash_on_exit', Node, './/empty_trash_on_exit')
-        set_boolean_if_xml_exists(config, 'mark_as_read_on_move', Node, './/mark_as_read_on_move')
+        set_boolean_if_xmlnode_exists(config, 'empty_trash_on_exit', Node, './/empty_trash_on_exit')
+        set_boolean_if_xmlnode_exists(config, 'mark_as_read_on_move', Node, './/mark_as_read_on_move')
         set_value_if_xmlnode_exists(config, 'console_loglevel', Node, './logging/console_level')
 
         parse_email_notification_settings(config, Node.find('./logging/notification_email_on_completion'))
@@ -179,12 +189,12 @@ def parse_config_tree(xml_config_tree, config):
         def parse_email_server_settings(config, conf_prefix, Node):
             set_value_if_xmlnode_exists(config, conf_prefix + 'server_name', Node.find('./server_name'))
             set_value_if_xmlnode_exists(config, conf_prefix + 'server_port', Node.find('./server_port'))
-            set_value_if_xmlnode_exists(config, conf_prefix + 'use_tls', Node.find('./use_tls')
             set_value_if_xmlnode_exists(config, conf_prefix + 'username', Node.find('./username')
             set_value_if_xmlnode_exists(config, conf_prefix + 'password', Node.find('./password')
+            set_boolean_if_xmlnode_exists(config, conf_prefix + 'use_tls', Node.find('./use_tls')
+            set_boolean_if_xmlnode_exists(config, conf_prefix + 'auth_required', Node.find('./auth_required') # SMTP only
             set_value_if_xmlnode_exists(config, conf_prefix + 'initial_folder', Node, './initial_folder') # IMAP only
             set_value_if_xmlnode_exists(config, conf_prefix + 'deletions_folder', Node, './deletions_folder') # IMAP only
-            set_value_if_xmlnode_exists(config, conf_prefix + 'auth_required', Node.find('./auth_required') # SMTP only
 
         parse_imap_settings(config, 'imap_', Node.find('./connection_imap'))
         parse_smtp_settings(config, 'smtp_', Node.find('./sending_email_smtp'))
@@ -194,7 +204,230 @@ def parse_config_tree(xml_config_tree, config):
     parse_general(xml_config_tree.find('config_general'), config)
     parse_serverinfo(xml_config_tree.find('config_serverinfo'), config)
 
+    #parse_rules(xml_config_tree.find('config_rules'), config)
 
+def set_dependent_config(config):
+    if config['imap_server_port'] is None:
+        if config['imap_use_tls']:
+            config['imap_server_port'] = 993
+        else:
+            config['imap_server_port'] = 143
+
+    if config['smtp_server_port'] is None:
+        if config['smtp_use_tls']:
+            config['smtp_server_port'] = 587
+        else:
+            config['smtp_server_port'] = 25
+
+def validate_config(config):
+    """
+    Validates the config files and full config-XML tree
+
+    This ensures that the following conditions are met:
+    * Mandatory values are set
+    * Value-dependencies are set (eg smtp_auth = true => smtp_U&P must be also set)
+    * Other conditions are required
+    """
+
+    configfail = 13378411
+    def die_with_errormsg_conf(msg, configfail):
+        die_with_errormsg(msg, configfail)
+
+    def assert_value_type(setting, value, expected_type):
+    if not insinstance(value, expected_type):
+        die_with_errormsg_conf('Incorrect value set for config setting "' + setting + '"; Expected type: ' + expected_type + ', got value: ' + str(value))
+
+    def assert_value_type_optional(setting, value, expected_type):
+        if val is not None:
+            assert_value_type(setting, value, expected_type)
+
+    # Basic: Check Mandatory values
+
+    # Basic General behaviour
+    setting = 'empty_trash_on_exit'
+    expected_type = 'bool'
+    assert_value_type(setting, config[setting], expected_type)
+
+    setting = 'mark_as_read_on_move'
+    expected_type = 'bool'
+    assert_value_type(setting, config[setting], expected_type)
+
+    setting = 'send_notification_email_on_completion'
+    expected_type = 'bool'
+    assert_value_type(setting, config[setting], expected_type)
+
+    val = 'console_loglevel'
+    expected_type = 'int'
+    assert_value_type(setting, config[setting], expected_type)
+
+    setting = 'empty_trash_on_exit'
+    expected_type = 'bool'
+    assert_value_type(setting, config[setting], expected_type)
+
+    setting = 'send_notification_email_on_completion'
+    expected_type = 'bool'
+    assert_value_type(setting, config[setting], expected_type)
+
+    def validate_imap_server_settings(config):
+        conf_prefix = 'imap'
+        setting = conf_prefix + 'server_name'
+        expected_type = 'str'
+        assert_value_type(setting, config[setting], expected_type)
+
+        setting = conf_prefix + 'server_port'
+        expected_type = 'int'
+        assert_value_type(setting, config[setting], expected_type)
+
+        setting = conf_prefix + 'use_tls'
+        expected_type = 'bool'
+        assert_value_type(setting, config[setting], expected_type)
+
+        setting = conf_prefix + 'username'
+        expected_type = 'str'
+        assert_value_type(setting, config[setting], expected_type)
+
+        setting = conf_prefix + 'password'
+        expected_type = 'str'
+        assert_value_type(setting, config[setting], expected_type)
+
+        setting = conf_prefix + 'initial_folder'
+        expected_type = 'str'
+        assert_value_type(setting, config[setting], expected_type)
+
+        setting = conf_prefix + 'deletions_folder'
+        expected_type = 'str'
+        assert_value_type(setting, config[setting], expected_type)
+
+    def validate_smtp_server_settings(config):
+        conf_prefix = 'smtp'
+        setting = conf_prefix + 'server_name'
+        expected_type = 'str'
+        assert_value_type(setting, config[setting], expected_type)
+
+        setting = conf_prefix + 'server_port'
+        expected_type = 'int'
+        assert_value_type(setting, config[setting], expected_type)
+
+        setting = conf_prefix + 'use_tls'
+        expected_type = 'str'
+        assert_value_type(setting, config[setting], expected_type)
+
+        setting = conf_prefix + 'auth_required'
+        expected_type = 'bool'
+        assert_value_type(setting, config[setting], expected_type)
+
+        if (config[conf_prefix + 'auth_required']):
+            setting = conf_prefix + 'username'
+            expected_type = 'str'
+            assert_value_type(setting, config[setting], expected_type)
+
+            setting = conf_prefix + 'password'
+            expected_type = 'str'
+            assert_value_type(setting, config[setting], expected_type)
+
+    validate_imap_server_settings(config)
+    validate_smtp_server_settings(config)
+
+
+class rule():
+    rule_count = 0
+    @classmethod
+    def get_rule_count(cls):
+        return cls.rule_count
+
+    def incr_rule_count(cls):
+        cls.rule_count += 1
+
+    def __init__(self, rule_name=None):
+        self.incr_rule_count()
+        self.rule_num = self.get_rule_count()
+        self.id = self.get_rule_count()
+        self.set_name(rule_name)
+        self.actions = []
+        self.matches = []
+        self.match_exceptions = []
+        self.check_more_rules_if_matched = True
+
+    def set_name(self, name):
+        if rule_name is not None:
+            self.name = str(rule_name)
+        else
+            self.name = 'Rule' + str(self.get_rule_count())
+
+    def add_action(self, action):
+        self.actions.append(action)
+
+    def add_match(self, match):
+        self.matches.append(match)
+
+    def add_match_exception(self, match):
+        self.match_exceptions.append(match)
+
+    def set_check_more_rules_if_matched(self):
+        self.check_more_rules_if_matched = True
+
+    def get_actions(self, action):
+        return self.actions
+
+    def get_matches(self, match):
+        return self.matches
+
+    def get_match_exceptions(self, match):
+        return self.match_exceptions
+
+    def get_check_more_rules_if_matched(self):
+        return self.check_more_rules_if_matched
+
+    def validate(self):
+        if len(self.matches) = 0:
+            return (False, 'Rule invalid: No matches for this rule. Rule id:' + str(self.id) + ', Name:' + self.name)
+        if len(self.actions) = 0:
+            return (False, 'Rule invalid: No actions for this rule. Rule id:' + str(self.id) + ', Name:' + self.name)
+        for rule in self.actions:
+            if not insinstance(rule, 'rule_action')
+        return (True, 'Rule seems valid')
+
+class rule_action():
+    valid_actions = frozenset(['move', 'forward', 'delete'])
+    def __init__(self, action_type):
+        self.action_type = action_type
+        self.delete_permanently = False
+
+    def set_dest_folder(self, dest_folder):
+        self.dest_folder = dest_folder
+
+    def set_delete_permanently(self, flag):
+        self.delete_permanently = flag
+
+    def set_email_recipient(self, email_addr):
+        self.email_recipient = email_addr
+
+    def validate(self):
+        if self.action_type not in self.valid_actions:
+            return (False, 'Action invalid. Action type "' + self.action_type + '" selected, but only valid actions are: ' + )
+
+        if self.action_type = 'move':
+            check_for = 'dest_folder'
+            try:
+                self.dest_folder
+            except NameError:
+                return (False, 'Action invalid. Action type "' + self.action_type + '" selected, but no value is set for suboption ' + check_for)
+
+        if self.action_type = 'delete':
+            if not insinstance('delete_permanently','bool'):
+                return (False, 'Action invalid. Action type "' + self.action_type + '" selected, but delete_permanently flag not boolean: set to ' + str(self.delete_permanently))
+
+        if self.action_type = 'forward':
+            check_for = 'email_recipient'
+            try:
+                self.email_recipient
+            except NameError:
+                return (False, 'Action invalid. Action type "' + self.action_type + '" selected, but no value is set for suboption ' + check_for)
+
+
+
+
+    #
     <config_rules>
         <rule>
             <rule_name>Name of this rule</rule_name>
@@ -222,7 +455,7 @@ def parse_config_tree(xml_config_tree, config):
         <rule>
             <rule_name>Move Undeliverable Emails to Trash folder</rule_name>
             <rule_actions>
-                <action type="move" move_to_trash="yes" mark_as_read="no" />  <!-- move_to-trash moves the email into the Deleted Items/Trash folder as specificed in config-serverinfo -->
+                <action type="move" move_to_trash="yes" mark_as_read="no" />  <!-- move_to-trash moves the email into the Deleted Items/Trash folder as specified in config-serverinfo -->
             </rule_actions>
             <rule_matches> <!-- all matches are required to match at the same time, unless added as an "match_or" -->
                 <match_field field="subject" type="starts_with" case_sensitive="no">Undeliverable: </match_field>
@@ -251,5 +484,6 @@ def parse_config_tree(xml_config_tree, config):
 config = dict()
 set_defaults(config)
 parse_config_tree(xml_config_tree, config)
+set_dependent_config(config)
 validate_config(config)
 

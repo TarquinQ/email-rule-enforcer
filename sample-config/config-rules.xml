@@ -10,10 +10,10 @@
 				<action type="mark_as_read" mark_as_read="no" /> <!-- All move operations mark an email as read, this will do it without moving it -->
 			</rule_actions>
 			<rule_matches> <!-- all matches are required to match at the same time, unless added as an "match_or" -->
-				<match_field field="to" type="contains">recipient@domain2</match_field>
+				<match_to type="contains">recipient@domain2</match_to>
 				<match_or>
-					<match_field field="from" type="contains">sender@domain1</match_field>
-					<match_field field="from" type="ends_with">Undeliverable: </match_field>
+					<match_from type="contains">sender@domain1</match_from>
+					<match_from type="ends_with">Undeliverable: </match_from>
 				</match_or>
 			</rule_matches>
 			<rule_match_exceptions> <!-- Same matching format as rule_matches -->
@@ -23,23 +23,25 @@
 					<match_field field="from" type="equals">mailerdaemon@spammydomain.com</match_field>
 				</match_or>
 			</rule_match_exceptions>
+			<check_more_rules_if_matched>no</check_more_rules_if_matched> <!-- Optional; Default = yes -->
 		</rule>
 		<rule>
 			<rule_name>Move Undeliverable Emails to Trash folder</rule_name>
 			<rule_actions>
-				<action type="move" move_to_trash="yes" mark_as_read="no" />  <!-- move_to-trash moves the email into the Deleted Items/Trash folder as specificed in config-serverinfo -->
+				<action type="delete" permanently="no" />  <!-- delete permanently=no moves the email into the Deleted Items/Trash folder as specificed in config-serverinfo -->
+				<!-- permanently=no is default -->
 			</rule_actions>
 			<rule_matches> <!-- all matches are required to match at the same time, unless added as an "match_or" -->
 				<match_field field="subject" type="starts_with" case_sensitive="no">Undeliverable: </match_field>
 			</rule_matches>
 		</rule>
 		<rule>
-			<rule_name>Delete older emails (permanently)</rule_name>
+			<rule_name>Delete older emails Permanently</rule_name>
 			<rule_actions>
-				<action type="delete"></action>
+				<action type="delete" permanently="yes /">  <!-- delete permanently=yes deletes the email permanently -->
 			</rule_actions>
 			<rule_matches>
-				<match_field field="date" type="older_than">Now + 3 months</match_field>  <!-- Explicit date or relative date -->
+				<match_date type="older_than">Now + 3 months</match_date>  <!-- Relative date -->
 			</rule_matches>
 		</rule>
 		<rule>
