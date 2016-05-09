@@ -4,16 +4,16 @@
 		<rule>
 			<rule_name>Name of this rule</rule_name>
 			<rule_actions>
-				<action type="move">
-					<dest_folder>Archived Items</dest_folder>  <!-- IMAP requries a '\' at the start of the first folder name: do not add this slash to this config -->
+				<action type="move" mark_as_read="no">
+					<dest_folder>Archived Items</dest_folder>    <!-- Please provide full IMAP folder path, separated by '/' for nested folders -->
 				</action>
-				<action type="mark_as_read" mark_as_read="no" /> <!-- All move operations mark an email as read, this will do it without moving it -->
+				<action type="mark_as_read" mark_as_read="no" />   <!-- All Moveor Forward operations will mark an email as read - this will move it without marking it -->
 			</rule_actions>
 			<rule_matches> <!-- all matches are required to match at the same time, unless added as an "match_or" -->
-				<match_to type="contains">recipient@domain2</match_to>
+				<match_field field="to" type="contains">recipient@domain2</match_field>
 				<match_or>
-					<match_from type="contains">sender@domain1</match_from>
-					<match_from type="ends_with">Undeliverable: </match_from>
+					<match_field field="from" type="contains">sender@domain1</match_field>
+					<match_field field="body" type="ends_with">Undeliverable: </match_field>
 				</match_or>
 			</rule_matches>
 			<rule_match_exceptions> <!-- Same matching format as rule_matches -->
@@ -23,13 +23,17 @@
 					<match_field field="from" type="equals">mailerdaemon@spammydomain.com</match_field>
 				</match_or>
 			</rule_match_exceptions>
-			<check_more_rules_if_matched>no</check_more_rules_if_matched> <!-- Optional; Default = yes -->
+			<continue_rule_checks_if_matched>no</continue_rule_checks_if_matched> <!-- Optional; Default = yes -->
 		</rule>
 		<rule>
 			<rule_name>Move Undeliverable Emails to Trash folder</rule_name>
 			<rule_actions>
-				<action type="delete" permanently="no" />  <!-- delete permanently=no moves the email into the Deleted Items/Trash folder as specificed in config-serverinfo -->
-				<!-- permanently=no is default -->
+				<action type="forward">
+					<dest_address>forwardingaddr1@somewhere.com</dest_address>
+					<dest_address>forwardingaddr2@somewhereelse.com</dest_address>
+				</action>
+				<action type="delete" permanent="no" />  <!-- delete permanent=no moves the email into the Deleted Items/Trash folder as specificed in config-serverinfo -->
+				<!-- permanent=no is default -->
 			</rule_actions>
 			<rule_matches> <!-- all matches are required to match at the same time, unless added as an "match_or" -->
 				<match_field field="subject" type="starts_with" case_sensitive="no">Undeliverable: </match_field>
@@ -38,7 +42,7 @@
 		<rule>
 			<rule_name>Delete older emails Permanently</rule_name>
 			<rule_actions>
-				<action type="delete" permanently="yes /">  <!-- delete permanently=yes deletes the email permanently -->
+				<action type="delete" permanent="yes" />  <!-- delete permanently=yes deletes the email permanently -->
 			</rule_actions>
 			<rule_matches>
 				<match_date type="older_than">Now + 3 months</match_date>  <!-- Relative date -->
@@ -48,7 +52,7 @@
 			<rule_name>Default</rule_name>  <!-- Default rule - no matches, no exceptions -->
 			<rule_actions>
 				<action type="move">
-					<dest_folder>Archived Items</dest_folder>  <!-- IMAP requries a '\' at the start of the first folder name: do not add this slash to this config -->
+					<dest_folder>Archived Items</dest_folder>  <!-- Please provide full IMAP folder path, separated by '/' for nested folders -->
 				</action>
 			</rule_actions>
 		</rule>
