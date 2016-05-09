@@ -71,9 +71,11 @@ def generate_logfilename(filename_pre, filename_post='', filename_extension='.lo
 
 
 def convert_text_to_boolean(text):
-    if text.lower() in ['yes', 'y', 'true', 'defintely', 'totally']:
+    y = frozenset(['yes', 'y', 'true', 'defintely', 'totally'])
+    n = frozenset(['no', 'n', 'false', 'nuh-uh no way'])
+    if text.lower() in y:
         return True
-    if text.lower() in ['no', 'n', 'false', 'nuh-uh no way']:
+    if text.lower() in n:
         return False
     return None
 
