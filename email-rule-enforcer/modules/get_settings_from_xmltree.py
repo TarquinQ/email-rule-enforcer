@@ -202,26 +202,35 @@ class Rule():
 
 
 class RuleAction():
-    valid_actions = frozenset(['move', 'forward', 'delete'])
+    valid_actions = frozenset(['move_to_folder', 'forward', 'delete', 'mark_as_read', 'mark_as_unread'])
 
     def __init__(self, action_type):
         self.action_type = action_type
         self.delete_permanently = False
+        self.mark_as_read = False
+        self.mark_as_unread = False
+        self.email_recipients = []
 
     def set_dest_folder(self, dest_folder):
         self.dest_folder = dest_folder
 
+    def set_mark_as_read(self, mark_as_read):
+        self.mark_as_read = mark_as_read
+
+    def set_mark_as_unread(self, mark_as_unread):
+        self.mark_as_unread = mark_as_unread
+
     def set_delete_permanently(self, flag):
         self.delete_permanently = flag
 
-    def set_email_recipient(self, email_addr):
-        self.email_recipient = email_addr
+    def add_email_recipient(self, email_addr):
+        self.email_recipients.append(email_addr)
 
     def validate(self):
         if self.action_type not in self.valid_actions:
             return (False, 'Action invalid. Action type "' + self.action_type + '" selected, but only valid actions are: ' + str(valid_actions))
 
-        if self.action_type = 'move':
+        if self.action_type = 'move_to_folder':
             check_for = 'dest_folder'
             try:
                 self.dest_folder
@@ -235,9 +244,8 @@ class RuleAction():
         if self.action_type = 'forward':
             check_for = 'email_recipient'
             try:
-                self.email_recipient
-            except NameError:
-                return (False, 'Action invalid. Action type "' + self.action_type + '" selected, but no value is set for suboption ' + check_for)
+                if len(self.email_recipient) < 1:
+                    return (False, 'Action invalid. Action type "' + self.action_type + '" selected, but no forwarding email addresses have been added')
 
 
 class MatchField():
@@ -264,7 +272,7 @@ class MatchField():
         self.str_to_match = str_to_match
         self.generate_re()
 
-    def set_case_sensitive(self, flag):
+    def set_match_is_case_sensitive(self, flag):
         self.case_sensitive = flag
         self.generate_re()
 
@@ -319,7 +327,7 @@ def MatchBody(match_type='contains', str_to_match=None, case_sensitive=False, pa
     return MatchField(field_to_match='body', match_type, str_to_match, case_sensitive, parent_rule_id)
 
 
-def parse_config_tree(xml_config_tree, config):
+def parse_config_tree(xml_config_tree, config, rules):
     def set_value_if_xmlnode_exists(configdict, key, Node, xpath):
         """Set a config value only if the value is in the xml"""
         node_found = Node.find(xpath)
@@ -327,7 +335,7 @@ def parse_config_tree(xml_config_tree, config):
             configdict[key] = node_found.text
 
     def get_value_if_xmlnode_exists(Node, xpath):
-        """Return a config value only if the value is in the xml"""
+        """Return a config value only if the xml subnode exists"""
         node_found = Node.find(xpath)
         if node_found:
             return node_found.text
@@ -335,10 +343,17 @@ def parse_config_tree(xml_config_tree, config):
             return None
 
     def get_attributes_if_xmlnode_exists(Node, xpath):
-        """Return a set of atributes only if the value is in the xml"""
+        """Return a set of attributes only if the xml subnode exists"""
         node_found = Node.find(xpath)
         if node_found:
-            return node_found.text
+            return node_found.attrib
+        else:
+            return None
+
+    def get_attribvalue_if_exists_in_xmlNode(Node, attrib_to_get):
+        """Returns an attributes' value only if the value is in the attrib dict"""
+        if attrib_to_get in Node.attrib:
+            return Node.attrib[attrib_to_get]
         else:
             return None
 
@@ -417,34 +432,58 @@ def parse_config_tree(xml_config_tree, config):
         parse_smtp_settings(config, 'smtp_', Node.find('./sending_email_smtp'))
         # End Parsing of ServerInfo Section
 
-    def parse_rules(Node, config):
-        def parse_rule_node(Node, config):
-            def parse_rule_actions(Node, config):
-                for action in Node.findall('./action'):
-                    action_type = action.attrib['type']
-                    if action_type = 'move':
-                        dest_folder = get_value_if_xmlnode_exists('./dest_folder')
-                        if action.attrib['type']:
-                    if action_type = 'delete':
+    def parse_rules(Node, config, rules):
+        def parse_rule_node(Node, config, rules):
+            def parse_rule_actions(Node, config, rule):
+                """Parses all actions inside a defined rule """
+                if Node.find('./mark_as_read'):
+                    action_to_add = RuleAction('mark_as_read')
+                    action_to_add.set_mark_as_read()
+                    rule.add_action(action_to_add)
+
+                if Node.find('./mark_as_unread'):
+                    action_to_add = RuleAction('mark_as_unread')
+                    action_to_add.set_mark_as_unread()
+                    rule.add_action(action_to_add)
+
+                for node in Node.findall('./move_to_folder'):
+                    action_to_add = RuleAction('move_to_folder')
+                    dest_folder = Node.text
+                    action_to_add.set_dest_folder(dest_folder)
+                    mark_as_read_on_move =  convert_text_to_boolean(get_attribvalue_if_exists_in_xmlNode(Node, 'mark_as_read'))
+                    if mark_as_read is None:
+                        mark_as_read = config['mark_as_read_on_move']
+                    action_to_add.set_mark_as_read(mark_as_read)
+                    rule.add_action(action_to_add)
+
+                for node in Node.findall('./delete'):
+                    action_to_add = RuleAction('delete')
+                    delete_permanently =  convert_text_to_boolean(get_attribvalue_if_exists_in_xmlNode(Node, 'permanently'))
+                    if delete_permanently is None:
                         delete_permanently = False
-                        if 'permanently' in action.attrib:
-                            delete_permanently = convert_text_to_boolean(action.attrib['permanently'])
-                    if action_type = 'forward':
-                        dest_addresses = []
-                        for address_node in Node.findall('./dest_address'):
-                            dest_address = Node.value
-                            dest_addresses
+                    action_to_add.set_delete_permanently(delete_permanently)
+                    rule.add_action(action_to_add)
+
+                for node in Node.findall('./forward'):
+                    action_to_add = RuleAction('forward')
+                    for address_node in Node.findall('./dest_address'):
+                        action_to_add.add_email_recipient(Node.text)
+                    rule.add_action(action_to_add)
+            return rule
 
 
-                <rule_actions>
-                    <action type="move">
-                        <dest_folder>Archived Items</dest_folder>  <!-- IMAP requries a '\\' at the start of the first folder name: do not add this slash to this config -->
-                    </action>
-                    <action type="mark_as_read">no</action> <!-- All move operations mark an email as read, this will do it without moving it -->
-                </rule_actions>
-                pass
+            def parse_rule_matches(Node, config, rule):
+                for node in Node.findall('./match_field'):
+                    match_field = get_attribvalue_if_exists_in_xmlNode(Node, 'field')
+                    match_type = get_attribvalue_if_exists_in_xmlNode(Node, 'type')
+                    case_sensitive = convert_text_to_boolean(get_attribvalue_if_exists_in_xmlNode(Node, 'case_sensitive'))
+                    if case_sensitive is None:
+                        case_sensitive = False
+                    match_to_add = MatchField()
 
-            def parse_rule_matches(Node, config):
+
+
+
                 <rule_matches> <!-- all matches are required to match at the same time, unless added as an "match_or" -->
                     <match_field field="to" type="contains">recipient@domain2</match_field>
                     <match_or>
@@ -469,19 +508,18 @@ def parse_config_tree(xml_config_tree, config):
             new_rule = Rule(new_name)
 
             for subnode in Node.find('./rule_actions'):
-                parse_rule_actions(subnode, config)
+                parse_rule_actions(subnode, config, new_rule)
 
             for subnode in Node.find('./rule_matches'):
-                parse_rule_matches(subnode, config)
+                parse_rule_matches(subnode, config, new_rule)
 
             for subnode in Node.find('./rule_match_exceptions'):
-                parse_rule_match_exceptions(subnode, config)
+                parse_rule_match_exceptions(subnode, config, new_rule)
 
-
-
+            rules.append(new_rule)
 
         for rule_node in Node.findall('./rule')):
-                parse_rule_node(rule_node, config)
+                parse_rule_node(rule_node, config, rules)
 
         # End Parsing of Rules Section
 
@@ -490,7 +528,7 @@ def parse_config_tree(xml_config_tree, config):
     parse_auth(xml_config_tree.find('config_authinfo'), config)
     parse_general(xml_config_tree.find('config_general'), config)
     parse_serverinfo(xml_config_tree.find('config_serverinfo'), config)
-    parse_rules(xml_config_tree.find('config_rules'), config)
+    parse_rules(xml_config_tree.find('config_rules'), config, rules)
 
         <rule>
             <rule_name>Move Undeliverable Emails to Trash folder</rule_name>
@@ -647,8 +685,9 @@ def validate_config(config):
 
 
 config = dict()
+rules = []
 set_defaults(config)
-parse_config_tree(xml_config_tree, config)
+parse_config_tree(xml_config_tree, config, rules)
 set_dependent_config(config)
 validate_config(config)
 

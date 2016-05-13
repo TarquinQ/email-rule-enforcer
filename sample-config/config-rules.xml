@@ -4,10 +4,11 @@
 		<rule>
 			<rule_name>Name of this rule</rule_name>
 			<rule_actions>
-				<action type="move" mark_as_read="no">
+				<action type="move" mark_as_read="no">   <!-- All Move or Forward operations will mark an email as read - this will move it without marking it -->
 					<dest_folder>Archived Items</dest_folder>    <!-- Please provide full IMAP folder path, separated by '/' for nested folders -->
 				</action>
-				<action type="mark_as_read" mark_as_read="no" />   <!-- All Moveor Forward operations will mark an email as read - this will move it without marking it -->
+				<action type="mark_as_read" />   <!-- This will mark the email as read, regardless of current read-status -->
+				<action type="mark_as_unread" />   <!-- This will mark the email as unread, regardless of current read-status -->
 			</rule_actions>
 			<rule_matches> <!-- all matches are required to match at the same time, unless added as an "match_or" -->
 				<match_field field="to" type="contains">recipient@domain2</match_field>
