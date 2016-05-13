@@ -3,7 +3,7 @@ import xml.etree.ElementTree as ET
 import .supportingfunctions
 from .supportingfunctions import die_with_errormsg, generate_logfile_fullpath, convert_text_to_boolean
 from .logging import log_messages as log
-
+#from .settings_EmailNotifications import EmailNotificationSettings
 
 class EmailNotificationSettings():
     email_regex = re.compile(r'[^@]+@[^@]+\.[^@]+')
@@ -162,7 +162,7 @@ class Rule():
     def add_match_or(self, match):
         self._temp_match_or.append(match)
 
-    def end_match_or(self):
+    def stop_match_or(self):
         sel.matches.append(self._temp_match_or)
         del self._temp_match_or
 
@@ -433,6 +433,22 @@ def parse_config_tree(xml_config_tree, config, rules):
         # End Parsing of ServerInfo Section
 
     def parse_rules(Node, config, rules):
+        def parse_generic_rule_match(Node):
+            match_field = get_attribvalue_if_exists_in_xmlNode(Node, 'field')
+            match_type = get_attribvalue_if_exists_in_xmlNode(Node, 'type')
+            case_sensitive = convert_text_to_boolean(get_attribvalue_if_exists_in_xmlNode(Node, 'case_sensitive'))
+            if case_sensitive is None:
+                case_sensitive = False
+            match_val = Node.text
+            match_to_add = MatchField(
+                field_to_match=match_field,
+                match_type=match_type,
+                str_to_match=match_val,
+                case_sensitive=case_sensitive
+                )
+            return match_to_add
+
+
         def parse_rule_node(Node, config, rules):
             def parse_rule_actions(Node, config, rule):
                 """Parses all actions inside a defined rule """
@@ -472,37 +488,41 @@ def parse_config_tree(xml_config_tree, config, rules):
             return rule
 
 
-            def parse_rule_matches(Node, config, rule):
+            def parse_rule_matches(Node, rule):
                 for node in Node.findall('./match_field'):
-                    match_field = get_attribvalue_if_exists_in_xmlNode(Node, 'field')
-                    match_type = get_attribvalue_if_exists_in_xmlNode(Node, 'type')
-                    case_sensitive = convert_text_to_boolean(get_attribvalue_if_exists_in_xmlNode(Node, 'case_sensitive'))
-                    if case_sensitive is None:
-                        case_sensitive = False
-                    match_to_add = MatchField()
+                    rule.add_match(parse_generic_rule_match(node))
 
+                # A bit of a fudge - see if we have any match_or's
+                found_or = False
+                for node in Node.findall('./match_or'):
+                    found_or = True
 
-
-
-                <rule_matches> <!-- all matches are required to match at the same time, unless added as an "match_or" -->
-                    <match_field field="to" type="contains">recipient@domain2</match_field>
-                    <match_or>
-                        <match_field field="from" type="contains">sender@domain1</match_field>
-                        <match_field field="from" type="ends_with">Undeliverable: </match_field>
-                    </match_or>
-                </rule_matches>
-                pass
+                if found_or:
+                    # Once more unto the breach:
+                    # Tell the rule that we have an 'or' match (1 or ... m"or"e :)
+                    for node in Node.findall('./match_or'):
+                        rule.start_match_or()
+                        for node in Node.findall('./match_field'):
+                            rule.add_match_or(parse_generic_rule_match(node))
+                        rule.stop_match_or()
 
             def parse_rule_match_exceptions(Node, config):
-                <rule_match_exceptions> <!-- Same matching format as rule_matches -->
-                    <match_or>
-                        <match_field field="subject" type="starts_with" case_sensitive="no">Undeliverable: </match_field>
-                        <match_field field="body" type="starts_with" case_sensitive="no">Undeliverable: </match_field>
-                        <match_field field="from" type="equals">mailerdaemon@spammydomain.com</match_field>
-                    </match_or>
-                    <match_field field="to" type="contains">recipient@domain2</match_field>
-                </rule_match_exceptions>
-                pass
+                for node in Node.findall('./match_field'):
+                    rule.add_match_exception(parse_generic_rule_match(node))
+
+                # A bit of a fudge - see if we have any match_or's
+                found_or = False
+                for node in Node.findall('./match_or'):
+                    found_or = True
+
+                if found_or:
+                    # Once more unto the breach:
+                    # Tell the rule that we have an 'or' match (1 or ... m"or"e :)
+                    for node in Node.findall('./match_or'):
+                        rule.start_exception_or()
+                        for node in Node.findall('./match_field'):
+                            rule.add_exception_or(parse_generic_rule_match(node))
+                        rule.stop_exception_or()
 
             new_name = get_value_if_xmlnode_exists(Node, './rule_name')
             new_rule = Rule(new_name)
@@ -529,35 +549,6 @@ def parse_config_tree(xml_config_tree, config, rules):
     parse_general(xml_config_tree.find('config_general'), config)
     parse_serverinfo(xml_config_tree.find('config_serverinfo'), config)
     parse_rules(xml_config_tree.find('config_rules'), config, rules)
-
-        <rule>
-            <rule_name>Move Undeliverable Emails to Trash folder</rule_name>
-            <rule_actions>
-                <action type="move" move_to_trash="yes" mark_as_read="no" />  <!-- move_to-trash moves the email into the Deleted Items/Trash folder as specified in config-serverinfo -->
-            </rule_actions>
-            <rule_matches> <!-- all matches are required to match at the same time, unless added as an "match_or" -->
-                <match_field field="subject" type="starts_with" case_sensitive="no">Undeliverable: </match_field>
-            </rule_matches>
-        </rule>
-        <rule>
-            <rule_name>Delete older emails (permanently)</rule_name>
-            <rule_actions>
-                <action type="delete"></action>
-            </rule_actions>
-            <rule_matches>
-                <match_field field="date" type="older_than">Now + 3 months</match_field>  <!-- Explicit date or relative date -->
-            </rule_matches>
-        </rule>
-        <rule>
-            <rule_name>Default</rule_name>  <!-- Default rule - no matches, no exceptions -->
-            <rule_actions>
-                <action type="move">
-                    <dest_folder>Archived Items</dest_folder>  <!-- IMAP requries a '\\' at the start of the first folder name: do not add this slash to this config -->
-                </action>
-            </rule_actions>
-        </rule>
-    </config_rules>
-
 
 
 def set_dependent_config(config):
