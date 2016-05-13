@@ -74,12 +74,13 @@ class Rule():
 
     # Validation
     def validate(self):
-        if len(self.matches) = 0:
+        if len(self.matches) == 0:
             return (False, 'Rule invalid: No matches for this rule. Rule id:' + str(self.id) + ', Name:' + self.name)
-        if len(self.actions) = 0:
+        if len(self.actions) == 0:
             return (False, 'Rule invalid: No actions for this rule. Rule id:' + str(self.id) + ', Name:' + self.name)
         for rule in self.actions:
-            if not insinstance(rule, RuleAction)
+            #if not insinstance(rule, RuleAction):
+            pass
         return (True, 'Rule seems valid')
 
 
@@ -112,22 +113,27 @@ class RuleAction():
         if self.action_type not in self.valid_actions:
             return (False, 'Action invalid. Action type "' + self.action_type + '" selected, but only valid actions are: ' + str(valid_actions))
 
-        if self.action_type = 'move_to_folder':
+        if self.action_type == 'move_to_folder':
             check_for = 'dest_folder'
             try:
                 self.dest_folder
             except NameError:
                 return (False, 'Action invalid. Action type "' + self.action_type + '" selected, but no value is set for suboption ' + check_for)
 
-        if self.action_type = 'delete':
+        if self.action_type == 'delete':
             if not insinstance('delete_permanently', bool):
                 return (False, 'Action invalid. Action type "' + self.action_type + '" selected, but delete_permanently flag not boolean: set to ' + str(self.delete_permanently))
 
-        if self.action_type = 'forward':
+        if self.action_type == 'forward':
             check_for = 'email_recipient'
             try:
                 if len(self.email_recipient) < 1:
                     return (False, 'Action invalid. Action type "' + self.action_type + '" selected, but no forwarding email addresses have been added')
+            except:
+                    return (False, 'Action invalid. Action type "' + self.action_type + '" selected, but no forwarding email addresses have been added')
+        else:
+            return (True, 'FIXME')
+
 
 
 class MatchField():
@@ -161,11 +167,11 @@ class MatchField():
     def generate_re():
         if ((self.match_type in self.match_types) and (self.str_to_match is not None)):
             match_str = str(self.str_to_match)[:]
-            if self.match_type = 'starts_with':
+            if self.match_type == 'starts_with':
                 match_str = match_str + '.*'
-            if self.match_type = 'contains':
+            if self.match_type == 'contains':
                 match_str = '.*' + match_str + '.*'
-            if self.match_type = 'ends_with':
+            if self.match_type == 'ends_with':
                 match_str = '.*' + match_str
             match_str = '^' + match_str + '$'  # Do I need this? I don't think so.
             self.matching_string = match_str

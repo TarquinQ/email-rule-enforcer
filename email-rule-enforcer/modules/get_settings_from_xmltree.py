@@ -1,7 +1,7 @@
 import re
 import xml.etree.ElementTree as ET
 import modules.supportingfunctions
-from modules.supportingfunctions import die_with_errormsg, generate_logfile_fullpath, convert_text_to_boolean
+from modules.supportingfunctions import convert_text_to_boolean
 from modules.logging import log_messages as log
 from modules.settings_EmailNotifications import EmailNotificationSettings
 from modules.settings_LogfileSettings import LogfileSettings
@@ -40,7 +40,7 @@ def parse_config_tree(xml_config_tree, config, rules):
                 config['notification_email_on_completion'] = sendme
                 config['send_notification_email_on_completion'] = True
 
-        def parse_logfile_settings(config, Node):
+        def parse_logfile_settings(config, logtitle, Node):
             """Parses the logfile xml section"""
             if Node:
                 logset = LogfileSettings()
@@ -49,9 +49,9 @@ def parse_config_tree(xml_config_tree, config, rules):
                 for subnode in Node.findall('./log_folder'):
                     logset.set_log_folder(subnode.text)
                 for subnode in Node.findall('./log_filename'):
-                    logset.log_filename(subnode.text)
+                    logset.set_log_filename(subnode.text)
                 for subnode in Node.findall('./append_date_to_filename'):
-                    logset.append_date_to_filename(convert_text_to_boolean(subnode.text))
+                    logset.set_append_date(convert_text_to_boolean(subnode.text))
                 for subnode in Node.findall('./filename_extension'):
                     logset.set_filename_extension(subnode.text)
                 for subnode in Node.findall('./continue_on_log_fail'):
@@ -63,7 +63,7 @@ def parse_config_tree(xml_config_tree, config, rules):
 
         parse_email_notification_settings(config, Node.find('./logging/notification_email_on_completion'))
         parse_logfile_settings(config, 'logfile', Node.find('./logging/logfile'))
-        parse_logfile_debug_settings(config, 'logfile_debug', Node.find('./logging/logfile_debug'))
+        parse_logfile_settings(config, 'logfile_debug', Node.find('./logging/logfile_debug'))
         # End Parsing of General Section
 
     def parse_serverinfo(Node, config):
@@ -94,7 +94,7 @@ def parse_config_tree(xml_config_tree, config, rules):
                 match_type=match_type,
                 str_to_match=match_val,
                 case_sensitive=case_sensitive
-                )
+            )
             return match_to_add
 
         def parse_rule_node(Node, config, rules):
@@ -212,8 +212,13 @@ def set_dependent_config(config):
 
 config = dict()
 rules = []
-set_defaults(config)
-parse_config_tree(xml_config_tree, config, rules)
-set_dependent_config(config)
+
+
+def derive_settings(xml_config_tree):
+    global config
+    global rules
+    set_defaults(config)
+    parse_config_tree(xml_config_tree, config, rules)
+    set_dependent_config(config)
 #validate_config(config)
 

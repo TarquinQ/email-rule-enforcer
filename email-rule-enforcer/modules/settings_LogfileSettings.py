@@ -1,3 +1,5 @@
+from modules.supportingfunctions import generate_logfile_fullpath
+
 class LogfileSettings():
     def __init__(self, logfile_level=2, log_folder=None, log_filename=None, append_date_to_filename=True, filename_extension='.log', continue_on_log_fail=False):
         self.logfile_level = logfile_level
@@ -36,7 +38,8 @@ class LogfileSettings():
             self.logfilepath = generate_logfile_fullpath(
                 log_directory=self.log_folder, filename_pre=self.log_filename,
                 filename_extension=self.filename_extension,
-                insert_datetime=self.append_date_to_filename)
+                insert_datetime=self.append_date_to_filename
+            )
 
     def validate(self):
         if not self.logfilepath:

@@ -49,7 +49,7 @@ def generate_logfilename(filename_pre, filename_post='', filename_extension='.lo
     if filename_pre.endswith('.'):
         filename_pre = filename_pre[:-1]
 
-    if append_datetime:
+    if insert_datetime:
         timestamp = get_ISOTimestamp_ForLogFilename()
         timeval = '-' + timestamp + '-'
         if filename_pre.endswith('-'):
