@@ -1,3 +1,5 @@
+import re
+
 class Rule():
     rule_count = 0
 
@@ -5,21 +7,22 @@ class Rule():
     def get_rule_count(cls):
         return cls.rule_count
 
+    @classmethod
     def incr_rule_count(cls):
         cls.rule_count += 1
 
     def __init__(self, rule_name=None):
+        self.set_name(rule_name)
         self.incr_rule_count()
         self.rule_num = self.get_rule_count()
         self.id = self.get_rule_count()
-        self.set_name(rule_name)
         self.actions = []
         self.matches = []
         self.match_exceptions = []
         self.continue_rule_checks_if_matched = True
 
     # Set Basic variables
-    def set_name(self, name):
+    def set_name(self, rule_name):
         if rule_name is not None:
             self.name = str(rule_name)
         else:
@@ -135,7 +138,6 @@ class RuleAction():
             return (True, 'FIXME')
 
 
-
 class MatchField():
     match_types = frozenset(['starts_with', 'contains', 'ends_with', 'is'])
     match_fields = frozenset(['to', 'from', 'subject', 'cc', 'bcc', 'body'])
@@ -164,7 +166,7 @@ class MatchField():
         self.case_sensitive = flag
         self.generate_re()
 
-    def generate_re():
+    def generate_re(self):
         if ((self.match_type in self.match_types) and (self.str_to_match is not None)):
             match_str = str(self.str_to_match)[:]
             if self.match_type == 'starts_with':

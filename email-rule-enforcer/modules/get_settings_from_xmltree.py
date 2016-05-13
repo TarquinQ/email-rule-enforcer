@@ -68,17 +68,17 @@ def parse_config_tree(xml_config_tree, config, rules):
 
     def parse_serverinfo(Node, config):
         def parse_email_server_settings(config, conf_prefix, Node):
-            set_value_if_xmlnode_exists(config, conf_prefix + 'server_name', Node.find('./server_name'))
-            set_value_if_xmlnode_exists(config, conf_prefix + 'server_port', Node.find('./server_port'))
-            set_value_if_xmlnode_exists(config, conf_prefix + 'username', Node.find('./username'))
-            set_value_if_xmlnode_exists(config, conf_prefix + 'password', Node.find('./password'))
-            set_boolean_if_xmlnode_exists(config, conf_prefix + 'use_tls', Node.find('./use_tls'))
-            set_boolean_if_xmlnode_exists(config, conf_prefix + 'auth_required', Node.find('./auth_required'))  # SMTP only
-            set_value_if_xmlnode_exists(config, conf_prefix + 'initial_folder', Node, Node.find('./initial_folder'))  # IMAP only
-            set_value_if_xmlnode_exists(config, conf_prefix + 'deletions_folder', Node, Node.find('./deletions_folder'))  # IMAP only
+            set_value_if_xmlnode_exists(config, conf_prefix + 'server_name', Node, './server_name')
+            set_value_if_xmlnode_exists(config, conf_prefix + 'server_port', Node, './server_port')
+            set_value_if_xmlnode_exists(config, conf_prefix + 'username', Node, './username')
+            set_value_if_xmlnode_exists(config, conf_prefix + 'password', Node, './password')
+            set_boolean_if_xmlnode_exists(config, conf_prefix + 'use_tls', Node, './use_tls')
+            set_boolean_if_xmlnode_exists(config, conf_prefix + 'auth_required', Node, './auth_required')  # SMTP only
+            set_value_if_xmlnode_exists(config, conf_prefix + 'initial_folder', Node, './initial_folder')  # IMAP only
+            set_value_if_xmlnode_exists(config, conf_prefix + 'deletions_folder', Node, './deletions_folder')  # IMAP only
 
-        parse_imap_settings(config, 'imap_', Node.find('./connection_imap'))
-        parse_smtp_settings(config, 'smtp_', Node.find('./sending_email_smtp'))
+        parse_email_server_settings(config, 'imap_', Node.find('./connection_imap'))
+        parse_email_server_settings(config, 'smtp_', Node.find('./sending_email_smtp'))
         # End Parsing of ServerInfo Section
 
     def parse_rules(Node, config, rules):
@@ -133,7 +133,6 @@ def parse_config_tree(xml_config_tree, config, rules):
                     for address_node in Node.findall('./dest_address'):
                         action_to_add.add_email_recipient(Node.text)
                     rule.add_action(action_to_add)
-            return rule
 
             def parse_rule_matches(Node, rule):
                 for node in Node.findall('./match_field'):
@@ -153,7 +152,7 @@ def parse_config_tree(xml_config_tree, config, rules):
                             rule.add_match_or(parse_generic_rule_match(node))
                         rule.stop_match_or()
 
-            def parse_rule_match_exceptions(Node, config):
+            def parse_rule_match_exceptions(Node, rule):
                 for node in Node.findall('./match_field'):
                     rule.add_match_exception(parse_generic_rule_match(node))
 
@@ -178,10 +177,10 @@ def parse_config_tree(xml_config_tree, config, rules):
                 parse_rule_actions(subnode, config, new_rule)
 
             for subnode in Node.find('./rule_matches'):
-                parse_rule_matches(subnode, config, new_rule)
+                parse_rule_matches(subnode, new_rule)
 
             for subnode in Node.find('./rule_match_exceptions'):
-                parse_rule_match_exceptions(subnode, config, new_rule)
+                parse_rule_match_exceptions(subnode, new_rule)
 
             rules.append(new_rule)
 
