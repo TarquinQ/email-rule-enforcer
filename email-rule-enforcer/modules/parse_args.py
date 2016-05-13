@@ -15,7 +15,7 @@ class parse_args():
         self.args = parser.parse_args()
 
         self.config_filepath_list = self.args.conf_file
-        self.debug_level = self.args.debug_level
+        self.debug_level = self.args.output_level
 
         self._check_args()
 

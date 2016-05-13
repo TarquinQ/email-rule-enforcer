@@ -7,7 +7,7 @@
 		</mailhandling_behaviour>
 		<notification_email_on_completion>  <!-- Optional -->
 			<recipient_email>admin@domain.com</recipient_email>  <!-- Can have multiple recipients, one line per email -->
-			<!-- <recipient_email>other.admin@domain2.com</recipient_email>  <!-- Can have multiple recipients, one line per email -->
+			<recipient_email>other.admin@domain2.com</recipient_email><!-- Can have multiple recipients, one line per email -->
 			<subject>Successfully completed mailbox rule enforcement</subject>
 			<body_prefix>Report below</body_prefix>  <!-- Optional -->
 			<attach_log>yes</attach_log>  <!-- optional; default: yes -->

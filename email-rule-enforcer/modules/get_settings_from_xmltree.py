@@ -1,14 +1,14 @@
 import re
 import xml.etree.ElementTree as ET
-import .supportingfunctions
-from .supportingfunctions import die_with_errormsg, generate_logfile_fullpath, convert_text_to_boolean
-from .logging import log_messages as log
-from .settings_EmailNotifications import EmailNotificationSettings
-from .settings_LogfileSettings import LogfileSettings
-from .settings_DefaultSettings import set_defaults
-from .rule_Classes import Rule, RuleAction, MatchField
-from .supportingfunctions_xml import set_value_if_xmlnode_exists, get_value_if_xmlnode_exists, get_attributes_if_xmlnode_exists
-from .supportingfunctions_xml import get_attribvalue_if_exists_in_xmlNode, set_boolean_if_xmlnode_exists
+import modules.supportingfunctions
+from modules.supportingfunctions import die_with_errormsg, generate_logfile_fullpath, convert_text_to_boolean
+from modules.logging import log_messages as log
+from modules.settings_EmailNotifications import EmailNotificationSettings
+from modules.settings_LogfileSettings import LogfileSettings
+from modules.settings_DefaultSettings import set_defaults
+from modules.rule_Classes import Rule, RuleAction, MatchField
+from modules.supportingfunctions_xml import set_value_if_xmlnode_exists, get_value_if_xmlnode_exists, get_attributes_if_xmlnode_exists
+from modules.supportingfunctions_xml import get_attribvalue_if_exists_in_xmlNode, set_boolean_if_xmlnode_exists
 
 
 def parse_config_tree(xml_config_tree, config, rules):
@@ -70,12 +70,12 @@ def parse_config_tree(xml_config_tree, config, rules):
         def parse_email_server_settings(config, conf_prefix, Node):
             set_value_if_xmlnode_exists(config, conf_prefix + 'server_name', Node.find('./server_name'))
             set_value_if_xmlnode_exists(config, conf_prefix + 'server_port', Node.find('./server_port'))
-            set_value_if_xmlnode_exists(config, conf_prefix + 'username', Node.find('./username')
-            set_value_if_xmlnode_exists(config, conf_prefix + 'password', Node.find('./password')
-            set_boolean_if_xmlnode_exists(config, conf_prefix + 'use_tls', Node.find('./use_tls')
-            set_boolean_if_xmlnode_exists(config, conf_prefix + 'auth_required', Node.find('./auth_required') # SMTP only
-            set_value_if_xmlnode_exists(config, conf_prefix + 'initial_folder', Node, './initial_folder') # IMAP only
-            set_value_if_xmlnode_exists(config, conf_prefix + 'deletions_folder', Node, './deletions_folder') # IMAP only
+            set_value_if_xmlnode_exists(config, conf_prefix + 'username', Node.find('./username'))
+            set_value_if_xmlnode_exists(config, conf_prefix + 'password', Node.find('./password'))
+            set_boolean_if_xmlnode_exists(config, conf_prefix + 'use_tls', Node.find('./use_tls'))
+            set_boolean_if_xmlnode_exists(config, conf_prefix + 'auth_required', Node.find('./auth_required'))  # SMTP only
+            set_value_if_xmlnode_exists(config, conf_prefix + 'initial_folder', Node, Node.find('./initial_folder'))  # IMAP only
+            set_value_if_xmlnode_exists(config, conf_prefix + 'deletions_folder', Node, Node.find('./deletions_folder'))  # IMAP only
 
         parse_imap_settings(config, 'imap_', Node.find('./connection_imap'))
         parse_smtp_settings(config, 'smtp_', Node.find('./sending_email_smtp'))
@@ -114,7 +114,7 @@ def parse_config_tree(xml_config_tree, config, rules):
                     action_to_add = RuleAction('move_to_folder')
                     dest_folder = Node.text
                     action_to_add.set_dest_folder(dest_folder)
-                    mark_as_read_on_move =  convert_text_to_boolean(get_attribvalue_if_exists_in_xmlNode(Node, 'mark_as_read'))
+                    mark_as_read_on_move = convert_text_to_boolean(get_attribvalue_if_exists_in_xmlNode(Node, 'mark_as_read'))
                     if mark_as_read is None:
                         mark_as_read = config['mark_as_read_on_move']
                     action_to_add.set_mark_as_read(mark_as_read)
@@ -122,7 +122,7 @@ def parse_config_tree(xml_config_tree, config, rules):
 
                 for node in Node.findall('./delete'):
                     action_to_add = RuleAction('delete')
-                    delete_permanently =  convert_text_to_boolean(get_attribvalue_if_exists_in_xmlNode(Node, 'permanently'))
+                    delete_permanently = convert_text_to_boolean(get_attribvalue_if_exists_in_xmlNode(Node, 'permanently'))
                     if delete_permanently is None:
                         delete_permanently = False
                     action_to_add.set_delete_permanently(delete_permanently)
@@ -134,7 +134,6 @@ def parse_config_tree(xml_config_tree, config, rules):
                         action_to_add.add_email_recipient(Node.text)
                     rule.add_action(action_to_add)
             return rule
-
 
             def parse_rule_matches(Node, rule):
                 for node in Node.findall('./match_field'):
@@ -186,7 +185,7 @@ def parse_config_tree(xml_config_tree, config, rules):
 
             rules.append(new_rule)
 
-        for rule_node in Node.findall('./rule')):
+        for rule_node in Node.findall('./rule'):
                 parse_rule_node(rule_node, config, rules)
 
         # End Parsing of Rules Section
