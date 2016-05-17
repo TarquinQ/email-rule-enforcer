@@ -8,7 +8,7 @@ from modules.settings_LogfileSettings import LogfileSettings
 from modules.settings_DefaultSettings import set_defaults
 from modules.rule_Classes import Rule, RuleAction, MatchField
 from modules.supportingfunctions_xml import set_value_if_xmlnode_exists, get_value_if_xmlnode_exists, get_attributes_if_xmlnode_exists
-from modules.supportingfunctions_xml import get_attribvalue_if_exists_in_xmlNode, set_boolean_if_xmlnode_exists
+from modules.supportingfunctions_xml import get_attribvalue_if_exists_in_xmlNode, set_boolean_if_xmlnode_exists, xpath_findall
 
 
 def parse_config_tree(xml_config_tree, config, rules):
@@ -34,7 +34,7 @@ def parse_config_tree(xml_config_tree, config, rules):
                 for subnode in Node.findall('./body_prefix'):
                     sendme.set_body_prefix(subnode.text)
                 for subnode in Node.findall('./attach_log'):
-                    attach_yn = convert_text_to_boolean(subnode.text)
+                    attach_yn = convert_text_to_boolean(subnode.text, False)
                     if attach_yn is not None:
                         sendme.set_attach_log(attach_yn)
                 config['notification_email_on_completion'] = sendme
@@ -51,11 +51,11 @@ def parse_config_tree(xml_config_tree, config, rules):
                 for subnode in Node.findall('./log_filename'):
                     logset.set_log_filename(subnode.text)
                 for subnode in Node.findall('./append_date_to_filename'):
-                    logset.set_append_date(convert_text_to_boolean(subnode.text))
+                    logset.set_append_date(convert_text_to_boolean(subnode.text, True))
                 for subnode in Node.findall('./filename_extension'):
                     logset.set_filename_extension(subnode.text)
                 for subnode in Node.findall('./continue_on_log_fail'):
-                    logset.set_continute_on_log_fail(convert_text_to_boolean(subnode.text))
+                    logset.set_continute_on_log_fail(convert_text_to_boolean(subnode.text, True))
 
         set_boolean_if_xmlnode_exists(config, 'empty_trash_on_exit', Node, './/empty_trash_on_exit')
         set_boolean_if_xmlnode_exists(config, 'mark_as_read_on_move', Node, './/mark_as_read_on_move')
@@ -85,9 +85,7 @@ def parse_config_tree(xml_config_tree, config, rules):
         def parse_generic_rule_match(Node):
             match_field = get_attribvalue_if_exists_in_xmlNode(Node, 'field')
             match_type = get_attribvalue_if_exists_in_xmlNode(Node, 'type')
-            case_sensitive = convert_text_to_boolean(get_attribvalue_if_exists_in_xmlNode(Node, 'case_sensitive'))
-            if case_sensitive is None:
-                case_sensitive = False
+            case_sensitive = convert_text_to_boolean(get_attribvalue_if_exists_in_xmlNode(Node, 'case_sensitive'), False)
             match_val = Node.text
             match_to_add = MatchField(
                 field_to_match=match_field,
@@ -114,17 +112,16 @@ def parse_config_tree(xml_config_tree, config, rules):
                     action_to_add = RuleAction('move_to_folder')
                     dest_folder = Node.text
                     action_to_add.set_dest_folder(dest_folder)
-                    mark_as_read_on_move = convert_text_to_boolean(get_attribvalue_if_exists_in_xmlNode(Node, 'mark_as_read'))
-                    if mark_as_read is None:
-                        mark_as_read = config['mark_as_read_on_move']
+                    mark_as_read_on_move = convert_text_to_boolean(
+                        get_attribvalue_if_exists_in_xmlNode(Node, 'mark_as_read'),
+                        config['mark_as_read_on_move']
+                    )
                     action_to_add.set_mark_as_read(mark_as_read)
                     rule.add_action(action_to_add)
 
                 for node in Node.findall('./delete'):
                     action_to_add = RuleAction('delete')
-                    delete_permanently = convert_text_to_boolean(get_attribvalue_if_exists_in_xmlNode(Node, 'permanently'))
-                    if delete_permanently is None:
-                        delete_permanently = False
+                    delete_permanently = convert_text_to_boolean(get_attribvalue_if_exists_in_xmlNode(Node, 'permanently'), False)
                     action_to_add.set_delete_permanently(delete_permanently)
                     rule.add_action(action_to_add)
 
@@ -173,13 +170,14 @@ def parse_config_tree(xml_config_tree, config, rules):
             new_name = get_value_if_xmlnode_exists(Node, './rule_name')
             new_rule = Rule(new_name)
 
-            for subnode in Node.find('./rule_actions'):
+            for subnode in Node.findall('./rule_actions'):
                 parse_rule_actions(subnode, config, new_rule)
 
-            for subnode in Node.find('./rule_matches'):
+            for subnode in Node.findall('./rule_matches'):
                 parse_rule_matches(subnode, new_rule)
 
-            for subnode in Node.find('./rule_match_exceptions'):
+#            for subnode in Node.find('./rule_match_exceptions'):
+            for subnode in xpath_findall(Node, './rule_match_exceptions'):
                 parse_rule_match_exceptions(subnode, new_rule)
 
             rules.append(new_rule)
