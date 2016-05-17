@@ -48,7 +48,7 @@ class Rule():
         self._temp_match_or.append(match)
 
     def stop_match_or(self):
-        sel.matches.append(self._temp_match_or)
+        self.matches.append(self._temp_match_or)
         del self._temp_match_or
 
     # Handle or-matches in the exception setion
@@ -58,8 +58,8 @@ class Rule():
     def add_exception_or(self, match):
         self._temp_exception_or.append(match)
 
-    def end_exception_or(self):
-        sel.matches.append(self._temp_exception_or)
+    def stop_exception_or(self):
+        self.matches.append(self._temp_exception_or)
         del self._temp_exception_or
 
     # Basic property access

@@ -1,7 +1,7 @@
 import re
 import xml.etree.ElementTree as ET
 import modules.supportingfunctions
-from modules.supportingfunctions import convert_text_to_boolean
+from modules.supportingfunctions import convert_text_to_boolean, die_with_errormsg
 from modules.logging import log_messages as log
 from modules.settings_EmailNotifications import EmailNotificationSettings
 from modules.settings_LogfileSettings import LogfileSettings
@@ -16,6 +16,9 @@ def parse_config_tree(xml_config_tree, config, rules):
 
     def parse_auth(Node, config):
         """This function takes the XML node for config_authinfo and parses all expected contents"""
+        if Node is None:
+            pass  # Need to handle this
+
         set_value_if_xmlnode_exists(config, 'imap_username', Node, './/imap_auth/username')
         set_value_if_xmlnode_exists(config, 'imap_password', Node, './/imap_auth/password')
         set_value_if_xmlnode_exists(config, 'smtp_username', Node, './/smtp_email/username')
@@ -23,17 +26,20 @@ def parse_config_tree(xml_config_tree, config, rules):
 
     def parse_general(Node, config):
         """This function takes the XML node for config_general and parses all expected contents"""
+        if Node is None:
+            pass  # Need to handle this
+
         def parse_email_notification_settings(config, Node):
             """Parses the email notification xml section"""
             if Node:
                 sendme = EmailNotificationSettings()
-                for subnode in Node.findall('./recipient_email'):
+                for subnode in xpath_findall(Node, './recipient_email'):
                     sendme.add_recipient(subnode.text)
-                for subnode in Node.findall('./subject'):
+                for subnode in xpath_findall(Node, './subject'):
                     sendme.set_subject(subnode.text)
-                for subnode in Node.findall('./body_prefix'):
+                for subnode in xpath_findall(Node, './body_prefix'):
                     sendme.set_body_prefix(subnode.text)
-                for subnode in Node.findall('./attach_log'):
+                for subnode in xpath_findall(Node, './attach_log'):
                     attach_yn = convert_text_to_boolean(subnode.text, False)
                     if attach_yn is not None:
                         sendme.set_attach_log(attach_yn)
@@ -44,17 +50,17 @@ def parse_config_tree(xml_config_tree, config, rules):
             """Parses the logfile xml section"""
             if Node:
                 logset = LogfileSettings()
-                for subnode in Node.findall('./logfile_level'):
+                for subnode in xpath_findall(Node, './logfile_level'):
                     logset.set_logfile_level(subnode.text)
-                for subnode in Node.findall('./log_folder'):
+                for subnode in xpath_findall(Node, './log_folder'):
                     logset.set_log_folder(subnode.text)
-                for subnode in Node.findall('./log_filename'):
+                for subnode in xpath_findall(Node, './log_filename'):
                     logset.set_log_filename(subnode.text)
-                for subnode in Node.findall('./append_date_to_filename'):
+                for subnode in xpath_findall(Node, './append_date_to_filename'):
                     logset.set_append_date(convert_text_to_boolean(subnode.text, True))
-                for subnode in Node.findall('./filename_extension'):
+                for subnode in xpath_findall(Node, './filename_extension'):
                     logset.set_filename_extension(subnode.text)
-                for subnode in Node.findall('./continue_on_log_fail'):
+                for subnode in xpath_findall(Node, './continue_on_log_fail'):
                     logset.set_continute_on_log_fail(convert_text_to_boolean(subnode.text, True))
 
         set_boolean_if_xmlnode_exists(config, 'empty_trash_on_exit', Node, './/empty_trash_on_exit')
@@ -67,6 +73,9 @@ def parse_config_tree(xml_config_tree, config, rules):
         # End Parsing of General Section
 
     def parse_serverinfo(Node, config):
+        if Node is None:
+            pass  # Need to handle this
+
         def parse_email_server_settings(config, conf_prefix, Node):
             set_value_if_xmlnode_exists(config, conf_prefix + 'server_name', Node, './server_name')
             set_value_if_xmlnode_exists(config, conf_prefix + 'server_port', Node, './server_port')
@@ -82,6 +91,9 @@ def parse_config_tree(xml_config_tree, config, rules):
         # End Parsing of ServerInfo Section
 
     def parse_rules(Node, config, rules):
+        if Node is None:
+            pass  # Need to handle this
+
         def parse_generic_rule_match(Node):
             match_field = get_attribvalue_if_exists_in_xmlNode(Node, 'field')
             match_type = get_attribvalue_if_exists_in_xmlNode(Node, 'type')
@@ -108,7 +120,7 @@ def parse_config_tree(xml_config_tree, config, rules):
                     action_to_add.set_mark_as_unread()
                     rule.add_action(action_to_add)
 
-                for node in Node.findall('./move_to_folder'):
+                for node in xpath_findall(Node, './move_to_folder'):
                     action_to_add = RuleAction('move_to_folder')
                     dest_folder = Node.text
                     action_to_add.set_dest_folder(dest_folder)
@@ -116,73 +128,56 @@ def parse_config_tree(xml_config_tree, config, rules):
                         get_attribvalue_if_exists_in_xmlNode(Node, 'mark_as_read'),
                         config['mark_as_read_on_move']
                     )
-                    action_to_add.set_mark_as_read(mark_as_read)
+                    action_to_add.set_mark_as_read(mark_as_read_on_move)
                     rule.add_action(action_to_add)
 
-                for node in Node.findall('./delete'):
+                for node in xpath_findall(Node, './delete'):
                     action_to_add = RuleAction('delete')
                     delete_permanently = convert_text_to_boolean(get_attribvalue_if_exists_in_xmlNode(Node, 'permanently'), False)
                     action_to_add.set_delete_permanently(delete_permanently)
                     rule.add_action(action_to_add)
 
-                for node in Node.findall('./forward'):
+                for node in xpath_findall(Node, './forward'):
                     action_to_add = RuleAction('forward')
-                    for address_node in Node.findall('./dest_address'):
+                    for address_node in xpath_findall(Node, './dest_address'):
                         action_to_add.add_email_recipient(Node.text)
                     rule.add_action(action_to_add)
 
             def parse_rule_matches(Node, rule):
-                for node in Node.findall('./match_field'):
+                for node in xpath_findall(Node, './match_field'):
                     rule.add_match(parse_generic_rule_match(node))
 
-                # A bit of a fudge - see if we have any match_or's
-                found_or = False
-                for node in Node.findall('./match_or'):
-                    found_or = True
-
-                if found_or:
-                    # Once more unto the breach:
-                    # Tell the rule that we have an 'or' match (1 or ... m"or"e :)
-                    for node in Node.findall('./match_or'):
-                        rule.start_match_or()
-                        for node in Node.findall('./match_field'):
-                            rule.add_match_or(parse_generic_rule_match(node))
-                        rule.stop_match_or()
+                for node in xpath_findall(Node, './match_or'):
+                    rule.start_match_or()
+                    for node in xpath_findall(Node, './match_field'):
+                        rule.add_match_or(parse_generic_rule_match(node))
+                    rule.stop_match_or()
 
             def parse_rule_match_exceptions(Node, rule):
-                for node in Node.findall('./match_field'):
+                for node in xpath_findall(Node, './match_field'):
                     rule.add_match_exception(parse_generic_rule_match(node))
 
-                # A bit of a fudge - see if we have any match_or's
-                found_or = False
-                for node in Node.findall('./match_or'):
-                    found_or = True
-
-                if found_or:
-                    # Once more unto the breach:
-                    # Tell the rule that we have an 'or' match (1 or ... m"or"e :)
-                    for node in Node.findall('./match_or'):
-                        rule.start_exception_or()
-                        for node in Node.findall('./match_field'):
-                            rule.add_exception_or(parse_generic_rule_match(node))
-                        rule.stop_exception_or()
+                for node in xpath_findall(Node, './match_or'):
+                    rule.start_exception_or()
+                    for node in xpath_findall(Node, './match_field'):
+                        rule.add_exception_or(parse_generic_rule_match(node))
+                    rule.stop_exception_or()
 
             new_name = get_value_if_xmlnode_exists(Node, './rule_name')
             new_rule = Rule(new_name)
 
-            for subnode in Node.findall('./rule_actions'):
+            for subnode in xpath_findall(Node, './rule_actions'):
                 parse_rule_actions(subnode, config, new_rule)
 
-            for subnode in Node.findall('./rule_matches'):
+            for subnode in xpath_findall(Node, './rule_matches'):
                 parse_rule_matches(subnode, new_rule)
 
-#            for subnode in Node.find('./rule_match_exceptions'):
             for subnode in xpath_findall(Node, './rule_match_exceptions'):
                 parse_rule_match_exceptions(subnode, new_rule)
 
             rules.append(new_rule)
 
-        for rule_node in Node.findall('./rule'):
+        for rule_node in xpath_findall(Node, './rule'):
                 parse_rule_node(rule_node, config, rules)
 
         # End Parsing of Rules Section
