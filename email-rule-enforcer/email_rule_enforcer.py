@@ -5,3 +5,10 @@ import modules.get_config as get_config
 #import modules.operate_on_imap
 #import modules.send_email
 
+
+def main():
+    pass
+
+
+if __name__ == "__main__":
+    main()
