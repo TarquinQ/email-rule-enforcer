@@ -1,8 +1,14 @@
+from modules.logging import log_messages as log
+
+
 def set_value_if_xmlnode_exists(configdict, key, Node, xpath):
     """Set a config value only if the value is in the xml"""
     node_found = Node.find(xpath)
     if node_found:
         configdict[key] = node_found.text
+        log.debug('Debug: XPath Search findall:', xpath, '\n',
+            'Key:', key,
+            ' Result:', node_found.text)
 
 
 def get_value_if_xmlnode_exists(Node, xpath):
