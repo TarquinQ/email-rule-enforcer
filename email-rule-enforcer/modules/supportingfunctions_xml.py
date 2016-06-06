@@ -1,14 +1,13 @@
 from modules.logging import log_messages as log
+import xml.etree.ElementTree as ET
+from .supportingfunctions import convert_text_to_boolean, force_text_to_boolean
 
 
 def set_value_if_xmlnode_exists(configdict, key, Node, xpath):
     """Set a config value only if the value is in the xml"""
     node_found = Node.find(xpath)
-    if node_found:
+    if node_found is not None and isinstance(node_found, ET.Element):
         configdict[key] = node_found.text
-        log.debug('Debug: XPath Search findall:', xpath, '\n',
-            'Key:', key,
-            ' Result:', node_found.text)
 
 
 def get_value_if_xmlnode_exists(Node, xpath):
@@ -23,7 +22,7 @@ def get_value_if_xmlnode_exists(Node, xpath):
 def get_attributes_if_xmlnode_exists(Node, xpath):
     """Return a set of attributes only if the xml subnode exists"""
     node_found = Node.find(xpath)
-    if node_found:
+    if node_found is not None and isinstance(node_found, ET.Element):
         return node_found.attrib
     else:
         return None
@@ -40,8 +39,8 @@ def get_attribvalue_if_exists_in_xmlNode(Node, attrib_to_get):
 def set_boolean_if_xmlnode_exists(configdict, key, Node, xpath):
     """Set a config value only if the value is in the xml"""
     node_found = Node.find(xpath)
-    if node_found:
-        node_val = convert_text_to_boolean(node_found.text)
+    if node_found is not None and isinstance(node_found, ET.Element):
+        node_val = force_text_to_boolean(node_found.text)
         if node_val is not None:
             configdict[key] = node_val
 

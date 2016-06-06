@@ -1,5 +1,6 @@
 import sys
 import datetime
+import collections
 
 
 def die_with_errormsg(msg='', errnum=1):
@@ -71,10 +72,51 @@ def generate_logfilename(filename_pre, filename_post='', filename_extension='.lo
 
 
 def convert_text_to_boolean(text, default=None):
-    y = frozenset(['yes', 'y', 'true', 'defintely', 'totally'])
-    n = frozenset(['no', 'n', 'false', 'nuh-uh no way', 'None'])
+    y = frozenset(['yes', 'y', 'true', 'affirmative', 'defintely', 'totally'])
+    n = frozenset(['no', 'n', 'false', 'None', 'negatory', 'nuh-uh no way'])
     if str(text).lower() in y:
         return True
     if str(text).lower() in n:
         return False
     return default
+
+
+def force_text_to_boolean(text):
+    return convert_text_to_boolean(text, default=False)
+
+
+def print_nested_data(element, depth=0, maxdepth=30):
+    def align_output(depth):
+        print (" " * depth, end="")
+
+    # Ensure max recursion
+    if depth > maxdepth:
+        print ('Data Recursion Max depth of', maxdepth, 'has now been exceeded,')
+        print (' Now ignoring this branch of the structure.')
+        return
+
+    # Check to see if this is a list/dict/other:
+    if not isinstance(element, collections.Iterable):
+        align_output(depth)
+        print (element)
+    else:
+        align_output(depth)
+        print(type, end="")
+        if isinstance(element, dict):
+            print('{', end="")
+            for key in element:
+                if isinstance(element[key], collections.Iterable):
+                    print(key, ':')
+                    print_nested_data(element[key], depth + 1)
+                else:
+                    print(key, ':', element[key])
+            print('}')
+        if isinstance(element, list):
+            print('[', end="")
+            for el in element:
+                if isinstance(el, collections.Iterable):
+                    print_nested_data(el, depth + 1)
+                else:
+                    print(el)
+            print(']')
+        print ('')

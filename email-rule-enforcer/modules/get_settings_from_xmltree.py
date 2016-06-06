@@ -211,7 +211,7 @@ config = dict()
 rules = []
 
 
-def derive_settings(xml_config_tree):
+def get_settings_from_configtree(xml_config_tree):
     global config
     global rules
     set_defaults(config)
