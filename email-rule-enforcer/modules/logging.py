@@ -18,7 +18,7 @@ class Singleton(type):
 class log_controller():
     debug_this_class = False
     """Wraps around the standard Logger class, and builds logs the way we want to."""
-    def __init__(self, name, log_level=20, filepath=None):
+    def __init__(self, name, log_level=10, filepath=None):
         # Sets up a new logger, and sets it to Null by default
         self.name = name
         self.logger = logging.getLogger(name)
