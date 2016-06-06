@@ -1,4 +1,6 @@
 import re
+from collections import OrderedDict
+
 
 class Rule():
     rule_count = 0
@@ -63,13 +65,13 @@ class Rule():
         del self._temp_exception_or
 
     # Basic property access
-    def get_actions(self, action):
+    def get_actions(self):
         return self.actions
 
-    def get_matches(self, match):
+    def get_matches(self):
         return self.matches
 
-    def get_match_exceptions(self, match):
+    def get_match_exceptions(self):
         return self.match_exceptions
 
     def get_continue_rule_checks_if_matched(self):
@@ -86,12 +88,24 @@ class Rule():
             pass
         return (True, 'Rule seems valid')
 
+    def __str__(self):
+        return self.__repr__()
+
+    def __repr__(self):
+        retval = OrderedDict()
+        retval['Name'] = self.name
+        retval['Matches'] = self.get_matches()
+        retval['Exceptions'] = self.get_match_exceptions()
+        retval['Actions'] = self.get_actions()
+        return str(retval)
+
 
 class RuleAction():
     valid_actions = frozenset(['move_to_folder', 'forward', 'delete', 'mark_as_read', 'mark_as_unread'])
 
-    def __init__(self, action_type):
+    def __init__(self, action_type, parent_rule_id=None):
         self.action_type = action_type
+        self.parent_rule_id = parent_rule_id
         self.delete_permanently = False
         self.mark_as_read = False
         self.mark_as_unread = False
@@ -136,6 +150,18 @@ class RuleAction():
                     return (False, 'Action invalid. Action type "' + self.action_type + '" selected, but no forwarding email addresses have been added')
         else:
             return (True, 'FIXME')
+
+    def __str__(self):
+        return self.__repr__()
+
+    def __repr__(self):
+        retval = OrderedDict()
+        retval['parent_rule_id'] = self.parent_rule_id
+        retval['delete_permanently'] = self.delete_permanently
+        retval['mark_as_read'] = self.mark_as_read
+        retval['mark_as_unread'] = self.mark_as_unread
+        retval['email_recipients'] = self.email_recipients
+        return str(retval)
 
 
 class MatchField():
@@ -212,4 +238,15 @@ class MatchField():
                 self.action_type + '" selected, but delete_permanently flag not boolean: set to ' +
                 str(self.delete_permanently))
 
+    def __str__(self):
+        return self.__repr__()
+
+    def __repr__(self):
+        retval = OrderedDict()
+        retval['field_to_match'] = self.field_to_match
+        retval['match_type'] = self.match_type
+        retval['str_to_match'] = self.str_to_match
+        retval['case_sensitive'] = self.case_sensitive
+        retval['parent_rule_id'] = self.parent_rule_id
+        return str(retval)
 
