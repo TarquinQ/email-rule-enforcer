@@ -9,6 +9,7 @@ from modules.settings_DefaultSettings import set_defaults
 from modules.rule_Classes import Rule, RuleAction, MatchField
 from modules.supportingfunctions_xml import set_value_if_xmlnode_exists, get_value_if_xmlnode_exists, get_attributes_if_xmlnode_exists
 from modules.supportingfunctions_xml import get_attribvalue_if_exists_in_xmlNode, set_boolean_if_xmlnode_exists, xpath_findall
+from modules.logging import log_messages as log
 
 
 def parse_config_tree(xml_config_tree, config, rules):
@@ -17,7 +18,7 @@ def parse_config_tree(xml_config_tree, config, rules):
     def parse_auth(Node, config):
         """This function takes the XML node for config_authinfo and parses all expected contents"""
         if Node is None:
-            pass  # Need to handle this
+            return
 
         set_value_if_xmlnode_exists(config, 'imap_username', Node, './/imap_auth/username')
         set_value_if_xmlnode_exists(config, 'imap_password', Node, './/imap_auth/password')
@@ -27,7 +28,7 @@ def parse_config_tree(xml_config_tree, config, rules):
     def parse_general(Node, config):
         """This function takes the XML node for config_general and parses all expected contents"""
         if Node is None:
-            pass  # Need to handle this
+            return
 
         def parse_email_notification_settings(config, Node):
             """Parses the email notification xml section"""
@@ -74,9 +75,13 @@ def parse_config_tree(xml_config_tree, config, rules):
 
     def parse_serverinfo(Node, config):
         if Node is None:
-            pass  # Need to handle this
+            return
 
         def parse_email_server_settings(config, conf_prefix, Node):
+            log.debug('Now parsing email server settings from config.')
+            log.debug('Checking for %s', conf_prefix)
+            log.debug('Node is: %s', str(Node))
+
             set_value_if_xmlnode_exists(config, conf_prefix + 'server_name', Node, './server_name')
             set_value_if_xmlnode_exists(config, conf_prefix + 'server_port', Node, './server_port')
             set_value_if_xmlnode_exists(config, conf_prefix + 'username', Node, './username')
@@ -92,7 +97,7 @@ def parse_config_tree(xml_config_tree, config, rules):
 
     def parse_rules(Node, config, rules):
         if Node is None:
-            pass  # Need to handle this
+            return
 
         def parse_generic_rule_match(Node):
             match_field = get_attribvalue_if_exists_in_xmlNode(Node, 'field')

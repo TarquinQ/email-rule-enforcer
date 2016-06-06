@@ -8,3 +8,8 @@ config_files = get_xml_configs.config_files_xml(parsed_args.config_filepath_list
 xml_config_tree = config_files.full_config_tree
 derive_settings(xml_config_tree)
 config_files.log_config_file_details(40)
+
+print(config)
+print(rules)
+for rule in rules:
+    print(str(rule))
