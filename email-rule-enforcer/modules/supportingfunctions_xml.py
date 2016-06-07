@@ -13,7 +13,7 @@ def set_value_if_xmlnode_exists(configdict, key, Node, xpath):
 def get_value_if_xmlnode_exists(Node, xpath):
     """Return a config value only if the xml subnode exists"""
     node_found = Node.find(xpath)
-    if node_found:
+    if node_found is not None and isinstance(node_found, ET.Element):
         return node_found.text
     else:
         return None
