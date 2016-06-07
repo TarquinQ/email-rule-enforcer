@@ -1,6 +1,7 @@
 import sys
 import datetime
 import collections
+from collections import OrderedDict
 
 
 def die_with_errormsg(msg='', errnum=1):
@@ -96,27 +97,87 @@ def print_nested_data(element, depth=0, maxdepth=30):
         return
 
     # Check to see if this is a list/dict/other:
-    if not isinstance(element, collections.Iterable):
+    if isinstance(element, str) or not isinstance(element, collections.Iterable):
         align_output(depth)
         print (element)
     else:
         align_output(depth)
-        print(type, end="")
+        print(type(element), end=" ")
         if isinstance(element, dict):
-            print('{', end="")
+            print('{')
             for key in element:
-                if isinstance(element[key], collections.Iterable):
+                align_output(depth + 1)
+                if isinstance(element[key], collections.Iterable) and not isinstance(element[key], str):
                     print(key, ':')
-                    print_nested_data(element[key], depth + 1)
+                    print_nested_data(element[key], depth + 2)
                 else:
-                    print(key, ':', element[key])
+                    print('%s:' % key, element[key])
+            align_output(depth)
             print('}')
-        if isinstance(element, list):
-            print('[', end="")
+        else:
+            if isinstance(element, list):
+                print('[')
+            else:
+                print('(')
             for el in element:
-                if isinstance(el, collections.Iterable):
+                if isinstance(el, collections.Iterable) and not isinstance(el, str):
                     print_nested_data(el, depth + 1)
                 else:
+                    align_output(depth + 1)
                     print(el)
+            if isinstance(element, list):
+                align_output(depth)
+                print(']')
+            else:
+                align_output(depth)
+                print(')')
+
+
+def format_nested_data_to_str(element, depth=0, maxdepth=30):
+    return_arr = []
+
+    def align_output(depth):
+        return " " * depth
+
+    # Ensure max recursion
+    if depth > maxdepth:
+        return_arr.append('Data Recursion Max depth of', maxdepth,
+            'has now been exceeded, Now ignoring this branch of the structure.')
+        return
+
+    new_str = ''
+    # Check to see if this is a list/dict/other:
+    if isinstance(element, str) or not isinstance(element, collections.Iterable):
+        align_output(depth)
+        print (element)
+    else:
+        new_str = align_output(depth)
+        print(type(element), end=" ")
+        if isinstance(element, dict):
+            print('{')
+            for key in element:
+                align_output(depth + 1)
+                if isinstance(element[key], collections.Iterable) and not isinstance(element[key], str):
+                    print(key, ':')
+                    print_nested_data(element[key], depth + 2)
+                else:
+                    print('%s:' % key, element[key])
+            align_output(depth)
+            print('}')
+        if isinstance(element, list):
+            print('[')
+        if isinstance(element, set) or isinstance(element, tuple):
+            print('(')
+        if isinstance(element, (list, set, tuple)):
+            for el in element:
+                if isinstance(el, collections.Iterable) and not isinstance(el, str):
+                    print_nested_data(el, depth + 1)
+                else:
+                    align_output(depth + 1)
+                    print(el)
+        if isinstance(element, list):
+            align_output(depth)
             print(']')
-        print ('')
+        if isinstance(element, set) or isinstance(element, tuple):
+            align_output(depth)
+            print(')')
