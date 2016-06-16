@@ -94,10 +94,12 @@ class Rule():
     def __repr__(self):
         retval = OrderedDict()
         retval['Name'] = self.name
+        retval['ID'] = self.id
         retval['Matches'] = self.get_matches()
         retval['Exceptions'] = self.get_match_exceptions()
         retval['Actions'] = self.get_actions()
-        return str(retval)
+        repr = '%s:(%s)' % (self.__class__.__name__, str(retval))
+        return repr
 
 
 class RuleAction():
@@ -161,7 +163,8 @@ class RuleAction():
         retval['mark_as_read'] = self.mark_as_read
         retval['mark_as_unread'] = self.mark_as_unread
         retval['email_recipients'] = self.email_recipients
-        return str(retval)
+        repr = '%s:(%s)' % (self.__class__.__name__, str(retval))
+        return repr
 
 
 class MatchField():
@@ -169,44 +172,53 @@ class MatchField():
     match_fields = frozenset(['to', 'from', 'subject', 'cc', 'bcc', 'body'])
 
     def __init__(self, field_to_match=None, match_type=None, str_to_match=None, case_sensitive=False, parent_rule_id=None):
-        self.field_to_match = None
-        self.match_type = match_type
-        self.str_to_match = str_to_match
-        self.case_sensitive = case_sensitive
+        self.set_field_to_match(field_to_match)
+        self.set_match_type(match_type)
+        self.set_str_to_match(str_to_match)
+        self.set_case_sensitive(case_sensitive)
         self.parent_rule_id = parent_rule_id
         self.generate_re()
 
     def set_field_to_match(self, field_to_match):
-        self.field_to_match = field_to_match
+        if isinstance(field_to_match, str):
+            self.field_to_match = field_to_match.lower()
+        else:
+            self.field_to_match = field_to_match
         self.generate_re()
 
     def set_match_type(self, match_type):
-        self.match_type = match_type
+        if isinstance(match_type, str):
+            self.match_type = match_type.lower()
+        else:
+            self.match_type = match_type
         self.generate_re()
 
     def set_str_to_match(self, str_to_match):
         self.str_to_match = str_to_match
         self.generate_re()
 
-    def set_match_is_case_sensitive(self, flag):
+    def set_case_sensitive(self, flag):
         self.case_sensitive = flag
         self.generate_re()
 
     def generate_re(self):
-        if ((self.match_type in self.match_types) and (self.str_to_match is not None)):
-            match_str = str(self.str_to_match)[:]
-            if self.match_type == 'starts_with':
-                match_str = match_str + '.*'
-            if self.match_type == 'contains':
-                match_str = '.*' + match_str + '.*'
-            if self.match_type == 'ends_with':
-                match_str = '.*' + match_str
-            match_str = '^' + match_str + '$'  # Do I need this? I don't think so.
-            self.matching_string = match_str
-            flags = 0
-            if not self.case_sensitive:
-                flags = re.IGNORECASE
-            self.re = re.compile(match_str, flags)
+        try:
+            if ((self.match_type in self.match_types) and (self.str_to_match is not None)):
+                match_str = str(self.str_to_match)[:]
+                if self.match_type == 'starts_with':
+                    match_str = match_str + '.*'
+                if self.match_type == 'contains':
+                    match_str = '.*' + match_str + '.*'
+                if self.match_type == 'ends_with':
+                    match_str = '.*' + match_str
+                match_str = '^' + match_str + '$'  # Do I need this? I don't think so.
+                self.matching_string = match_str
+                flags = 0
+                if not self.case_sensitive:
+                    flags = re.IGNORECASE
+                self.re = re.compile(match_str, flags)
+        except AttributeError:
+            pass
 
     def get_field_to_match(self):
         return self.field_to_match
@@ -248,5 +260,6 @@ class MatchField():
         retval['str_to_match'] = self.str_to_match
         retval['case_sensitive'] = self.case_sensitive
         retval['parent_rule_id'] = self.parent_rule_id
-        return str(retval)
+        repr = '%s:(%s)' % (self.__class__.__name__, str(retval))
+        return repr
 
