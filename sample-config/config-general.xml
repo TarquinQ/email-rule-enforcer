@@ -16,7 +16,7 @@
 			<!-- Log Levels run from 1-5, verbose-quiet: these correspond to DEBUG, INFO, WARNING, ERROR, CRITICAL -->
 			<console_level>2</console_level>  <!-- Console Log; Optional; default: 2 -->
 			<logfile>  <!-- Optional -->
-				<log_folder>..\logs\</log_folder>  <!-- trailing slash can be omitted -->
+				<log_folder>../logs/</log_folder>  <!-- trailing slash can be omitted -->
 				<log_filename>log-sample</log_filename>  <!-- First bit of log filename -->
 				<append_date_to_filename>yes</append_date_to_filename>  <!-- ISO format, including current time; default: yes -->
 				<filename_extension>.log</filename_extension>  <!-- default: .log -->
@@ -24,7 +24,7 @@
 				<logfile_level>2</logfile_level>  <!-- 1-5 verbose-quiet; default: 2 -->
 			</logfile>
 			<logfile_debug>
-				<log_folder>..\logs\</log_folder>  <!-- trailing slash can be omitted -->
+				<log_folder>../logs/</log_folder>  <!-- trailing slash can be omitted -->
 				<log_filename>debug-sample</log_filename>  <!-- First bit of log filename -->
 				<append_date_to_filename>yes</append_date_to_filename>  <!-- ISO format, including current time; default: yes -->
 				<filename_extension>.log</filename_extension>  <!-- default: .log -->
