@@ -1,4 +1,6 @@
 from modules.supportingfunctions import generate_logfile_fullpath
+from collections import OrderedDict
+
 
 class LogfileSettings():
     def __init__(self, logfile_level=2, log_folder=None, log_filename=None, append_date_to_filename=True, filename_extension='.log', continue_on_log_fail=False):
@@ -45,4 +47,14 @@ class LogfileSettings():
         if not self.logfilepath:
             return False
         return True
+
+    def __str__(self):
+        return self.__repr__()
+
+    def __repr__(self):
+        retval = OrderedDict()
+        retval['Log Level'] = self.logfile_level
+        retval['Log Path'] = self.logfilepath
+        retval['Continue on log fail'] = self.continue_on_log_fail
+        return '%s:' % self.__class__.__name__ + str(retval)
 

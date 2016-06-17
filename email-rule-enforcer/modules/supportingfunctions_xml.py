@@ -1,4 +1,3 @@
-from modules.logging import log_messages as log
 import xml.etree.ElementTree as ET
 from .supportingfunctions import convert_text_to_boolean, force_text_to_boolean
 

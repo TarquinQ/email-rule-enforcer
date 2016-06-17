@@ -108,7 +108,7 @@ class log_controller():
         return new_handler
 
 
-class log_messages(metaclass=Singleton):
+class LogMaster(metaclass=Singleton):
     """Provides unified console and file logging for whole app"""
     debug_this_class = False
     name_console = 'console'

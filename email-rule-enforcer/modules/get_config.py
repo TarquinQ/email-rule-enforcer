@@ -1,6 +1,6 @@
 import modules.parse_args as parse_args
 import modules.get_xml_configs as get_xml_configs
-from modules.logging import log_messages as log
+from modules.logging import LogMaster
 from modules.get_settings_from_xmltree import get_settings_from_configtree, rules, config
 from modules.supportingfunctions import print_nested_data
 
