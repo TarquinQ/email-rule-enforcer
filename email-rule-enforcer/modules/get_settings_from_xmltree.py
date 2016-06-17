@@ -78,10 +78,6 @@ def parse_config_tree(xml_config_tree, config, rules):
             return
 
         def parse_email_server_settings(config, conf_prefix, Node):
-            log.debug('Now parsing email server settings from config.')
-            log.debug('Checking for %s', conf_prefix)
-            log.debug('Node is: %s', str(Node))
-
             set_value_if_xmlnode_exists(config, conf_prefix + 'server_name', Node, './server_name')
             set_value_if_xmlnode_exists(config, conf_prefix + 'server_port', Node, './server_port')
             set_value_if_xmlnode_exists(config, conf_prefix + 'username', Node, './username')

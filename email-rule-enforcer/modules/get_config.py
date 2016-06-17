@@ -20,3 +20,5 @@ def get_config():
     config_files.log_config_file_details(40)
 
     print_rules_and_config(rules, config)
+
+    return (rules, config)

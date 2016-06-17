@@ -27,7 +27,7 @@ class config_files_xml():
                 shortname = config_filename.split("\\")[-1]
             else:
                 shortname = config_filename
-            log.debug('config shortname is:  %s', shortname)
+            #log.debug('config shortname is:  %s', shortname)
             self.short_configpath_list[index] = shortname
             self._indexed_short_pathlist[index] = str(index) + '_' + shortname  # To ensure name uniqueness
 
@@ -80,7 +80,6 @@ class config_files_xml():
         print (ET.tostring(self.full_config_tree))
 
     def log_config_file_details(self, log_level=10):
-        log.log(log_level, "Now dumping all config file details and contents.\n")
         log.log(log_level, "Number of config files:  %s", self._num_config_files)
         log.log(log_level, "List of config files:  %s", self.config_filepath_list)
 
@@ -91,14 +90,3 @@ class config_files_xml():
             config_xmltree = self.config_xmltrees[shortfilename_to_parse]
 
             log.log(log_level, "Config file  %s:  %s", index, filename_to_parse)
-            log.log(log_level, "Config file shortname:  %s", shortfilename_to_parse)
-            #log.log(log_level, "Config file contents:")
-            #log.log(log_level, "%s", filecontents_to_parse)
-            #log.log(log_level, "Config file XML tree:")
-            #log.log(log_level, "%s", config_xmltree)
-            #log.log(log_level, "%s", ET.dump(config_xmltree))
-
-        #log.log(log_level, "Global XML tree:")
-        #log.log(log_level, self.full_config_tree)
-        #log.log(log_level, ET.dump(self.full_config_tree))
-        #log.log(log_level, ET.tostring(self.full_config_tree))
