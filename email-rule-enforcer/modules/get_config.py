@@ -2,14 +2,15 @@ import modules.parse_args as parse_args
 import modules.get_xml_configs as get_xml_configs
 from modules.logging import LogMaster
 from modules.get_settings_from_xmltree import get_settings_from_configtree, rules, config
-from modules.supportingfunctions import print_nested_data
+from modules.supportingfunctions import print_nested_data, nested_data_to_str
 
 
 def print_rules_and_config(rules, config):
-    print_nested_data(config)
-    print_nested_data(rules)
-#    for rule in rules:
-#        print(str(rule))
+
+#    print_nested_data(config)
+#    print_nested_data(rules)
+    print(*nested_data_to_str(config), sep='\n')
+    print(*nested_data_to_str(rules), sep='\n')
 
 
 def get_config():

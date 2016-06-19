@@ -111,7 +111,7 @@ def print_nested_data(element, depth=0, maxdepth=30):
                     print(key, ':')
                     print_nested_data(element[key], depth + 2)
                 else:
-                    print('%s:' % key, element[key])
+                    print('%s: %s' % (key, element[key]))
             align_output(depth)
             print('}')
         else:
@@ -133,7 +133,7 @@ def print_nested_data(element, depth=0, maxdepth=30):
                 print(')')
 
 
-def format_nested_data_to_str(element, depth=0, maxdepth=30):
+def nested_data_to_str(element, depth=0, maxdepth=30):
     return_arr = []
 
     def align_output(depth):
@@ -148,36 +148,39 @@ def format_nested_data_to_str(element, depth=0, maxdepth=30):
     new_str = ''
     # Check to see if this is a list/dict/other:
     if isinstance(element, str) or not isinstance(element, collections.Iterable):
-        align_output(depth)
-        print (element)
+        return_arr.append(align_output(depth) + str(element))
     else:
         new_str = align_output(depth)
-        print(type(element), end=" ")
+        new_str += str(type(element))
         if isinstance(element, dict):
-            print('{')
+            new_str += '{'
+            return_arr.append(new_str)
             for key in element:
-                align_output(depth + 1)
+                new_str = align_output(depth + 1)
                 if isinstance(element[key], collections.Iterable) and not isinstance(element[key], str):
-                    print(key, ':')
-                    print_nested_data(element[key], depth + 2)
+                    new_str += '%s:' % key
+                    return_arr.append(new_str)
+                    return_arr.append(nested_data_to_str(element[key], depth + 2))
                 else:
-                    print('%s:' % key, element[key])
-            align_output(depth)
-            print('}')
+                    new_str += '%s: %s' % (key, element[key])
+                    return_arr.append(new_str)
+            return_arr.append(align_output(depth) + '}')
         if isinstance(element, list):
-            print('[')
+            new_str += '['
+            return_arr.append(new_str)
         if isinstance(element, set) or isinstance(element, tuple):
-            print('(')
+            new_str += '('
+            return_arr.append(new_str)
         if isinstance(element, (list, set, tuple)):
             for el in element:
                 if isinstance(el, collections.Iterable) and not isinstance(el, str):
-                    print_nested_data(el, depth + 1)
+                    return_arr.append(nested_data_to_str(el, depth + 1))
                 else:
-                    align_output(depth + 1)
-                    print(el)
+                    return_arr.append(align_output(depth) + str(el))
         if isinstance(element, list):
-            align_output(depth)
-            print(']')
+            return_arr.append(align_output(depth) + ']')
         if isinstance(element, set) or isinstance(element, tuple):
-            align_output(depth)
-            print(')')
+            return_arr.append(align_output(depth) + ')')
+    return return_arr
+
+

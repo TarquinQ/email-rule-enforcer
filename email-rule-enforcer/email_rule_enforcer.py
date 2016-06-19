@@ -6,7 +6,7 @@ from modules.get_config import get_config
 
 
 def main():
-    get_config()
+    (rules, config) = get_config()
     # connect_to_imap()
     # iterate_rules_over_mailbox()
     # send_smtp_completion_email()

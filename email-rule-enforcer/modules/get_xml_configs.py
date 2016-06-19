@@ -89,4 +89,4 @@ class config_files_xml():
             filecontents_to_parse = self.config_file_contents[self._indexed_short_pathlist[index]]
             config_xmltree = self.config_xmltrees[shortfilename_to_parse]
 
-            LogMaster.log(log_level, "Config file  %s:  %s", index, filename_to_parse)
+            #LogMaster.log(log_level, "Config file  %s:  %s", index, filename_to_parse)
