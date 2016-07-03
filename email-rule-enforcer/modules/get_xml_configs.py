@@ -4,7 +4,7 @@ from .supportingfunctions import die_with_errormsg
 from .logging import LogMaster
 
 
-class config_files_xml():
+class ConfigFilesXML():
     def __init__(self, config_filepath_list):
         self.config_filepath_list = config_filepath_list[:]
         self._num_config_files = len(self.config_filepath_list)
