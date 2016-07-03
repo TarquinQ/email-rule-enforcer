@@ -201,15 +201,12 @@ def set_dependent_config(config):
             config['smtp_server_port'] = 25
 
 
-config = dict()
-rules = []
-
-
 def get_settings_from_configtree(xml_config_tree):
-    global config
-    global rules
+    config = dict()
+    rules = []
     set_defaults(config)
     parse_config_tree(xml_config_tree, config, rules)
     set_dependent_config(config)
-#validate_config(config)
+    return (config, rules)
+    #validate_config(config)
 
