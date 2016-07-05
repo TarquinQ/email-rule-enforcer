@@ -12,16 +12,16 @@ class IMAPServerConnection():
         self.currfolder_name = self.initial_folder
         self.is_connected = False
 
-    def set_parameters_from_config(config):
-        self.username = config[imap_username]
-        self.password = config[imap_password]
-        self.server_name = config[imap_server_name]
-        self.server_port = config[imap_server_port]
-        self.use_ssl = config[imap_use_tls]
-        self.mark_as_read_on_move = config[mark_as_read_on_move]
-        self.empty_trash_on_exit = config[empty_trash_on_exit]
-        self.initial_folder = config[imap_initial_folder]
-        self.deletions_folder = config[imap_deletions_folder]
+    def set_parameters_from_config(self, config):
+        self.username = config["imap_username"]
+        self.password = config["imap_password"]
+        self.server_name = config["imap_server_name"]
+        self.server_port = config["imap_server_port"]
+        self.use_ssl = config["imap_use_tls"]
+        self.mark_as_read_on_move = config["mark_as_read_on_move"]
+        self.empty_trash_on_exit = config["empty_trash_on_exit"]
+        self.initial_folder = config["imap_initial_folder"]
+        self.deletions_folder = config["imap_deletions_folder"]
 
     def connect(self):
         return self.connect_to_server()
@@ -88,7 +88,7 @@ class IMAPServerConnection():
         return self.imap_connection.list()[1]
 
     def get_raw_email_byuid(self, uid):
-        result, data = self.imap_connection.uid('fetch', uid, 'BODY.PEEK[HEADER]')
+        result, data = self.imap_connection.uid('fetch', uid, 'BODY.PEEK[]')
         raw_email = data[0][1]
         return raw_email
 
@@ -100,12 +100,25 @@ class IMAPServerConnection():
         ret_email.imap_flags = self.get_imap_flags_byuid(uid)
         return ret_email
 
+    def get_raw_headers_byuid(self, uid):
+        result, data = self.imap_connection.uid('fetch', uid, 'BODY.PEEK[HEADER]')
+        raw_headers = data[0][1]
+        return raw_headers
+
+    def get_parsed_headers_byuid(self, uid):
+        return self.parse_raw_email(self.get_raw_headers_byuid(uid))
+
+    def get_parseheadersandflags_byuid(self, uid):
+        ret_email = self.get_parsed_headers_byuid(uid)
+        ret_email.imap_flags = self.get_imap_flags_byuid(uid)
+        return ret_email
+
     def parse_raw_email(self, raw_email_string):
         try:
             ret_msg = email.message_from_bytes(raw_email_string)
         except email.MessageError as e:
             # This isn't handling the error per se, it's just changing
-            # it into an imap error to match the rest of this class
+            # it into an imaplib error to match the rest of this class
             raise imap_connection.error('Error parsing raw email. Email Error was: %s' % e)
         return ret_msg
 
@@ -138,7 +151,7 @@ class IMAPServerConnection():
         return imap_connection.uid('STORE', uid, '-FLAGS', flag)
 
     def mark_email_as_read(self, uid):
-        return set_flag_byuid(uid, '\\Seen')
+        return set_flag_byuid(uid, '(\\Seen)')
 
     def mark_email_as_unread(self, uid):
         return unset_flag_byuid(uid, '(\\Seen)')
