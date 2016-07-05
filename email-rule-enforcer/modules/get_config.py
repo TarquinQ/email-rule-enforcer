@@ -9,7 +9,9 @@ def print_rules_and_config(config, rules):
 
 #    print_nested_data(config)
 #    print_nested_data(rules)
+    print("Config:")
     print(*nested_data_to_str(config), sep='\n')
+    print("Rules:")
     print(*nested_data_to_str(rules), sep='\n')
 
 
