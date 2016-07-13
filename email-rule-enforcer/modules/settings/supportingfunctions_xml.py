@@ -1,5 +1,5 @@
 import xml.etree.ElementTree as ET
-from .supportingfunctions import convert_text_to_boolean, force_text_to_boolean
+from modules.supportingfunctions import convert_text_to_boolean, force_text_to_boolean
 
 
 def set_value_if_xmlnode_exists(configdict, key, Node, xpath):

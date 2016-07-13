@@ -1,5 +1,5 @@
 import modules.python_require_min_pyversion  # checks for py >= 3.4, which we need for newer IMAP TLS support
-from modules.get_config import get_config
+from modules.settings.get_config import get_config
 from modules.email.IMAPServerConnection import IMAPServerConnection
 
 

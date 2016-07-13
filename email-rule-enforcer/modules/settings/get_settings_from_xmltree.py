@@ -2,12 +2,12 @@ import re
 import xml.etree.ElementTree as ET
 import modules.supportingfunctions
 from modules.supportingfunctions import convert_text_to_boolean, die_with_errormsg
-from modules.settings_Class_EmailNotifications import EmailNotificationSettings
-from modules.settings_Class_LogfileSettings import LogfileSettings
-from modules.settings_DefaultSettings import set_defaults
-from modules.rule_Classes import Rule, RuleAction, MatchField
-from modules.supportingfunctions_xml import set_value_if_xmlnode_exists, get_value_if_xmlnode_exists, get_attributes_if_xmlnode_exists
-from modules.supportingfunctions_xml import get_attribvalue_if_exists_in_xmlNode, set_boolean_if_xmlnode_exists, xpath_findall
+from modules.settings.models.EmailNotificationSettings import EmailNotificationSettings
+from modules.settings.models.LogfileSettings import LogfileSettings
+from modules.settings.default_settings import set_defaults
+from modules.models.RulesAndMatches import Rule, RuleAction, MatchField
+from modules.settings.supportingfunctions_xml import set_value_if_xmlnode_exists, get_value_if_xmlnode_exists, get_attributes_if_xmlnode_exists
+from modules.settings.supportingfunctions_xml import get_attribvalue_if_exists_in_xmlNode, set_boolean_if_xmlnode_exists, xpath_findall
 
 
 def parse_config_tree(xml_config_tree, config, rules):

@@ -2,7 +2,7 @@ import argparse
 import sys
 import os.path
 import xml.etree.ElementTree as ET
-from .supportingfunctions import die_with_errormsg
+from modules.supportingfunctions import die_with_errormsg
 
 
 class parse_args():

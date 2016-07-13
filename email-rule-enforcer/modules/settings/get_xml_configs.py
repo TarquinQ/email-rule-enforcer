@@ -1,7 +1,7 @@
 import sys
 import xml.etree.ElementTree as ET
-from .supportingfunctions import die_with_errormsg
-from .logging import LogMaster
+from modules.supportingfunctions import die_with_errormsg
+from modules.logging import LogMaster
 
 
 class ConfigFilesXML():
