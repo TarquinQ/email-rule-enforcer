@@ -71,7 +71,7 @@ class IMAPServerConnection():
 
     def get_emails_in_currfolder(self):
         """Return raw emails from the curent folder, without marking as read"""
-        for uid in get_list_alluids_in_currfolder:
+        for uid in self.get_list_alluids_in_currfolder:
             yield self.get_parsed_email_byuid(uid)
 
     def get_imap_flags_byuid(self, uid):
