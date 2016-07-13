@@ -1,8 +1,6 @@
 import re
 
 class EmailNotificationSettings():
-    email_regex = re.compile(r'[^@]+@[^@]+\.[^@]+')
-
     def __init__(self, recipient=None, recipients=None, subject=None, body_prefix=None, attach_log=True):
         self.recipients = []
         if recipient:
@@ -30,6 +28,8 @@ class EmailNotificationSettings():
         validate = true
         if ((len(recipients) == 0) or (not self.subject)):
             validate = false
+            return None
+        email_regex = re.compile(r'[^@]+@[^@]+\.[^@]+')
         for recipient in self.recipients:
             if not email_regex.match(recipient):
                 validate = false
