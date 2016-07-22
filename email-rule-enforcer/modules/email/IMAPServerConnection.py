@@ -70,7 +70,7 @@ class IMAPServerConnection():
         return list_allemails
 
     def get_emails_in_currfolder(self):
-        """Return raw emails from the curent folder, without marking as read"""
+        """Return parsed emails from the curent folder, without marking as read"""
         for uid in self.get_list_alluids_in_currfolder:
             yield self.get_parsed_email_byuid(uid)
 
@@ -93,7 +93,9 @@ class IMAPServerConnection():
         return raw_email
 
     def get_parsed_email_byuid(self, uid):
-        return self.parse_raw_email(self.get_raw_email_byuid(uid))
+        ret_email = self.parse_raw_email(self.get_raw_email_byuid(uid))
+        ret_email.uid = uid
+        return ret_email
 
     def get_parsedemailandflags_byuid(self, uid):
         ret_email = self.get_parsed_email_byuid(uid)
@@ -123,13 +125,27 @@ class IMAPServerConnection():
         return ret_msg
 
     def move_email(self, uid, new_folder, mark_as_read_on_move=None):
-        if self.imapmove_is_supported:
-            result, data = self.imap_connection.uid('MOVE', uid, dest_folder)
-        else:
-            result, data = self.imap_connection.uid('COPY', uid, dest_folder)
-            if result == 'OK':
-                result, data = self.set_flag_byuid('(\Deleted)')
-                imap_connection.expunge()
+        intial_read_status = self.is_email_currently_read_byuid(uid)
+        if (mark_as_read_on_move is True) and (intial_read_status is False):
+            self.mark_email_as_read(uid)
+
+        try:
+            if self.imapmove_is_supported:
+                result, data = self.imap_connection.uid('MOVE', uid, dest_folder)
+            else:
+                result, data = self.imap_connection.uid('COPY', uid, dest_folder)
+                if result == 'OK':
+                    result, data = self.set_flag_byuid('(\Deleted)')
+                    imap_connection.expunge()
+        except Error:
+            # We need to unwind the Read status of any email that we may have marked as read
+            if (mark_as_read_on_move is True) and
+            (intial_read_status is False) and
+            (self.is_email_currently_read_byuid(uid) is True):
+                self.mark_email_as_unread(uid)
+            return False
+
+        return True
 
     def del_email(self, uid, perm_delete=False):
         if perm_delete:
@@ -138,7 +154,7 @@ class IMAPServerConnection():
         else:
             self.move_email(uid, self.deletions_folder, mark_as_read_on_move=False)
 
-    def is_email_currently_unread_byuid(self, uid):
+    def is_email_currently_read_byuid(self, uid):
         if '\\Seen' in self.get_imap_flags_byuid(uid):
             return True
         else:

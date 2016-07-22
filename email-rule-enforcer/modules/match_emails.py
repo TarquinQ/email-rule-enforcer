@@ -1,6 +1,32 @@
 from modules.models.RulesAndMatches import Rule, RuleAction, MatchField
 
 
+def check_match_list(email_to_validate, matches):
+    num_required_matches = 0
+    num_actual_matches = 0
+    for match_check in matches:
+        num_required_matches += 1
+        if match_check is type(list):  # Then we know this is an 'OR'clause, and match on any of these
+            matched_or = False
+            for match_or in match_check:
+                if match_or.test_match_email(email_to_validate):
+                    matched_or = True
+                    break  # No point trying more!
+            if matched_or:
+                num_actual_matches += 1
+
+        else if match_check is type(MatchField):
+            if match_check.test_match_email(email_to_validate):
+                num_actual_matches += 1
+            else:
+                break
+
+    if num_actual_matches == num_required_matches:
+        return True
+    else:
+        return False
+
+
 def parse_all_emails(imap_connection, rules):
     if (imap_connection.is_connected() is False):
         return None
@@ -8,47 +34,16 @@ def parse_all_emails(imap_connection, rules):
     for email_to_validate in imap_connection.get_emails_in_currfolder():
         for rule in rules:
             email_matched = False
-            email_excepted = False
             email_actioned = False
 
             # First we check each match, to see if they all match
-            num_required_matches = 0
-            num_actual_matches = 0
-            for match_check in rule.matches:
-                num_required_matches += 1
-                if match_check is type(list):  # Then we know this is an 'OR'clause, and match on any of these
-                    matched_or = False
-                    for match_or in match_check:
-                        str_to_test = email_to_validate[match_or.field_to_match]
-                        if (match_or.test_match(str_to_test)):
-                            matched_or = True
-                    if matched_or:
-                        num_actual_matches += 1
-                else if match_check is type(MatchField):
-                    str_to_test = email_to_validate[match_check.field_to_match]
-                    if (match_check.test_match(str_to_test)):
-                        num_actual_matches += 1
-                    else:
-                        break
-            if num_actual_matches == num_required_matches:
-                email_matched = True
-            else:
-            # If not matched, exit this rule
+            # If not matched, exit this rule and onto the next
+            if not (check_match_list(email_to_validate, rule.matches)):
                 continue
 
             # Now we see if the exceptions apply
-            for match_check in rule.match_exceptions:
-                if match_check is type(list):
-                    pass
-                else:
-                    if (not (match_field(match_check.field_to_match) == email_to_validate[match_check.field_to_match])):
-                        break
-            else:
-                email_matched = False
-                email_excepted = True
-
-            # If excepted, exit this rule
-            if (email_excepted):
+            # If so, exit this rule and onto the next
+            if (check_match_list(email_to_validate, rule.match_exceptions)):
                 continue
 
             # Now we know that it is matched and not excepted, so we perform actions
@@ -62,21 +57,13 @@ def parse_all_emails(imap_connection, rules):
                 if action_to_perform = "mark_as_unread":
                     pass  # MaU
 
-            email_deleted_or_moved = False
             for action_to_perform in rule.actions:
                 if action_to_perform = "move_to_folder":
-                    email_deleted_or_moved = True
-                    pass  # Move
-                if action_to_perform = "Delete":
-                    email_deleted_or_moved = True
-                    pass  # Forward
-                if (email_deleted_or_moved):
+                    #imap_connection.move_email(uid, new_folder, mark_as_read_on_move=None)
                     break  # Email gone now, no more actions
-
-            if (email_deleted_or_moved):
-                break  # Email gone now, no more rules
-
-
+                if action_to_perform = "Delete":
+                    # FIXME: Deletion here
+                    break  # Email gone now, no more actions
 
 
 # class Rule():

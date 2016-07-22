@@ -211,7 +211,7 @@ class MatchField():
                     match_str = '.*' + match_str + '.*'
                 if self.match_type == 'ends_with':
                     match_str = '.*' + match_str
-                match_str = '^' + match_str + '$'  # Do I need this? I don't think so.
+                #match_str = '^' + match_str + '$'  # Do I need this? I don't think so.
                 self.matching_string = match_str
                 flags = 0
                 if not self.case_sensitive:
@@ -219,6 +219,22 @@ class MatchField():
                 self.re = re.compile(match_str, flags)
         except AttributeError:
             pass
+
+    def test_match_value(self, str_value):
+        matched_yn = False
+        if self.re.match(str_value):
+            matched_yn = True
+        return matched_yn
+
+    def test_match_email(self, email_to_validate):
+        matched_yn = False
+        try:
+            str_to_test = email_to_validate[self.field_to_match]
+            if (self.test_match_value(str_to_test)):
+                matched_yn = True
+        except AttributeError:
+            pass
+        return matched_yn
 
     def get_field_to_match(self):
         return self.field_to_match
