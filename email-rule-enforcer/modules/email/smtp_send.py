@@ -8,7 +8,7 @@ def send_email(smtp_server_name, smtp_port, smtp_username, smtp_password, email_
         server = smtplib.SMTP(smtp_server_name, smtp_port)
     server.ehlo()  # Optional, called by login
     if (smtp_auth_required):
-        server.login(gmail_user, gmail_pwd)
+        server.login(smtp_username, smtp_password)
     server.send_message(email_msg)
     server.close()
 
