@@ -82,8 +82,10 @@ def parse_config_tree(xml_config_tree, config, rules):
             set_value_if_xmlnode_exists(config, conf_prefix + 'password', Node, './password')
             set_boolean_if_xmlnode_exists(config, conf_prefix + 'use_tls', Node, './use_tls')
             set_boolean_if_xmlnode_exists(config, conf_prefix + 'auth_required', Node, './auth_required')  # SMTP only
+            set_value_if_xmlnode_exists(config, conf_prefix + 'forward_from', Node, './forward_from')  # SMTP only
             set_value_if_xmlnode_exists(config, conf_prefix + 'initial_folder', Node, './initial_folder')  # IMAP only
             set_value_if_xmlnode_exists(config, conf_prefix + 'deletions_folder', Node, './deletions_folder')  # IMAP only
+            set_value_if_xmlnode_exists(config, conf_prefix + 'imaplib_debuglevel', Node, './imaplib_debuglevel')  # IMAP only
 
         parse_email_server_settings(config, 'imap_', Node.find('./connection_imap'))
         parse_email_server_settings(config, 'smtp_', Node.find('./sending_email_smtp'))
@@ -199,6 +201,24 @@ def set_dependent_config(config):
             config['smtp_server_port'] = 587
         else:
             config['smtp_server_port'] = 25
+
+    if config['smtp_forward_from'] is None:
+        config['smtp_forward_from'] = config['smtp_username']
+
+    if config['smtp_forward_from'].lower() == 'same_as_imap_auth':
+        config['smtp_forward_from'] = config['imap_username']
+
+    if config['smtp_username'].lower() == 'same_as_imap_auth':
+        config['smtp_username'] = config['imap_username']
+
+    if config['smtp_password'].lower() == 'same_as_imap_auth':
+        config['smtp_password'] = config['imap_password']
+
+    if isinstance(config['imap_imaplib_debuglevel'], str):
+        try:
+            config['imap_imaplib_debuglevel'] = int(config['imap_imaplib_debuglevel'])
+        except:
+            config['imap_imaplib_debuglevel'] = 0
 
 
 def get_settings_from_configtree(xml_config_tree):
