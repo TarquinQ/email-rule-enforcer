@@ -109,18 +109,18 @@ class RuleAction():
         self.action_type = action_type
         self.parent_rule_id = parent_rule_id
         self.delete_permanently = False
-        self.mark_as_read = False
-        self.mark_as_unread = False
+        self.mark_as_read_on_action = False
+        self.mark_as_unread_on_action = False
         self.email_recipients = []
 
     def set_dest_folder(self, dest_folder):
         self.dest_folder = dest_folder
 
     def set_mark_as_read(self, mark_as_read):
-        self.mark_as_read = mark_as_read
+        self.mark_as_read_on_action = mark_as_read
 
     def set_mark_as_unread(self, mark_as_unread):
-        self.mark_as_unread = mark_as_unread
+        self.mark_as_unread_on_action = mark_as_unread
 
     def set_delete_permanently(self, flag):
         self.delete_permanently = flag
@@ -147,9 +147,11 @@ class RuleAction():
             check_for = 'email_recipient'
             try:
                 if len(self.email_recipient) < 1:
-                    return (False, 'Action invalid. Action type "' + self.action_type + '" selected, but no forwarding email addresses have been added')
+                    return (False, 'Action invalid. Action type "' + self.action_type +
+                        '" selected, but no forwarding email addresses have been added')
             except:
-                    return (False, 'Action invalid. Action type "' + self.action_type + '" selected, but no forwarding email addresses have been added')
+                    return (False, 'Action invalid. Action type "' + self.action_type +
+                        '" selected, but no forwarding email addresses have been added')
         else:
             return (True, 'FIXME')
 
@@ -160,8 +162,8 @@ class RuleAction():
         retval = OrderedDict()
         retval['parent_rule_id'] = self.parent_rule_id
         retval['delete_permanently'] = self.delete_permanently
-        retval['mark_as_read'] = self.mark_as_read
-        retval['mark_as_unread'] = self.mark_as_unread
+        retval['mark_as_read'] = self.mark_as_read_on_action
+        retval['mark_as_unread'] = self.mark_as_unread_on_action
         retval['email_recipients'] = self.email_recipients
         repr = '%s:(%s)' % (self.__class__.__name__, str(retval))
         return repr
