@@ -2,6 +2,7 @@ import imaplib
 import ssl
 import email
 import traceback
+from modules.logging import LogMaster
 
 
 class IMAPServerConnection():
@@ -54,9 +55,9 @@ class IMAPServerConnection():
     def _check_imapmove_supported(self):
         self.imap_connection._get_capabilities()  # Refresh capabilities list
         if 'MOVE' in self.capabilities():
-            self.imapmove_is_supported = True
             # This monkey-patches the core imaplib for MOVE support
             imaplib.Commands['MOVE'] = ('SELECTED',)
+            self.imapmove_is_supported = True
         else:
             self.imapmove_is_supported = False
 
@@ -71,8 +72,8 @@ class IMAPServerConnection():
 
     def get_emails_in_currfolder(self):
         """Return parsed emails from the curent folder, without marking as read"""
-        for uid in self.get_list_alluids_in_currfolder:
-            yield self.get_parsed_email_byuid(uid)
+        for uid in self.get_list_alluids_in_currfolder():
+            yield self.get_parsed_emailandflags_byuid(uid)
 
     def get_imap_flags_byuid(self, uid):
         """Gets a list of flags in UTF-8 for a given uid"""
@@ -82,6 +83,7 @@ class IMAPServerConnection():
         for flag in flags_raw:
             new_flags = [parsedflag.decode('utf-8') for parsedflag in imaplib.ParseFlags(flag)]
             flags.extend(new_flags)
+        return flags
 
     def get_list_all_folders(self):
         """Returns a list of all IMAP folders"""
@@ -97,7 +99,7 @@ class IMAPServerConnection():
         ret_email.uid = uid
         return ret_email
 
-    def get_parsedemailandflags_byuid(self, uid):
+    def get_parsed_emailandflags_byuid(self, uid):
         ret_email = self.get_parsed_email_byuid(uid)
         ret_email.imap_flags = self.get_imap_flags_byuid(uid)
         return ret_email
@@ -119,30 +121,31 @@ class IMAPServerConnection():
         try:
             ret_msg = email.message_from_bytes(raw_email_string)
         except email.MessageError as e:
-            # This isn't handling the error per se, it's just changing
+            # This isn't /handling/ the error per se: it's just changing
             # it into an imaplib error to match the rest of this class
-            raise imap_connection.error('Error parsing raw email. Email Error was: %s' % e)
+            raise imaplib.error('Error parsing raw email. Email Error was: %s' % e)
         return ret_msg
 
-    def move_email(self, uid, new_folder, mark_as_read_on_move=None):
+    def move_email(self, uid, dest_folder, mark_as_read_on_move=None):
         intial_read_status = self.is_email_currently_read_byuid(uid)
-        if (mark_as_read_on_move is True) and (intial_read_status is False):
-            self.mark_email_as_read(uid)
+        this_func_marked_email_as_read = False
 
+        if (mark_as_read_on_move is True) and (intial_read_status is False):
+            self.mark_email_as_read_byuid(uid)
+            this_func_marked_email_as_read = True
+
+        # Now we try the IMAP move
         try:
             if self.imapmove_is_supported:
                 result, data = self.imap_connection.uid('MOVE', uid, dest_folder)
             else:
                 result, data = self.imap_connection.uid('COPY', uid, dest_folder)
                 if result == 'OK':
-                    result, data = self.set_flag_byuid('(\Deleted)')
-                    imap_connection.expunge()
+                    self.del_email(uid)
         except Error:
-            # We need to unwind the Read status of any email that we may have marked as read
-            if (mark_as_read_on_move is True) and
-            (intial_read_status is False) and
-            (self.is_email_currently_read_byuid(uid) is True):
-                self.mark_email_as_unread(uid)
+            if (this_func_marked_email_as_read is True):
+                # We need to unwind the Read status of any email that we may have marked as read
+                self.mark_email_as_unread_byuid(uid)
             return False
 
         return True
@@ -155,22 +158,22 @@ class IMAPServerConnection():
             self.move_email(uid, self.deletions_folder, mark_as_read_on_move=False)
 
     def is_email_currently_read_byuid(self, uid):
-        if '\\Seen' in self.get_imap_flags_byuid(uid):
+        if '(\\Seen)' in self.get_imap_flags_byuid(uid):
             return True
         else:
             return False
 
     def set_flag_byuid(self, uid, flag):
-        return imap_connection.uid('STORE', uid, '+FLAGS', flag)
+        return self.uid('STORE', uid, '+FLAGS', flag)
 
     def unset_flag_byuid(self, uid, flag):
-        return imap_connection.uid('STORE', uid, '-FLAGS', flag)
+        return self.uid('STORE', uid, '-FLAGS', flag)
 
-    def mark_email_as_read(self, uid):
-        return set_flag_byuid(uid, '(\\Seen)')
+    def mark_email_as_read_byuid(self, uid):
+        return self.set_flag_byuid(uid, '(\\Seen)')
 
-    def mark_email_as_unread(self, uid):
-        return unset_flag_byuid(uid, '(\\Seen)')
+    def mark_email_as_unread_byuid(self, uid):
+        return self.unset_flag_byuid(uid, '(\\Seen)')
 
     def expunge(self):
         return self.imap_connection.expunge()
@@ -183,5 +186,5 @@ class IMAPServerConnection():
         return self.imap_connection.uid(*args, **kwargs)
 
     @classmethod
-    def set_imaplib_Debug(cls, debuglevel):
+    def set_imaplib_Debuglevel(cls, debuglevel):
         imaplib.Debug = debuglevel  # Default: 0; Range 0->5 zero->high
