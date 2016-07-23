@@ -1,4 +1,7 @@
 from modules.models.RulesAndMatches import Rule, RuleAction, MatchField
+from modules.email.make_new_emails import new_email
+from modules.email.smtp_send import send_email_from_config
+from modules.logging import LogMaster
 
 
 def check_match_list(email_to_validate, matches):
@@ -15,7 +18,7 @@ def check_match_list(email_to_validate, matches):
             if matched_or:
                 num_actual_matches += 1
 
-        else if match_check is type(MatchField):
+        elif match_check is type(MatchField):
             if match_check.test_match_email(email_to_validate):
                 num_actual_matches += 1
             else:
@@ -27,8 +30,8 @@ def check_match_list(email_to_validate, matches):
         return False
 
 
-def parse_all_emails(imap_connection, rules):
-    if (imap_connection.is_connected() is False):
+def iterate_rules_over_mailfolder(imap_connection, config, rules):
+    if (imap_connection.is_connected is False):
         return None
 
     for email_to_validate in imap_connection.get_emails_in_currfolder():
@@ -50,19 +53,36 @@ def parse_all_emails(imap_connection, rules):
             # valid_actions = frozenset(['move_to_folder', 'forward', 'delete', 'mark_as_read', 'mark_as_unread'])
 
             for action_to_perform in rule.actions:
-                if action_to_perform = "forward":
-                    pass  # Forward
-                if action_to_perform = "mark_as_read":
-                    pass  # MaR
-                if action_to_perform = "mark_as_unread":
-                    pass  # MaU
+                action_type = action_to_perform.action_type
+                if action_type == "forward":
+                    forwarded_email(
+                        email_from=config['smtp_forward_from'],
+                        email_to=action_to_perform.email_recipients,
+                        subject='FWD: ' + email_to_validate['Subject'],
+                        bodytext=email_to_validate.as_string()
+                    )
+                    send_email_from_config(config, forwarded_email)
+
+                if action_type == "mark_as_read":
+                    imap_connection.mark_email_as_read_byuid(email_to_validate.uid)
+
+                if action_type == "mark_as_unread":
+                    imap_connection.mark_email_as_unread_byuid(email_to_validate.uid)
 
             for action_to_perform in rule.actions:
-                if action_to_perform = "move_to_folder":
-                    #imap_connection.move_email(uid, new_folder, mark_as_read_on_move=None)
+                action_type = action_to_perform.action_type
+
+                if action_type == "move_to_folder":
+                    imap_connection.move_email(
+                        uid=email_to_validate.uid,
+                        dest_folder=action_to_perform.dest_folder,
+                        mark_as_read_on_move=action_to_perform.mark_as_unread_on_action
+                    )
                     break  # Email gone now, no more actions
-                if action_to_perform = "Delete":
-                    # FIXME: Deletion here
+
+                if action_type == "Delete":
+                    perm_delete = action_to_perform.delete_permanently
+                    imap_connection.del_email(email_to_validate.uid, perm_delete)
                     break  # Email gone now, no more actions
 
 
