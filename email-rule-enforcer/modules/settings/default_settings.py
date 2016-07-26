@@ -27,4 +27,8 @@ def set_defaults(config):
     config['smtp_auth_required'] = False
     config['smtp_forward_from'] = None
 
+    # Logging Defaults
+    config['log_settings_logfile'] = None
+    config['log_settings_logfile_debug'] = None
+
     config['defaults_are_set'] = True

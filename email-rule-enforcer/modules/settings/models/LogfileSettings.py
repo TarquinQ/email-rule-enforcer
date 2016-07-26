@@ -1,5 +1,5 @@
-from modules.supportingfunctions import generate_logfile_fullpath
 from collections import OrderedDict
+import datetime
 
 
 class LogfileSettings():
@@ -36,7 +36,12 @@ class LogfileSettings():
         self.continue_on_log_fail = yn
 
     def set_full_filepath(self):
-        if ((self.log_folder) and (self.log_filename) and (self.filename_extension)):
+        if (
+            (self.log_folder) and
+            (self.log_filename) and
+            (self.append_date_to_filename) and
+            (self.filename_extension)
+        ):
             self.logfilepath = generate_logfile_fullpath(
                 log_directory=self.log_folder, filename_pre=self.log_filename,
                 filename_extension=self.filename_extension,
@@ -58,3 +63,54 @@ class LogfileSettings():
         retval['Continue on log fail'] = self.continue_on_log_fail
         return '%s:' % self.__class__.__name__ + str(retval)
 
+
+def generate_logfile_fullpath(log_directory, filename_pre, filename_post='', filename_extension='.log', insert_datetime=True, specific_logname=None):
+    if not log_directory.endswith('\\'):
+        log_directory = log_directory + '\\'
+
+    if specific_logname:
+        filename = specific_logname
+    else:
+        filename = generate_logfilename(filename_pre, filename_post, filename_extension, insert_datetime, None)
+
+    filepath = log_directory + filename
+
+    return filepath
+
+
+def generate_logfilename(filename_pre, filename_post='', filename_extension='.log', insert_datetime=True, specific_logname=None):
+    if specific_logname:
+        return specific_logname
+
+    ret_val = ''
+
+    if filename_pre.endswith('.'):
+        filename_pre = filename_pre[:-1]
+
+    if insert_datetime:
+        timestamp = get_ISOTimestamp_ForLogFilename()
+        timeval = '-' + timestamp + '-'
+        if filename_pre.endswith('-'):
+            filename_pre = filename_pre[:-1]
+        if filename_post.startswith('-'):
+            filename_pre = filename_pre[1:]
+    else:
+        timeval = ''
+
+    if filename_post.endswith('.'):
+        filename_pre = filename_pre[:-1]
+
+    if not filename_extension.startswith('.'):
+        filename_extension = '.' + filename_extension
+
+    ret_val = filename_pre + timestamp + filename_extension
+
+    return ret_val
+
+
+def get_ISOTimestamp_ForLogFilename():
+    timestamp = datetime.datetime.now().isoformat()  # '2016-03-20T21:30:44.560397'
+    timestamp = ''.join(timestamp.split(':')[0:2])  # Remove the seconds & milliseconds => '2016-03-20T2130'
+    timestamp = timestamp.replace('T', '')  # Remove the 'T' => '2016-03-202130'
+    timestamp = timestamp.replace('-', '')  # Remove the 'T' => '201603202130'
+    return timestamp

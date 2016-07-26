@@ -1,9 +1,6 @@
 import logging
 import sys
-from .supportingfunctions import die_with_errormsg
-from .supportingfunctions import get_ISOTimestamp_ForLogFilename
-from .supportingfunctions import generate_logfile_fullpath
-from .supportingfunctions import generate_logfilename
+from modules.supportingfunctions import die_with_errormsg
 from modules.settings.models.LogfileSettings import LogfileSettings
 
 
@@ -70,10 +67,10 @@ class LogController():
         if formatter:
             self.formatter_file = formatter
         else:
-            self.formatter_file = get_formatter_default()
+            self.formatter_file = self.get_formatter_default()
 
         try:
-            new_handler = self._get_new_filehandler(self.logfile_filepath, append, die_if_file_fails)
+            new_handler = self._get_new_filehandler(self.filepath, append, die_if_file_fails)
             if new_handler:
                 self.handler_file = new_handler
                 self.handler_file.setFormatter(self.formatter_file)
@@ -177,7 +174,7 @@ class LogMaster(metaclass=Singleton):
     # Methods to operate on named controllers
     @classmethod
     def _set_loglevel_namedcontr(cls, contr_name, log_level):
-        cls.log_controllers[contr_name].logger.set_loglevel(log_level)
+        cls.log_controllers[contr_name].logger.setLevel(log_level)
 
     @classmethod
     def _log_to_namedcontr(cls, contr_name, lvl, msg, *args, **kwargs):
@@ -190,45 +187,47 @@ class LogMaster(metaclass=Singleton):
     # Methods to set up specific log_controllers
     @classmethod
     def set_loglevel_console(cls, log_level):
-        cls._set_loglevel_namedcontr(cls.name_console, lvl)
+        cls._set_loglevel_namedcontr(cls.name_console, log_level)
 
     @classmethod
     def set_loglevel_logfile(cls, log_level):
-        cls._set_loglevel_namedcontr(cls.name_logfile, lvl)
+        cls._set_loglevel_namedcontr(cls.name_logfile, log_level)
 
     @classmethod
     def set_loglevel_debugfile(cls, log_level):
-        cls._set_loglevel_namedcontr(cls.name_debugfile, lvl)
+        cls._set_loglevel_namedcontr(cls.name_debugfile, log_level)
 
     @classmethod
     def add_filepath_to_logfile(cls, filepath, append=False, formatter=None, die_if_file_fails=False):
-        cls._add_logfile_to_namedcontr(cls, cls.name_logfile, filepath, append=False, formatter=None, die_if_file_fails=False)
+        cls._add_logfile_to_namedcontr(cls.name_logfile, filepath, append, formatter, die_if_file_fails)
 
     @classmethod
     def add_filepath_to_debugfile(cls, filepath, append=False, formatter=None, die_if_file_fails=False):
-        cls._add_logfile_to_namedcontr(cls, cls.name_debugfile, filepath, append=False, formatter=None, die_if_file_fails=False)
+        cls._add_logfile_to_namedcontr(cls.name_debugfile, filepath, append, formatter, die_if_file_fails)
 
 
-def set_log_files_from_config(config):
+def add_log_files_from_config(config):
     """Add all of the logging config from config files and enacts them on the LogMaster object"""
 
-    LogMaster.set_loglevel_console(cls, (config['console_loglevel'] * 10))
+    LogMaster.set_loglevel_console(config['console_loglevel'] * 10)
 
     settings_logfile = config['log_settings_logfile']
     settings_debugfile = config['log_settings_logfile_debug']
 
-    LogMaster.add_filepath_to_logfile(
-        filepath=settings_logfile.log_filename,
-        die_if_file_fails=settings_logfile.continue_on_log_fail
-    )
-    LogMaster.set_loglevel_logfile(settings_logfile.logfile_level * 10)
+    if ((settings_logfile is not None) and (isinstance(settings_logfile, LogfileSettings))):
+        LogMaster.add_filepath_to_logfile(
+            filepath=settings_logfile.log_filename,
+            die_if_file_fails=settings_logfile.continue_on_log_fail
+        )
+        LogMaster.set_loglevel_logfile(settings_logfile.logfile_level * 10)
 
-    LogMaster.add_filepath_to_debugfile(
-        filepath=settings_debugfile.log_filename,
-        formatter=LogController.get_formatter_msgwithtime(),
-        die_if_file_fails=settings_debugfile.continue_on_log_fail
-    )
-    LogMaster.set_loglevel_debugfile(settings_debugfile.logfile_level * 10)
+    if ((settings_debugfile is not None) and (isinstance(settings_debugfile, LogfileSettings))):
+        LogMaster.add_filepath_to_debugfile(
+            filepath=settings_debugfile.log_filename,
+            formatter=LogController.get_formatter_msgwithtime(),
+            die_if_file_fails=settings_debugfile.continue_on_log_fail
+        )
+        LogMaster.set_loglevel_debugfile(settings_debugfile.logfile_level * 10)
 
 # log_levels = OrderedDict([
 #     (50, 'CRITICAL'),
