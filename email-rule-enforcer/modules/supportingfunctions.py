@@ -86,6 +86,15 @@ def force_text_to_boolean(text):
     return convert_text_to_boolean(text, default=False)
 
 
+def convert_text_to_integer(text, default=None):
+    ret_val = default
+    try:
+        ret_val = int(text)
+    except:
+        pass
+    return ret_val
+
+
 def print_nested_data(element, depth=0, maxdepth=30):
     def align_output(depth):
         print (" " * depth, end="")

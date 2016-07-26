@@ -4,6 +4,7 @@ from .supportingfunctions import die_with_errormsg
 from .supportingfunctions import get_ISOTimestamp_ForLogFilename
 from .supportingfunctions import generate_logfile_fullpath
 from .supportingfunctions import generate_logfilename
+from modules.settings.models.LogfileSettings import LogfileSettings
 
 
 class Singleton(type):
@@ -15,7 +16,7 @@ class Singleton(type):
         return cls._instances[cls]
 
 
-class log_controller():
+class LogController():
     debug_this_class = False
     """Wraps around the standard Logger class, and builds logs the way we want to."""
     def __init__(self, name, log_level=10, filepath=None):
@@ -49,7 +50,7 @@ class log_controller():
         return logging.StreamHandler(sys.stdout)
 
     def set_logger_console(self):
-        """Enables output from this log_controller to the console, via stdout"""
+        """Enables output from this LogController to the console, via stdout"""
         self.handler_console = self.get_handler_console()
         self.formatter = self.get_formatter_plainmsg()
         self.handler_console.setFormatter(self.formatter)
@@ -64,7 +65,7 @@ class log_controller():
             print("Log controller level changed; Controller name: ", self.name, " New level is ", self.log_level)
 
     def add_logfile(self, filepath, append=False, formatter=None, die_if_file_fails=False):
-        """Enables output from this log_controller to a filename"""
+        """Enables output from this LogController to a filename"""
         self.filepath = filepath
         if formatter:
             self.formatter_file = formatter
@@ -114,10 +115,10 @@ class LogMaster(metaclass=Singleton):
     name_console = 'console'
     name_logfile = 'logfile'
     name_debugfile = 'debugfile'
-    controller_console = log_controller(name_console)
+    controller_console = LogController(name_console)
     controller_console.set_logger_console()
-    controller_logfile = log_controller(name_logfile)
-    controller_debugfile = log_controller(name_debugfile)
+    controller_logfile = LogController(name_logfile)
+    controller_debugfile = LogController(name_debugfile)
     log_controllers = {name_console: controller_console, name_logfile: controller_logfile, name_debugfile: controller_debugfile}
     if debug_this_class:
         print('New log controllers established: ', log_controllers)
@@ -207,6 +208,27 @@ class LogMaster(metaclass=Singleton):
     def add_filepath_to_debugfile(cls, filepath, append=False, formatter=None, die_if_file_fails=False):
         cls._add_logfile_to_namedcontr(cls, cls.name_debugfile, filepath, append=False, formatter=None, die_if_file_fails=False)
 
+
+def set_log_files_from_config(config):
+    """Add all of the logging config from config files and enacts them on the LogMaster object"""
+
+    LogMaster.set_loglevel_console(cls, (config['console_loglevel'] * 10))
+
+    settings_logfile = config['log_settings_logfile']
+    settings_debugfile = config['log_settings_logfile_debug']
+
+    LogMaster.add_filepath_to_logfile(
+        filepath=settings_logfile.log_filename,
+        die_if_file_fails=settings_logfile.continue_on_log_fail
+    )
+    LogMaster.set_loglevel_logfile(settings_logfile.logfile_level * 10)
+
+    LogMaster.add_filepath_to_debugfile(
+        filepath=settings_debugfile.log_filename,
+        formatter=LogController.get_formatter_msgwithtime(),
+        die_if_file_fails=settings_debugfile.continue_on_log_fail
+    )
+    LogMaster.set_loglevel_debugfile(settings_debugfile.logfile_level * 10)
 
 # log_levels = OrderedDict([
 #     (50, 'CRITICAL'),

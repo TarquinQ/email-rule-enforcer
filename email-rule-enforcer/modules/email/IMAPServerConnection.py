@@ -14,6 +14,7 @@ class IMAPServerConnection():
         self.is_connected = False
 
     def set_parameters_from_config(self, config):
+        self.set_imaplib_Debuglevel(config['imap_imaplib_debuglevel'])
         self.username = config["imap_username"]
         self.password = config["imap_password"]
         self.server_name = config["imap_server_name"]

@@ -9,7 +9,6 @@ def main():
     (config, rules) = get_config()
 
     imap_connection = IMAPServerConnection()
-    imap_connection.set_imaplib_Debuglevel(config['imap_imaplib_debuglevel'])
     imap_connection.set_parameters_from_config(config)
     try:
         imap_connection.connect_to_server()

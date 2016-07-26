@@ -1,7 +1,7 @@
 import re
 import xml.etree.ElementTree as ET
 import modules.supportingfunctions
-from modules.supportingfunctions import convert_text_to_boolean, die_with_errormsg
+from modules.supportingfunctions import convert_text_to_boolean, convert_text_to_integer, die_with_errormsg
 from modules.settings.models.EmailNotificationSettings import EmailNotificationSettings
 from modules.settings.models.LogfileSettings import LogfileSettings
 from modules.settings.default_settings import set_defaults
@@ -50,7 +50,7 @@ def parse_config_tree(xml_config_tree, config, rules):
             if Node:
                 logset = LogfileSettings()
                 for subnode in xpath_findall(Node, './logfile_level'):
-                    logset.set_logfile_level(subnode.text)
+                    logset.set_logfile_level(convert_text_to_integer(subnode.text, 2))
                 for subnode in xpath_findall(Node, './log_folder'):
                     logset.set_log_folder(subnode.text)
                 for subnode in xpath_findall(Node, './log_filename'):
@@ -61,10 +61,12 @@ def parse_config_tree(xml_config_tree, config, rules):
                     logset.set_filename_extension(subnode.text)
                 for subnode in xpath_findall(Node, './continue_on_log_fail'):
                     logset.set_continute_on_log_fail(convert_text_to_boolean(subnode.text, True))
+                config['log_settings_%s' % logtitle] = logset
 
         set_boolean_if_xmlnode_exists(config, 'empty_trash_on_exit', Node, './/empty_trash_on_exit')
         set_boolean_if_xmlnode_exists(config, 'mark_as_read_on_move', Node, './/mark_as_read_on_move')
         set_value_if_xmlnode_exists(config, 'console_loglevel', Node, './logging/console_level')
+        config['console_loglevel'] = convert_text_to_integer(config['console_loglevel'], 2)
 
         parse_email_notification_settings(config, Node.find('./logging/notification_email_on_completion'))
         parse_logfile_settings(config, 'logfile', Node.find('./logging/logfile'))
@@ -89,6 +91,8 @@ def parse_config_tree(xml_config_tree, config, rules):
 
         parse_email_server_settings(config, 'imap_', Node.find('./connection_imap'))
         parse_email_server_settings(config, 'smtp_', Node.find('./sending_email_smtp'))
+
+        config['imap_imaplib_debuglevel'] = convert_text_to_integer(config['imap_imaplib_debuglevel'])
         # End Parsing of ServerInfo Section
 
     def parse_rules(Node, config, rules):
