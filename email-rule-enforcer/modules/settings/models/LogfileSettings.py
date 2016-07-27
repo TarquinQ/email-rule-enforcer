@@ -64,46 +64,52 @@ class LogfileSettings():
         return '%s:' % self.__class__.__name__ + str(retval)
 
 
-def generate_logfile_fullpath(log_directory, filename_pre, filename_post='', filename_extension='.log', insert_datetime=True, specific_logname=None):
-    if not log_directory.endswith('\\'):
-        log_directory = log_directory + '\\'
+def generate_logfile_fullpath(log_directory, filename_pre='', filename_post='', filename_extension='.log', insert_datetime=True, specific_logname=None):
+    if not log_directory.endswith('/'):
+        log_directory = log_directory + '/'
 
     if specific_logname:
         filename = specific_logname
     else:
-        filename = generate_logfilename(filename_pre, filename_post, filename_extension, insert_datetime, None)
+        filename = generate_logfilename(filename_pre, filename_post, filename_extension, insert_datetime)
 
     filepath = log_directory + filename
 
     return filepath
 
 
-def generate_logfilename(filename_pre, filename_post='', filename_extension='.log', insert_datetime=True, specific_logname=None):
-    if specific_logname:
-        return specific_logname
-
+def generate_logfilename(filename_pre='', filename_post='', filename_extension='log', insert_datetime=True):
     ret_val = ''
 
     if filename_pre.endswith('.'):
         filename_pre = filename_pre[:-1]
 
+    timeval = ''
     if insert_datetime:
         timestamp = get_ISOTimestamp_ForLogFilename()
+#        print ('timestamp: ', timestamp)
         timeval = '-' + timestamp + '-'
+#        print ('timeval:   ', timeval)
         if filename_pre.endswith('-'):
             filename_pre = filename_pre[:-1]
-        if filename_post.startswith('-'):
-            filename_pre = filename_pre[1:]
-    else:
-        timeval = ''
+        if (filename_post == ''):
+            timeval = timeval[:-1]
+        elif filename_post.startswith('-'):
+            timeval = timeval[:-1]
 
     if filename_post.endswith('.'):
-        filename_pre = filename_pre[:-1]
+        filename_post = filename_post[:-1]
 
-    if not filename_extension.startswith('.'):
-        filename_extension = '.' + filename_extension
+    if filename_extension.startswith('.'):
+        filename_extension = filename_extension[1:]
 
-    ret_val = filename_pre + timestamp + filename_extension
+    ret_val = filename_pre + timeval + filename_post + '.' + filename_extension
+
+    if (
+        (ret_val == '.') or
+        (ret_val == ('.' + filename_extension))
+    ):
+        raise ValueError('Log filename was not specific enough to log against. Final value:', ret_val)
 
     return ret_val
 
