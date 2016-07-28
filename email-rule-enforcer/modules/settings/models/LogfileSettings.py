@@ -117,7 +117,6 @@ def generate_logfilename(filename_pre='', filename_post='', filename_extension='
 def get_ISOTimestamp_ForLogFilename():
     timestamp = datetime.datetime.now().isoformat()  # '2016-03-20T21:30:44.560397'
     timestamp = ''.join(timestamp.split(':')[0:2])  # Remove the seconds & milliseconds => '2016-03-20T2130'
-    timestamp = timestamp.replace('T', '_')  # Remove the 'T' => '2016-03-20_2130'
-    timestamp = timestamp.replace('-', '')  # Remove the hyphen => '20160320_2130'
-    timestamp = timestamp.replace('_', '-')  # Change the time marker => '20160320-2130'
+    timestamp = timestamp.replace('-', '')  # Remove the hyphen => '20160320T2130'
+    timestamp = timestamp.replace('T', '-')  # Change the time marker => '20160320-2130'
     return timestamp

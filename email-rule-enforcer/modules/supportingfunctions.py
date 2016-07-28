@@ -1,5 +1,7 @@
 import sys
 import datetime
+import os
+import socket
 import collections
 from collections import OrderedDict
 
@@ -140,4 +142,25 @@ def nested_data_to_str(element, depth=0, maxdepth=30):
             return_arr.append(align_output(depth) + ')')
     return return_arr
 
+
+def get_username():
+    return os.getenv('USERNAME', 'Unknown')
+
+
+def get_hostname():
+    hostname = 'Uknown'
+    try:
+        hostname = socket.gethostname()
+    except:
+        pass
+    return hostname
+
+
+def get_os():
+    return os.uname()
+
+
+def get_os_str():
+    ret_val = ', '.join(get_os())
+    return ret_val
 
