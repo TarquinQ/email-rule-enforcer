@@ -10,7 +10,7 @@ class LogfileSettings():
         self.append_date_to_filename = append_date_to_filename
         self.filename_extension = filename_extension
         self.continue_on_log_fail = continue_on_log_fail
-        self.logfilepath = None
+        self.log_fullpath = None
         self.set_full_filepath()
 
     def set_logfile_level(self, level):
@@ -42,14 +42,14 @@ class LogfileSettings():
             (self.append_date_to_filename) and
             (self.filename_extension)
         ):
-            self.logfilepath = generate_logfile_fullpath(
+            self.log_fullpath = generate_logfile_fullpath(
                 log_directory=self.log_folder, filename_pre=self.log_filename,
                 filename_extension=self.filename_extension,
                 insert_datetime=self.append_date_to_filename
             )
 
     def validate(self):
-        if not self.logfilepath:
+        if not self.log_fullpath:
             return False
         return True
 
@@ -59,7 +59,7 @@ class LogfileSettings():
     def __repr__(self):
         retval = OrderedDict()
         retval['Log Level'] = self.logfile_level
-        retval['Log Path'] = self.logfilepath
+        retval['Log Path'] = self.log_fullpath
         retval['Continue on log fail'] = self.continue_on_log_fail
         return '%s:' % self.__class__.__name__ + str(retval)
 
@@ -117,6 +117,7 @@ def generate_logfilename(filename_pre='', filename_post='', filename_extension='
 def get_ISOTimestamp_ForLogFilename():
     timestamp = datetime.datetime.now().isoformat()  # '2016-03-20T21:30:44.560397'
     timestamp = ''.join(timestamp.split(':')[0:2])  # Remove the seconds & milliseconds => '2016-03-20T2130'
-    timestamp = timestamp.replace('T', '')  # Remove the 'T' => '2016-03-202130'
-    timestamp = timestamp.replace('-', '')  # Remove the 'T' => '201603202130'
+    timestamp = timestamp.replace('T', '_')  # Remove the 'T' => '2016-03-20_2130'
+    timestamp = timestamp.replace('-', '')  # Remove the hyphen => '20160320_2130'
+    timestamp = timestamp.replace('_', '-')  # Change the time marker => '20160320-2130'
     return timestamp

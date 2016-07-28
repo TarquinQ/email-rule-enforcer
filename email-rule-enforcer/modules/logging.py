@@ -64,17 +64,18 @@ class LogController():
     def add_logfile(self, filepath, append=False, formatter=None, die_if_file_fails=False):
         """Enables output from this LogController to a filename"""
         self.filepath = filepath
-        if formatter:
-            self.formatter_file = formatter
-        else:
+        if formatter is None:
             self.formatter_file = self.get_formatter_default()
+        else:
+            self.formatter_file = formatter
 
         try:
             new_handler = self._get_new_filehandler(self.filepath, append, die_if_file_fails)
-            if new_handler:
+            if new_handler is not None:
                 self.handler_file = new_handler
                 self.handler_file.setFormatter(self.formatter_file)
                 self.logger.addHandler(self.handler_file)
+                print('Added new file as a log handler. Lofile name:', filepath)
         except:
             if die_if_file_fails:
                 self.log_exception('FATAL: Died when opening log file: ', filepath)
@@ -108,7 +109,7 @@ class LogController():
 
 class LogMaster(metaclass=Singleton):
     """Provides unified console and file logging for whole app"""
-    debug_this_class = False
+    debug_this_class = True
     name_console = 'console'
     name_logfile = 'logfile'
     name_debugfile = 'debugfile'
@@ -182,6 +183,9 @@ class LogMaster(metaclass=Singleton):
 
     @classmethod
     def _add_logfile_to_namedcontr(cls, contr_name, filepath, append=False, formatter=None, die_if_file_fails=False):
+        if cls.debug_this_class:
+            print ('Now adding new log file handler to log file output.')
+            print ('  Log controller: ', contr_name, '. Logfile path:', filepath)
         cls.log_controllers[contr_name].add_logfile(filepath, append, formatter, die_if_file_fails)
 
     # Methods to set up specific log_controllers
@@ -198,12 +202,12 @@ class LogMaster(metaclass=Singleton):
         cls._set_loglevel_namedcontr(cls.name_debugfile, log_level)
 
     @classmethod
-    def add_filepath_to_logfile(cls, filepath, append=False, formatter=None, die_if_file_fails=False):
-        cls._add_logfile_to_namedcontr(cls.name_logfile, filepath, append, formatter, die_if_file_fails)
+    def add_filepath_to_logfile(cls, *args, **kwargs):
+        cls._add_logfile_to_namedcontr(cls.name_logfile, *args, **kwargs)
 
     @classmethod
-    def add_filepath_to_debugfile(cls, filepath, append=False, formatter=None, die_if_file_fails=False):
-        cls._add_logfile_to_namedcontr(cls.name_debugfile, filepath, append, formatter, die_if_file_fails)
+    def add_filepath_to_debugfile(cls, *args, **kwargs):
+        cls._add_logfile_to_namedcontr(cls.name_debugfile, *args, **kwargs)
 
 
 def add_log_files_from_config(config):
@@ -215,15 +219,19 @@ def add_log_files_from_config(config):
     settings_debugfile = config['log_settings_logfile_debug']
 
     if ((settings_logfile is not None) and (isinstance(settings_logfile, LogfileSettings))):
+        print ('New logfile settings to be added:')
+        print ('  LogFile or DebugFile: LogFile')
+        print ('  Path: ', settings_logfile.log_fullpath)
+        print ('  Continue on failure: ', settings_logfile.continue_on_log_fail)
         LogMaster.add_filepath_to_logfile(
-            filepath=settings_logfile.log_filename,
+            filepath=settings_logfile.log_fullpath,
             die_if_file_fails=settings_logfile.continue_on_log_fail
         )
         LogMaster.set_loglevel_logfile(settings_logfile.logfile_level * 10)
 
     if ((settings_debugfile is not None) and (isinstance(settings_debugfile, LogfileSettings))):
         LogMaster.add_filepath_to_debugfile(
-            filepath=settings_debugfile.log_filename,
+            filepath=settings_debugfile.log_fullpath,
             formatter=LogController.get_formatter_msgwithtime(),
             die_if_file_fails=settings_debugfile.continue_on_log_fail
         )
