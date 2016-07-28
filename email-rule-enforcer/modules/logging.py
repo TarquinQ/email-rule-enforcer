@@ -110,7 +110,7 @@ class LogController():
 
 class LogMaster(metaclass=Singleton):
     """Provides unified console and file logging for whole app"""
-    debug_this_class = True
+    debug_this_class = False
     name_console = 'console'
     name_logfile = 'logfile'
     name_debugfile = 'debugfile'
@@ -217,7 +217,7 @@ def log_file_headers(config, logname):
         '** Log File for Email Rule Enforcer',
         '** Log name is: %s' % logname,
         '** ',
-        '** Current time is %s (%s)' % datetime.datetime.now(),
+        '** Current time is %s' % datetime.datetime.now(),
         '** ',
         '** Running on host: %s' % get_hostname(),
         '** Running as user: %s' % get_username(),

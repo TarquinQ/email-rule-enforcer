@@ -2,6 +2,7 @@ from modules.models.RulesAndMatches import Rule, RuleAction, MatchField
 from modules.email.make_new_emails import new_email
 from modules.email.smtp_send import send_email_from_config
 from modules.logging import LogMaster
+from modules.email.supportingfunctions_email import get_relevant_email_headers_for_logging
 
 
 def check_match_list(email_to_validate, matches):
@@ -31,10 +32,17 @@ def check_match_list(email_to_validate, matches):
 
 
 def iterate_rules_over_mailfolder(imap_connection, config, rules):
+    LogMaster.log(40, 'Now commencing iteration of Rules over all emails in folder')
+
     if (imap_connection.is_connected is False):
+        LogMaster.log(40, 'Aborting: IMAP server is not connected')
         return None
 
     for email_to_validate in imap_connection.get_emails_in_currfolder():
+        LogMaster.log(20, 'New Email found. Email Details:')
+        LogMaster.log(20, get_relevant_email_headers_for_logging(email_to_validate))
+        LogMaster.log(20, 'Now assessing an email against all rules.')
+
         for rule in rules:
             email_matched = False
             email_actioned = False
@@ -84,6 +92,8 @@ def iterate_rules_over_mailfolder(imap_connection, config, rules):
                     perm_delete = action_to_perform.delete_permanently
                     imap_connection.del_email(email_to_validate.uid, perm_delete)
                     break  # Email gone now, no more actions
+
+        LogMaster.log(20, 'Completed assessment of all rules against this email.\n')
 
 
 # class Rule():

@@ -3,6 +3,7 @@ import ssl
 import email
 import traceback
 from modules.logging import LogMaster
+from modules.email.supportingfunctions_email import get_relevant_email_headers_for_logging, convert_bytes_to_utf8
 
 
 class IMAPServerConnection():
@@ -36,6 +37,7 @@ class IMAPServerConnection():
             self.imap_connection = imaplib.IMAP4(self.server_name, self.server_port)
         self.is_connected = True
         self.imap_connection.login(self.username, self.password)
+        LogMaster.log(50, 'Successfully connected to IMAP Server: %s', self.server_name)
         self._check_imapmove_supported()
 
     def connect_to_default_folder(self):
@@ -44,11 +46,13 @@ class IMAPServerConnection():
     def connect_to_folder(self, folder_name):
         msg_count = self.imap_connection.select(folder_name)
         self.currfolder_name = folder_name
+        LogMaster.log(20, 'Successfully connected to IMAP Folder: \"%s\". Message Count: %s', folder_name, msg_count)
         return msg_count
 
     def disconnect(self):
         self.imap_connection.logout()
         self.is_connected = False
+        LogMaster.log(50, 'Successfully disconnected from IMAP Server')
 
     def logout(self):
         return self.disconnect()
@@ -61,6 +65,7 @@ class IMAPServerConnection():
             self.imapmove_is_supported = True
         else:
             self.imapmove_is_supported = False
+        LogMaster.log(10, 'IMAP Command \"MOVE\" support now checked. Server Supports \"MOVE\"?: %s', self.imapmove_is_supported)
 
     def get_currfolder(self):
         return self.currfolder_name
@@ -69,6 +74,7 @@ class IMAPServerConnection():
         """Searches and returns  a list of all uids in folder, byte-format"""
         result, data = self.imap_connection.uid('search', None, "ALL")
         list_allemails = data[0].split()
+        LogMaster.log(10, 'List of all UIDs of emails in current folder: %s', convert_bytes_to_utf8(list_allemails))
         return list_allemails
 
     def get_emails_in_currfolder(self):
@@ -134,19 +140,24 @@ class IMAPServerConnection():
         if (mark_as_read_on_move is True) and (intial_read_status is False):
             self.mark_email_as_read_byuid(uid)
             this_func_marked_email_as_read = True
+            LogMaster.log(10, 'Marking email as READ, on Move (UID: %s)', uid)
 
         # Now we try the IMAP move
         try:
             if self.imapmove_is_supported:
                 result, data = self.imap_connection.uid('MOVE', uid, dest_folder)
+                LogMaster.log(20, 'Successfully moved email to new folder. UID: %s, Dest Folder: %s', uid, dest_folder)
             else:
                 result, data = self.imap_connection.uid('COPY', uid, dest_folder)
                 if result == 'OK':
                     self.del_email(uid)
+                LogMaster.log(20, 'Successfully moved email to new folder. UID: %s, Dest Folder: %s', uid, dest_folder)
         except Error:
+            LogMaster.log(30, 'Failed to move email (UID: %s)', uid)
             if (this_func_marked_email_as_read is True):
                 # We need to unwind the Read status of any email that we may have marked as read
                 self.mark_email_as_unread_byuid(uid)
+                LogMaster.log(30, 'We marked this email as READ earlier, now unmarking (UID: %s)', uid)
             return False
 
         return True
