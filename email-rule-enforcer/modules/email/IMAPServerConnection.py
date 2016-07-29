@@ -13,6 +13,7 @@ class IMAPServerConnection():
         self.deletions_folder = 'Trash'
         self.currfolder_name = self.initial_folder
         self.is_connected = False
+        LogMaster.ultra_debug('New IMAP Server Connection object created')
 
     def set_parameters_from_config(self, config):
         self.set_imaplib_Debuglevel(config['imap_imaplib_debuglevel'])
@@ -104,6 +105,7 @@ class IMAPServerConnection():
     def get_parsed_email_byuid(self, uid):
         ret_email = self.parse_raw_email(self.get_raw_email_byuid(uid))
         ret_email.uid = uid
+        ret_email.uid_str = convert_bytes_to_utf8(uid)
         return ret_email
 
     def get_parsed_emailandflags_byuid(self, uid):

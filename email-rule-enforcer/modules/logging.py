@@ -1,8 +1,9 @@
 import logging
 import sys
 import datetime
-from modules.supportingfunctions import die_with_errormsg, get_username, get_hostname, get_os_str
 from modules.settings.models.LogfileSettings import LogfileSettings
+from modules.supportingfunctions import die_with_errormsg, get_username, get_hostname, get_os_str
+from modules.supportingfunctions import nested_data_to_str
 
 
 class Singleton(type):
@@ -160,6 +161,14 @@ class LogMaster(metaclass=Singleton):
         for log_controller in cls.log_controllers.values():
             log_controller.logger.exception(msg, *args, **kwargs)
 
+    @classmethod
+    def ultra_debug(cls, msg, *args, **kwargs):
+        cls.log(8, 'UltraDebug:: ' + msg, *args, **kwargs)
+
+    @classmethod
+    def insane_debug(cls, msg, *args, **kwargs):
+        cls.log(5, 'InsaneDebug:: ' + msg, *args, **kwargs)
+
     # Methods to operate on specific log_controllers
     @classmethod
     def log_to_logfile(cls, lvl, msg, *args, **kwargs):
@@ -211,6 +220,53 @@ class LogMaster(metaclass=Singleton):
         cls._add_logfile_to_namedcontr(cls.name_debugfile, *args, **kwargs)
 
 
+def add_log_files_from_config(config, rules):
+    """Add all of the logging config from config files and enacts them on the LogMaster object"""
+
+    LogMaster.set_loglevel_console(config['console_loglevel'] * 10)
+    # Override if Ultra or Insane Debug config options set
+    if config['console_ultra_debug']:
+        LogMaster.set_loglevel_console(8)
+        LogMaster.info('** Ultra Debug set. This will print a lot of extra debug info to the console.')
+        ultradebug_rules_and_config(config, rules)
+        config['imap_imaplib_debuglevel'] = 3
+    if config['console_insane_debug']:
+        LogMaster.set_loglevel_console(4)
+        LogMaster.info('** Insane Debug set. This will print an insane amount of extra debug info to the console.')
+        config['imap_imaplib_debuglevel'] = 4
+
+    settings_logfile = config['log_settings_logfile']
+    settings_debugfile = config['log_settings_logfile_debug']
+
+    # Init debug log file first, so that when(/if) main log initialised there is no spurious message about debug log added
+    if ((settings_debugfile is not None) and (isinstance(settings_debugfile, LogfileSettings))):
+        LogMaster.add_filepath_to_debugfile(
+            filepath=settings_debugfile.log_fullpath,
+            formatter=LogController.get_formatter_msgwithtime(),
+            die_if_file_fails=settings_debugfile.continue_on_log_fail
+        )
+        LogMaster.set_loglevel_debugfile(settings_debugfile.logfile_level * 10)
+
+        LogMaster.log_to_debugfile(50, log_file_headers(config, 'Debug Log'))
+        LogMaster.info('New DebugFile added, path: %s', settings_logfile.log_fullpath)
+
+    if ((settings_logfile is not None) and (isinstance(settings_logfile, LogfileSettings))):
+        LogMaster.add_filepath_to_logfile(
+            filepath=settings_logfile.log_fullpath,
+            die_if_file_fails=settings_logfile.continue_on_log_fail
+        )
+        LogMaster.set_loglevel_logfile(settings_logfile.logfile_level * 10)
+
+        # Now we initialise the file and print info
+        LogMaster.log_to_logfile(50, log_file_headers(config, 'Output Log File'))
+        LogMaster.info('New LogFile added, path: %s', settings_logfile.log_fullpath)
+
+
+def ultradebug_rules_and_config(config, rules):
+    LogMaster.ultra_debug("Unified Config:\n%s", '\n'.join(nested_data_to_str(config)))
+    LogMaster.ultra_debug("Rules:\n%s", '\n'.join(nested_data_to_str(rules)))
+
+
 def log_file_headers(config, logname):
     ret_val = [
         '*************************************',
@@ -242,35 +298,6 @@ def log_file_headers(config, logname):
     ]
     return '\n'.join(ret_val)
 
-
-def add_log_files_from_config(config):
-    """Add all of the logging config from config files and enacts them on the LogMaster object"""
-
-    LogMaster.set_loglevel_console(config['console_loglevel'] * 10)
-
-    settings_logfile = config['log_settings_logfile']
-    settings_debugfile = config['log_settings_logfile_debug']
-
-    if ((settings_logfile is not None) and (isinstance(settings_logfile, LogfileSettings))):
-        LogMaster.add_filepath_to_logfile(
-            filepath=settings_logfile.log_fullpath,
-            die_if_file_fails=settings_logfile.continue_on_log_fail
-        )
-        LogMaster.set_loglevel_logfile(settings_logfile.logfile_level * 10)
-
-        LogMaster.log_to_logfile(50, log_file_headers(config, 'Output Log File'))
-        LogMaster.info('New LogFile added, path: %s', settings_logfile.log_fullpath)
-
-    if ((settings_debugfile is not None) and (isinstance(settings_debugfile, LogfileSettings))):
-        LogMaster.add_filepath_to_debugfile(
-            filepath=settings_debugfile.log_fullpath,
-            formatter=LogController.get_formatter_msgwithtime(),
-            die_if_file_fails=settings_debugfile.continue_on_log_fail
-        )
-        LogMaster.set_loglevel_debugfile(settings_debugfile.logfile_level * 10)
-
-        LogMaster.log_to_debugfile(50, log_file_headers(config, 'Debug Log'))
-        LogMaster.info('New DebugFile added, path: %s', settings_logfile.log_fullpath)
 
 # log_levels = OrderedDict([
 #     (50, 'CRITICAL'),

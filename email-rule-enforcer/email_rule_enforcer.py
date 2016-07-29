@@ -11,7 +11,7 @@ def main():
     (config, rules) = get_config()
 
     # Set up Logging
-    add_log_files_from_config(config)
+    add_log_files_from_config(config, rules)
 
 #    die_with_errormsg('Config Testing only, dont connect. Now exiting', 0)
 

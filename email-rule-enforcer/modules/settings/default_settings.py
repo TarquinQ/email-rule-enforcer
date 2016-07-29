@@ -7,6 +7,8 @@ def set_defaults(config):
     config['send_notification_email_on_completion'] = False
     config['notification_email_on_completion'] = None
     config['console_loglevel'] = 2
+    config['console_ultra_debug'] = False
+    config['console_insane_debug'] = False
 
     # IMAP Defaults
     config['imap_server_name'] = None

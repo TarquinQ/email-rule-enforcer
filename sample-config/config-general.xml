@@ -15,7 +15,9 @@
 		<logging>
 			<!-- Log Levels run from 1-5, verbose-quiet: these correspond to DEBUG, INFO, WARNING, ERROR, CRITICAL -->
 			<console_level>2</console_level>  <!-- Console Log; Optional; default: 2 -->
-			<logfile>  <!-- Optional -->
+			<console_ultra_debug>on</console_ultra_debug>  <!-- Pours out a large amount of debug info to the console -->
+			<console_insane_debug>on</console_insane_debug>  <!-- Pours out an enourmous amount of debug info to the console -->
+			<logfile>  <!-- Optional Section -->
 				<log_folder>../logs/</log_folder>  <!-- trailing slash can be omitted -->
 				<log_filename>log-sample</log_filename>  <!-- First bit of log filename -->
 				<append_date_to_filename>yes</append_date_to_filename>  <!-- ISO format, including current time; default: yes -->
@@ -23,7 +25,7 @@
 				<continue_on_log_fail>no</continue_on_log_fail>  <!-- Continue even if log file is not writeable; default: no -->
 				<logfile_level>2</logfile_level>  <!-- 1-5 verbose-quiet; default: 2 -->
 			</logfile>
-			<logfile_debug>
+			<logfile_debug>  <!-- Optional Section -->
 				<log_folder>../logs/</log_folder>  <!-- trailing slash can be omitted -->
 				<log_filename>debug-sample</log_filename>  <!-- First bit of log filename -->
 				<append_date_to_filename>yes</append_date_to_filename>  <!-- ISO format, including current time; default: yes -->

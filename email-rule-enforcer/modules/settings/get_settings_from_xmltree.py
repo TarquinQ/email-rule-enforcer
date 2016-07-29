@@ -1,7 +1,7 @@
 import re
 import xml.etree.ElementTree as ET
 import modules.supportingfunctions
-from modules.supportingfunctions import convert_text_to_boolean, convert_text_to_integer, die_with_errormsg
+from modules.supportingfunctions import text_to_bool, text_to_int, die_with_errormsg
 from modules.settings.models.EmailNotificationSettings import EmailNotificationSettings
 from modules.settings.models.LogfileSettings import LogfileSettings
 from modules.settings.default_settings import set_defaults
@@ -39,7 +39,7 @@ def parse_config_tree(xml_config_tree, config, rules):
                 for subnode in xpath_findall(Node, './body_prefix'):
                     sendme.set_body_prefix(subnode.text)
                 for subnode in xpath_findall(Node, './attach_log'):
-                    attach_yn = convert_text_to_boolean(subnode.text, False)
+                    attach_yn = text_to_bool(subnode.text, False)
                     if attach_yn is not None:
                         sendme.set_attach_log(attach_yn)
                 config['notification_email_on_completion'] = sendme
@@ -50,23 +50,25 @@ def parse_config_tree(xml_config_tree, config, rules):
             if Node:
                 logset = LogfileSettings()
                 for subnode in xpath_findall(Node, './logfile_level'):
-                    logset.set_logfile_level(convert_text_to_integer(subnode.text, 2))
+                    logset.set_logfile_level(text_to_int(subnode.text, 2))
                 for subnode in xpath_findall(Node, './log_folder'):
                     logset.set_log_folder(subnode.text)
                 for subnode in xpath_findall(Node, './log_filename'):
                     logset.set_log_filename(subnode.text)
                 for subnode in xpath_findall(Node, './append_date_to_filename'):
-                    logset.set_append_date(convert_text_to_boolean(subnode.text, True))
+                    logset.set_append_date(text_to_bool(subnode.text, True))
                 for subnode in xpath_findall(Node, './filename_extension'):
                     logset.set_filename_extension(subnode.text)
                 for subnode in xpath_findall(Node, './continue_on_log_fail'):
-                    logset.set_continute_on_log_fail(convert_text_to_boolean(subnode.text, True))
+                    logset.set_continute_on_log_fail(text_to_bool(subnode.text, True))
                 config['log_settings_%s' % logtitle] = logset
 
         set_boolean_if_xmlnode_exists(config, 'empty_trash_on_exit', Node, './/empty_trash_on_exit')
         set_boolean_if_xmlnode_exists(config, 'mark_as_read_on_move', Node, './/mark_as_read_on_move')
         set_value_if_xmlnode_exists(config, 'console_loglevel', Node, './logging/console_level')
-        config['console_loglevel'] = convert_text_to_integer(config['console_loglevel'], 2)
+        config['console_loglevel'] = text_to_int(config['console_loglevel'], 2)
+        set_boolean_if_xmlnode_exists(config, 'console_ultra_debug', Node, './/console_ultra_debug')
+        set_boolean_if_xmlnode_exists(config, 'console_insane_debug', Node, './/console_insane_debug')
 
         parse_email_notification_settings(config, Node.find('./logging/notification_email_on_completion'))
         parse_logfile_settings(config, 'logfile', Node.find('./logging/logfile'))
@@ -92,7 +94,7 @@ def parse_config_tree(xml_config_tree, config, rules):
         parse_email_server_settings(config, 'imap_', Node.find('./connection_imap'))
         parse_email_server_settings(config, 'smtp_', Node.find('./sending_email_smtp'))
 
-        config['imap_imaplib_debuglevel'] = convert_text_to_integer(config['imap_imaplib_debuglevel'])
+        config['imap_imaplib_debuglevel'] = text_to_int(config['imap_imaplib_debuglevel'])
         # End Parsing of ServerInfo Section
 
     def parse_rules(Node, config, rules):
@@ -102,7 +104,7 @@ def parse_config_tree(xml_config_tree, config, rules):
         def parse_generic_rule_match(Node):
             match_field = get_attribvalue_if_exists_in_xmlNode(Node, 'field')
             match_type = get_attribvalue_if_exists_in_xmlNode(Node, 'type')
-            case_sensitive = convert_text_to_boolean(get_attribvalue_if_exists_in_xmlNode(Node, 'case_sensitive'), False)
+            case_sensitive = text_to_bool(get_attribvalue_if_exists_in_xmlNode(Node, 'case_sensitive'), False)
             match_val = Node.text
             match_to_add = MatchField(
                 field_to_match=match_field,
@@ -129,7 +131,7 @@ def parse_config_tree(xml_config_tree, config, rules):
                     action_to_add = RuleAction('move_to_folder')
                     dest_folder = Node.text
                     action_to_add.set_dest_folder(dest_folder)
-                    mark_as_read_on_move = convert_text_to_boolean(
+                    mark_as_read_on_move = text_to_bool(
                         get_attribvalue_if_exists_in_xmlNode(Node, 'mark_as_read'),
                         config['mark_as_read_on_move']
                     )
@@ -138,7 +140,7 @@ def parse_config_tree(xml_config_tree, config, rules):
 
                 for node in xpath_findall(Node, './delete'):
                     action_to_add = RuleAction('delete')
-                    delete_permanently = convert_text_to_boolean(get_attribvalue_if_exists_in_xmlNode(Node, 'permanently'), False)
+                    delete_permanently = text_to_bool(get_attribvalue_if_exists_in_xmlNode(Node, 'permanently'), False)
                     action_to_add.set_delete_permanently(delete_permanently)
                     rule.add_action(action_to_add)
 

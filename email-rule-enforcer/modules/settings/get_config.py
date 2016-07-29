@@ -1,18 +1,6 @@
 import modules.settings.parse_args as parse_args
 from modules.settings.get_xml_configs import ConfigFilesXML
-from modules.logging import LogMaster
 from modules.settings.get_settings_from_xmltree import get_settings_from_configtree
-from modules.supportingfunctions import print_nested_data, nested_data_to_str
-
-
-def print_rules_and_config(config, rules):
-
-#    print_nested_data(config)
-#    print_nested_data(rules)
-    print("Config:")
-    print(*nested_data_to_str(config), sep='\n')
-    print("Rules:")
-    print(*nested_data_to_str(rules), sep='\n')
 
 
 def get_config():
@@ -26,8 +14,5 @@ def get_config():
     xml_config_tree = config_files.full_config_tree
     # Parse XML Tree into actual config
     (config, rules) = get_settings_from_configtree(xml_config_tree)
-
-    # Dump out a list to command
-    print_rules_and_config(config, rules)
 
     return (config, rules)

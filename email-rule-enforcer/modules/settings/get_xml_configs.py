@@ -20,7 +20,7 @@ class ConfigFilesXML():
 
     def _generate_filepath_shortlists(self):
         for index, config_filename in enumerate(self.config_filepath_list):
-            LogMaster.info('Now parsing config_filename: %s', config_filename)
+            #LogMaster.info('Now parsing config_filename: %s', config_filename)
             if '/' in config_filename:
                 shortname = config_filename.split('/')[-1]
             elif "\\" in config_filename:
@@ -38,7 +38,7 @@ class ConfigFilesXML():
                 self.config_file_contents[self._indexed_short_pathlist[index]] = f.read()
 
     def _parse_config_files_xml(self):
-        LogMaster.debug("Now parsing all config file contents")
+        #LogMaster.debug("Now parsing all config file contents")
         for index in range(self._num_config_files):
             filename_to_parse = self.config_filepath_list[index]
             shortfilename_to_parse = self._indexed_short_pathlist[index]
@@ -52,32 +52,6 @@ class ConfigFilesXML():
                 die_with_errormsg("", 3)
             # No error handling, as previous ET.fromstring operation succeeded or died
             self.full_config_tree.extend(ET.fromstring(filecontents_to_parse))
-
-    def debug_print_config_file_details(self):
-        print ("Now dumping all config file details and contents.\n")
-        print ("Number of config files: " + str(self._num_config_files))
-        print ("List of config files: ", self.config_filepath_list)
-        print ('\n')
-
-        for index in range(self._num_config_files):
-            filename_to_parse = self.config_filepath_list[index]
-            shortfilename_to_parse = self._indexed_short_pathlist[index]
-            filecontents_to_parse = self.config_file_contents[self._indexed_short_pathlist[index]]
-            config_xmltree = self.config_xmltrees[shortfilename_to_parse]
-
-            print ("Config file {0}: {1}".format(index, filename_to_parse))
-            print ("Config file shortname: {0}".format(shortfilename_to_parse))
-            print ("Config file contents:")
-            print (filecontents_to_parse)
-            print ("Config file XML tree:")
-            print (config_xmltree)
-            print (ET.dump(config_xmltree))
-            print ('\n')
-
-        print ("Global XML tree:")
-        print (self.full_config_tree)
-        print (ET.dump(self.full_config_tree))
-        print (ET.tostring(self.full_config_tree))
 
     def log_config_file_details(self, log_level=10):
         LogMaster.log(log_level, "Number of config files:  %s", self._num_config_files)

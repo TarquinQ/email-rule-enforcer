@@ -2,7 +2,7 @@ from modules.models.RulesAndMatches import Rule, RuleAction, MatchField
 from modules.email.make_new_emails import new_email
 from modules.email.smtp_send import send_email_from_config
 from modules.logging import LogMaster
-from modules.email.supportingfunctions_email import get_relevant_email_headers_for_logging
+from modules.email.supportingfunctions_email import get_relevant_email_headers_for_logging, convert_bytes_to_utf8
 
 
 def check_match_list(email_to_validate, matches):
@@ -39,9 +39,12 @@ def iterate_rules_over_mailfolder(imap_connection, config, rules):
         return None
 
     for email_to_validate in imap_connection.get_emails_in_currfolder():
-        LogMaster.log(20, 'New Email found. Email Details:')
-        LogMaster.log(20, get_relevant_email_headers_for_logging(email_to_validate))
+        LogMaster.log(20, 'New Email found. Email Details:\n%s',
+            get_relevant_email_headers_for_logging(email_to_validate))
         LogMaster.log(20, 'Now assessing an email against all rules.')
+        LogMaster.insane_debug('Full email object instance variables and RFC contents:')
+        LogMaster.insane_debug('Instance variables: %s', email_to_validate.__dict__)
+        LogMaster.insane_debug('Full Email Contents: %s\n\n', email_to_validate.as_string())
 
         for rule in rules:
             email_matched = False

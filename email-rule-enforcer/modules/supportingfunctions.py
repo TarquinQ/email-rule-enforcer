@@ -22,9 +22,9 @@ def die_with_errormsg(msg='', errnum=1):
     sys.exit(errnum)
 
 
-def convert_text_to_boolean(text, default=None):
-    y = frozenset(['yes', 'y', 'true', 'affirmative', 'defintely', 'totally'])
-    n = frozenset(['no', 'n', 'false', 'None', 'negatory', 'nuh-uh no way'])
+def text_to_bool(text, default=None):
+    y = frozenset(['yes', 'y', 'true', 'on', 'affirmative', 'defintely', 'totally'])
+    n = frozenset(['no', 'n', 'false', 'off', 'None', 'negatory', 'nuh-uh no way'])
     if str(text).lower() in y:
         return True
     if str(text).lower() in n:
@@ -32,11 +32,11 @@ def convert_text_to_boolean(text, default=None):
     return default
 
 
-def force_text_to_boolean(text):
-    return convert_text_to_boolean(text, default=False)
+def text_to_bool_force(text):
+    return text_to_bool(text, default=False)
 
 
-def convert_text_to_integer(text, default=None):
+def text_to_int(text, default=None):
     ret_val = default
     try:
         ret_val = int(text)
