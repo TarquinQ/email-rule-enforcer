@@ -10,6 +10,9 @@
 			<initial_folder>INBOX</initial_folder> <!-- Optional: default: INBOX -->
 			<deletions_folder>Trash</deletions_folder> <!-- Optional: default: Trash -->
 			<!-- <imaplib_debuglevel>4</imaplib_debuglevel> -->  <!-- Optional; turns on Python's IMAP logging; 0-5, default 0 -->
+			<!-- Note on IMAP username for Exchange/Office 365: Shared Mailboxes can be logged into using a username of the form: -->
+			<!--  'username@domain.name\Shared-Mailbox-Alias' -->
+			<!--  for a given username that has Full Control of the Shared Mailbox -->
 		</connection_imap>
 		<sending_email_smtp>  <!-- Optional. However, config will fail validation if email notification is set or any rules require Forwarding -->
 			<server_name>full.domain.name</server_name>  <!-- Or IP.  Special Value: "same_as_imap" -->
