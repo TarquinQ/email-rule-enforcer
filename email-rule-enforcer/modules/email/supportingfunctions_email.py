@@ -34,12 +34,12 @@ def get_relevant_email_headers_for_logging(email_message):
 
     ret_val = []
     add_attrib_if_not_none(email_message, 'IMAP UID', 'uid_str', ret_val)
-    add_attrib_if_not_none(email_message, 'IMAP Flags', 'imap_flags', ret_val)
     add_field_if_not_none(email_message, 'From', ret_val)
     add_field_if_not_none(email_message, 'To', ret_val)
     add_field_if_not_none(email_message, 'Cc', ret_val)
     add_field_if_not_none(email_message, 'Subject', ret_val)
     add_field_if_not_none(email_message, 'Date', ret_val)
+    add_attrib_if_not_none(email_message, 'IMAP Flags', 'imap_flags', ret_val)
     return '\n'.join(ret_val)
 
 
