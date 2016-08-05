@@ -16,7 +16,6 @@ class Rule():
     def __init__(self, rule_name=None):
         self.set_name(rule_name)
         self.incr_rule_count()
-        self.rule_num = self.get_rule_count()
         self.id = self.get_rule_count()
         self.actions = []
         self.matches = []
@@ -104,6 +103,16 @@ class Rule():
 
 class RuleAction():
     valid_actions = frozenset(['move_to_folder', 'forward', 'delete', 'mark_as_read', 'mark_as_unread'])
+    action_count = 0
+
+    @classmethod
+    def get_action_count(cls):
+        return cls.action_count
+
+    @classmethod
+    def incr_action_count(cls):
+        cls.action_count += 1
+        return cls.action_count
 
     def __init__(self, action_type, parent_rule_id=None):
         self.action_type = action_type
@@ -112,6 +121,7 @@ class RuleAction():
         self.mark_as_read_on_action = False
         self.mark_as_unread_on_action = False
         self.email_recipients = []
+        self.id = self.incr_action_count()
 
     def set_dest_folder(self, dest_folder):
         self.dest_folder = dest_folder
@@ -160,6 +170,7 @@ class RuleAction():
 
     def __repr__(self):
         retval = OrderedDict()
+        retval['id'] = self.id
         retval['parent_rule_id'] = self.parent_rule_id
         retval['delete_permanently'] = self.delete_permanently
         retval['mark_as_read'] = self.mark_as_read_on_action
@@ -171,7 +182,17 @@ class RuleAction():
 
 class MatchField():
     match_types = frozenset(['starts_with', 'contains', 'ends_with', 'is'])
-    match_fields = frozenset(['to', 'from', 'subject', 'cc', 'bcc', 'body'])
+    #match_fields = frozenset(['to', 'from', 'subject', 'cc', 'bcc', 'body'])
+    match_count = 0
+
+    @classmethod
+    def get_match_count(cls):
+        return cls.match_count
+
+    @classmethod
+    def incr_match_count(cls):
+        cls.match_count += 1
+        return cls.match_count
 
     def __init__(self, field_to_match=None, match_type=None, str_to_match=None, case_sensitive=False, parent_rule_id=None):
         self.set_field_to_match(field_to_match)
@@ -179,6 +200,7 @@ class MatchField():
         self.set_str_to_match(str_to_match)
         self.set_case_sensitive(case_sensitive)
         self.parent_rule_id = parent_rule_id
+        self.id = self.incr_match_count()
         self.generate_re()
 
     def set_field_to_match(self, field_to_match):
@@ -273,6 +295,7 @@ class MatchField():
 
     def __repr__(self):
         retval = OrderedDict()
+        retval['id'] = self.id
         retval['field_to_match'] = self.field_to_match
         retval['match_type'] = self.match_type
         retval['str_to_match'] = self.str_to_match
