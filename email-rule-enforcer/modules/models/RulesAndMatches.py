@@ -1,5 +1,6 @@
 import re
 from collections import OrderedDict
+from modules.logging import LogMaster
 
 
 class Rule():
@@ -251,13 +252,19 @@ class MatchField():
         return matched_yn
 
     def test_match_email(self, email_to_validate):
+        LogMaster.insane_debug('Now matching a value to an email field. Email UID: %s, field name \"%s\".', email_to_validate.uid_str, self.field_to_match)
         matched_yn = False
         try:
+            LogMaster.insane_debug('Email Matching value is: \"%s\", To be matched against regexp: \"%s\"', email_to_validate[self.field_to_match], self.re.pattern)
             str_to_test = email_to_validate[self.field_to_match]
             if (self.test_match_value(str_to_test)):
                 matched_yn = True
+                LogMaster.insane_debug('Field Matched: \"%s\"', email_to_validate[self.field_to_match])
+            else:
+                LogMaster.insane_debug('Field Not Matched: \"%s\"', email_to_validate[self.field_to_match])
         except AttributeError:
-            pass
+            LogMaster.insane_debug('Error: AttributeError incurred when testing Email UID: %s against field name %s.')
+
         return matched_yn
 
     def get_field_to_match(self):

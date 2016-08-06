@@ -14,7 +14,7 @@ def check_match_list(email_to_validate, matches):
         return False
 
     for match_check in matches:
-        if match_check is type(list):  # Then we know this is an 'OR'clause, and match on any of these
+        if isinstance(match_check, list):  # Then we know this is an 'OR'clause, and match on any of these
             LogMaster.ultra_debug('Email matching is now in \'or\' clause.')
             matched_or = False
             for match_or in match_check:
@@ -26,7 +26,7 @@ def check_match_list(email_to_validate, matches):
             else:
                 LogMaster.ultra_debug('Email \'or\' is unmatched; matching over.')
 
-        elif match_check is type(MatchField):
+        elif isinstance(match_check, MatchField):
             LogMaster.ultra_debug('Email matching is now a field match, Match ID %s.', match_check.id)
             if match_check.test_match_email(email_to_validate):
                 LogMaster.ultra_debug('Email matched this field; continuing matching.')
@@ -34,6 +34,8 @@ def check_match_list(email_to_validate, matches):
             else:
                 LogMaster.ultra_debug('Email did not match this field.')
                 break
+        else:
+            LogMaster.ultra_debug('Match ID %s is neither of type FieldMatch or List. Is actually type: %s.', match_check.id, type(match_check))
 
     if num_actual_matches == num_required_matches:
         LogMaster.ultra_debug('Email matched. Num matches required: %s, num matches found: %s', num_required_matches, num_actual_matches)
@@ -51,7 +53,7 @@ def iterate_rules_over_mailfolder(imap_connection, config, rules):
         return None
 
     for email_to_validate in imap_connection.get_emails_in_currfolder():
-        LogMaster.log(20, 'New Email found. Email Details:\n%s',
+        LogMaster.log(20, '\n\nNew Email found. Email Details:\n%s',
             get_relevant_email_headers_for_logging(email_to_validate))
         LogMaster.log(20, 'Now assessing an email against all rules.')
         #LogMaster.insane_debug('Full email object instance variables and RFC contents:')
@@ -62,10 +64,10 @@ def iterate_rules_over_mailfolder(imap_connection, config, rules):
             email_matched = False
             email_actioned = False
 
-            LogMaster.insane_debug('Now checking Rule ID %s against Email UID %s', rule.id, email_to_validate.uid_str)
+            LogMaster.insane_debug('Now checking Email UID %s against Rule ID %s (Rule Name: \"%s\"")', email_to_validate.uid_str, rule.id, rule.name)
 
             if len(rule.get_matches()) == 0:
-                LogMaster.ultra_debug('Zero matches required for this rule - rule invalid, not attempting.')
+                LogMaster.ultra_debug('Zero matches required for Rule %s - rule invalid, not attempting.', rule.id)
                 continue
 
             # First we check each match, to see if they all match

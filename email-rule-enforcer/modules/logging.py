@@ -163,7 +163,7 @@ class LogMaster(metaclass=Singleton):
 
     @classmethod
     def ultra_debug(cls, msg, *args, **kwargs):
-        cls.log(8, '*UltraDebug:: ' + msg, *args, **kwargs)
+        cls.log(8, '*UltraDebug :: ' + msg, *args, **kwargs)
 
     @classmethod
     def insane_debug(cls, msg, *args, **kwargs):
