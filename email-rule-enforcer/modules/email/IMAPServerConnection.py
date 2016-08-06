@@ -4,6 +4,7 @@ import email
 import traceback
 from modules.logging import LogMaster
 from modules.email.supportingfunctions_email import get_relevant_email_headers_for_logging, convert_bytes_to_utf8
+from modules.email.supportingfunctions_email import get_email_body
 
 
 class IMAPServerConnection():
@@ -106,6 +107,7 @@ class IMAPServerConnection():
         ret_email = self.parse_raw_email(self.get_raw_email_byuid(uid))
         ret_email.uid = uid
         ret_email.uid_str = convert_bytes_to_utf8(uid)
+        ret_email["body"] = get_email_body(ret_email)
         return ret_email
 
     def get_parsed_emailandflags_byuid(self, uid):
@@ -142,7 +144,7 @@ class IMAPServerConnection():
         if (mark_as_read_on_move is True) and (intial_read_status is False):
             self.mark_email_as_read_byuid(uid)
             this_func_marked_email_as_read = True
-            LogMaster.log(10, 'Marking email as READ, on Move (UID: %s)', uid)
+            LogMaster.log(10, 'Now Moving email to new folder with "mark_as_read" required, so now marking email as READ. Move Email UID: %s', uid)
 
         # Now we try the IMAP move
         try:
@@ -154,13 +156,13 @@ class IMAPServerConnection():
                 if result == 'OK':
                     self.del_email(uid)
                 LogMaster.log(20, 'Successfully moved email to new folder. UID: %s, Dest Folder: %s', uid, dest_folder)
-        except Error:
+        except imaplib.IMAP4.error as e:
             LogMaster.log(30, 'Failed to move email (UID: %s)', uid)
             if (this_func_marked_email_as_read is True):
                 # We need to unwind the Read status of any email that we may have marked as read
                 self.mark_email_as_unread_byuid(uid)
                 LogMaster.log(30, 'We marked this email as READ earlier, now unmarking (UID: %s)', uid)
-            return False
+            return e
 
         return True
 
