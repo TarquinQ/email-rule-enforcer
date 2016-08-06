@@ -34,6 +34,7 @@ class Rule():
         self.actions.append(action)
 
     def add_match(self, match):
+        match.parent_rule_id = self.id
         self.matches.append(match)
 
     def add_match_exception(self, match):
@@ -44,9 +45,10 @@ class Rule():
 
     # Handle or-matches in the match setion
     def start_match_or(self):
-        self._temp_match_or = []
+        self._temp_match_or = MatchOr()
 
     def add_match_or(self, match):
+        match.parent_rule_id = self.id
         self._temp_match_or.append(match)
 
     def stop_match_or(self):
@@ -55,13 +57,14 @@ class Rule():
 
     # Handle or-matches in the exception setion
     def start_exception_or(self):
-        self._temp_exception_or = []
+        self._temp_exception_or = MatchOr()
 
     def add_exception_or(self, match):
+        match.parent_rule_id = self.id
         self._temp_exception_or.append(match)
 
     def stop_exception_or(self):
-        self.matches.append(self._temp_exception_or)
+        self.match_exceptions.append(self._temp_exception_or)
         del self._temp_exception_or
 
     # Basic property access
@@ -123,6 +126,7 @@ class RuleAction():
         self.mark_as_unread_on_action = False
         self.email_recipients = []
         self.id = self.incr_action_count()
+        self.dest_folder = ''
 
     def set_dest_folder(self, dest_folder):
         self.dest_folder = dest_folder
@@ -138,6 +142,20 @@ class RuleAction():
 
     def add_email_recipient(self, email_addr):
         self.email_recipients.append(email_addr)
+
+    def get_relevant_value(self):
+        ret_val = ""
+        if self.action_type == 'forward':
+            ret_val = "Recipients = %s" % self.email_recipients
+        elif self.action_type == 'move_to_folder':
+            ret_val = "Dest Folder = %s" % self.dest_folder
+        elif self.action_type == 'delete':
+            ret_val = "Delete, delete_permanently = %s" % self.delete_permanently
+        elif self.action_type == 'mark_as_read':
+            ret_val = "Mark as Read"
+        elif self.action_type == 'mark_as_unread':
+            ret_val = "Mark as Unread"
+        return ret_val
 
     def validate(self):
         if self.action_type not in self.valid_actions:
@@ -172,7 +190,9 @@ class RuleAction():
     def __repr__(self):
         retval = OrderedDict()
         retval['id'] = self.id
+        retval['action_type'] = self.action_type
         retval['parent_rule_id'] = self.parent_rule_id
+        retval['dest_folder'] = self.dest_folder
         retval['delete_permanently'] = self.delete_permanently
         retval['mark_as_read'] = self.mark_as_read_on_action
         retval['mark_as_unread'] = self.mark_as_unread_on_action
@@ -238,9 +258,9 @@ class MatchField():
                     match_str = '.*' + match_str
                 #match_str = '^' + match_str + '$'  # Do I need this? I don't think so.
                 self.matching_string = match_str
-                flags = 0
+                flags = re.DOTALL
                 if not self.case_sensitive:
-                    flags = re.IGNORECASE
+                    flags = flags | re.IGNORECASE
                 self.re = re.compile(match_str, flags)
         except AttributeError:
             pass
@@ -311,3 +331,10 @@ class MatchField():
         repr = '%s:(%s)' % (self.__class__.__name__, str(retval))
         return repr
 
+
+class MatchOr(list):
+    def __repr__(self):
+        return "MatchOr" + super(self.__class__, self).__repr__()
+
+    def __str__(self):
+        return "MatchOr" + super(self.__class__, self).__str__()

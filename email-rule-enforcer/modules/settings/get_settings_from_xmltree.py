@@ -101,7 +101,7 @@ def parse_config_tree(xml_config_tree, config, rules):
         if Node is None:
             return
 
-        def parse_generic_rule_match(Node):
+        def parse_generic_field_match(Node):
             match_field = get_attribvalue_if_exists_in_xmlNode(Node, 'field')
             match_type = get_attribvalue_if_exists_in_xmlNode(Node, 'type')
             case_sensitive = text_to_bool(get_attribvalue_if_exists_in_xmlNode(Node, 'case_sensitive'), False)
@@ -146,28 +146,28 @@ def parse_config_tree(xml_config_tree, config, rules):
 
                 for node in xpath_findall(Node, './forward'):
                     action_to_add = RuleAction('forward')
-                    for address_node in xpath_findall(Node, './dest_address'):
+                    for address_node in xpath_findall(Node, './forward/dest_address'):
                         action_to_add.add_email_recipient(Node.text)
                     rule.add_action(action_to_add)
 
             def parse_rule_matches(Node, rule):
                 for node in xpath_findall(Node, './match_field'):
-                    rule.add_match(parse_generic_rule_match(node))
+                    rule.add_match(parse_generic_field_match(node))
 
                 for node in xpath_findall(Node, './match_or'):
                     rule.start_match_or()
-                    for node in xpath_findall(Node, './match_field'):
-                        rule.add_match_or(parse_generic_rule_match(node))
+                    for node in xpath_findall(Node, './match_or/match_field'):
+                        rule.add_match_or(parse_generic_field_match(node))
                     rule.stop_match_or()
 
             def parse_rule_match_exceptions(Node, rule):
                 for node in xpath_findall(Node, './match_field'):
-                    rule.add_match_exception(parse_generic_rule_match(node))
+                    rule.add_match_exception(parse_generic_field_match(node))
 
                 for node in xpath_findall(Node, './match_or'):
                     rule.start_exception_or()
-                    for node in xpath_findall(Node, './match_field'):
-                        rule.add_exception_or(parse_generic_rule_match(node))
+                    for node in xpath_findall(Node, './match_or/match_field'):
+                        rule.add_exception_or(parse_generic_field_match(node))
                     rule.stop_exception_or()
 
             new_name = get_value_if_xmlnode_exists(Node, './rule_name')

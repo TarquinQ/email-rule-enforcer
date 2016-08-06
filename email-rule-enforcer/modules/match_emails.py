@@ -100,7 +100,8 @@ def iterate_rules_over_mailfolder(imap_connection, config, rules):
             LogMaster.info('Now performing all actions for Rule ID %s', rule.id)
             for action_to_perform in rule.actions:
                 action_type = action_to_perform.action_type
-                LogMaster.ultra_debug('Rule Action for Rule ID %s is type %s', rule.id, action_type)
+                LogMaster.ultra_debug('Rule Action for Rule ID %s is type %s. Relevant value is \"%s\"',
+                    rule.id, action_type, action_to_perform.get_relevant_value())
 
                 if action_type == "forward":
                     LogMaster.insane_debug('Now constructing a new email for Rule ID %s, from %s', rule.id, config['smtp_forward_from'])
