@@ -127,27 +127,30 @@ def parse_config_tree(xml_config_tree, config, rules):
                     action_to_add.set_mark_as_unread()
                     rule.add_action(action_to_add)
 
-                for node in xpath_findall(Node, './move_to_folder'):
+                for Subnode in xpath_findall(Node, './move_to_folder'):
                     action_to_add = RuleAction('move_to_folder')
-                    dest_folder = Node.text
+                    dest_folder = '\"' + Subnode.text.strip().strip(' \t\n\r') + '\"'
                     action_to_add.set_dest_folder(dest_folder)
                     mark_as_read_on_move = text_to_bool(
-                        get_attribvalue_if_exists_in_xmlNode(Node, 'mark_as_read'),
+                        get_attribvalue_if_exists_in_xmlNode(Subnode, 'mark_as_read'),
                         config['mark_as_read_on_move']
                     )
                     action_to_add.set_mark_as_read(mark_as_read_on_move)
                     rule.add_action(action_to_add)
 
-                for node in xpath_findall(Node, './delete'):
+                for Subnode in xpath_findall(Node, './delete'):
                     action_to_add = RuleAction('delete')
-                    delete_permanently = text_to_bool(get_attribvalue_if_exists_in_xmlNode(Node, 'permanently'), False)
+                    delete_permanently = text_to_bool(
+                        get_attribvalue_if_exists_in_xmlNode(Subnode, 'permanently'),
+                        False)
                     action_to_add.set_delete_permanently(delete_permanently)
                     rule.add_action(action_to_add)
 
-                for node in xpath_findall(Node, './forward'):
+                for Subnode in xpath_findall(Node, './forward'):
                     action_to_add = RuleAction('forward')
-                    for address_node in xpath_findall(Node, './forward/dest_address'):
-                        action_to_add.add_email_recipient(Node.text)
+                    for address_node in xpath_findall(Subnode, './forward_to'):
+                        action_to_add.add_email_recipient(
+                            address_node.text.strip().strip(' \t\n\r'))
                     rule.add_action(action_to_add)
 
             def parse_rule_matches(Node, rule):

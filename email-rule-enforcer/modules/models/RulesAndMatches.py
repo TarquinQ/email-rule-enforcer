@@ -31,6 +31,7 @@ class Rule():
             self.name = 'Rule' + str(self.get_rule_count())
 
     def add_action(self, action):
+        action.parent_rule_id = self.id
         self.actions.append(action)
 
     def add_match(self, match):
@@ -38,6 +39,7 @@ class Rule():
         self.matches.append(match)
 
     def add_match_exception(self, match):
+        match.parent_rule_id = self.id
         self.match_exceptions.append(match)
 
     def set_continue_rule_checks_if_matched(self, flag):

@@ -13,7 +13,7 @@ def main():
     # Set up Logging
     add_log_files_from_config(config, rules)
 
-#    die_with_errormsg('Config Testing only, dont connect. Now exiting', 0)
+    #die_with_errormsg('Config Testing only, dont connect. Now exiting', 0)
 
     # Connect to IMAP
     imap_connection = IMAPServerConnection()
