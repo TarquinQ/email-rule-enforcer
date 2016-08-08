@@ -51,3 +51,12 @@ def xpath_findall(Node, xpath):
             yield subnode
     except TypeError:
         return []
+
+
+def strip_xml_whitespace(text):
+    try:
+        text = text.strip(' \r\n\t')
+    except AttributeError:
+        pass
+    return text
+

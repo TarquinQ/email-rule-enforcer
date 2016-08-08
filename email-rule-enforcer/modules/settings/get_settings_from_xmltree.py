@@ -1,13 +1,16 @@
 import re
+import datetime
 import xml.etree.ElementTree as ET
 import modules.supportingfunctions
+from collections import OrderedDict
 from modules.supportingfunctions import text_to_bool, text_to_int, die_with_errormsg
 from modules.settings.models.EmailNotificationSettings import EmailNotificationSettings
 from modules.settings.models.LogfileSettings import LogfileSettings
 from modules.settings.default_settings import set_defaults
-from modules.models.RulesAndMatches import Rule, RuleAction, MatchField
+from modules.models.RulesAndMatches import Rule, RuleAction, MatchField, MatchDate
 from modules.settings.supportingfunctions_xml import set_value_if_xmlnode_exists, get_value_if_xmlnode_exists, get_attributes_if_xmlnode_exists
 from modules.settings.supportingfunctions_xml import get_attribvalue_if_exists_in_xmlNode, set_boolean_if_xmlnode_exists, xpath_findall
+from modules.settings.supportingfunctions_xml import strip_xml_whitespace
 
 
 def parse_config_tree(xml_config_tree, config, rules):
@@ -114,6 +117,52 @@ def parse_config_tree(xml_config_tree, config, rules):
             )
             return match_to_add
 
+        def parse_generic_date_match(Node):
+            match_val = None
+            match_field = get_attribvalue_if_exists_in_xmlNode(Node, 'field')
+            match_type = get_attribvalue_if_exists_in_xmlNode(Node, 'type')
+            if Node.find('./fixed_date'):
+                # Then it's an absolute date
+                try:
+                    match_val = datetime.datetime.strptime(
+                        strip_xml_whitespace(Node.text),
+                        '%Y-%m-%d')
+                except Exception:
+                    pass
+            else:
+                # Then it's a relative date, and we need to find the seconds->years of values
+                time_names = OrderedDict(
+                    [("seconds", 0), ("minutes", 0), ("hours", 0),
+                     ("days", 0), ("weeks", 0), ("months", 0),
+                     ("years", 0)
+                    ])
+                # Get all possible values from xml
+                for time_name in time_names:
+                    time_val = get_value_if_xmlnode_exists(Node, './%s' % time_name)
+                    time_val = text_to_int(strip_xml_whitespace(time_val), 0)
+                    time_names[time_name] = time_val
+                # Now we mess with them a bit, b/c pythong's timedelta module needs specific values:
+                time_names["days"] += round(365 / 12 * time_names["months"])
+                time_names["weeks"] += 52 * time_names["years"]
+                del time_names["months"]
+                del time_names["years"]
+                # Now we put it all together
+                match_val = datetime.timedelta(**time_names)
+                if match_val == datetime.timedelta():
+                    # Then this is effectively zero for all values
+                    match_val = datetime.datetime.max
+                    match_type = 'newer_than'
+
+            if match_field is None:
+                match_field = 'date'
+
+            match_to_add = MatchField(
+                field_to_match=match_field,
+                match_type=match_type,
+                value_to_match=match_val,
+            )
+            return match_to_add
+
         def parse_rule_node(Node, config, rules):
             def parse_rule_actions(Node, config, rule):
                 """Parses all actions inside a defined rule """
@@ -129,7 +178,7 @@ def parse_config_tree(xml_config_tree, config, rules):
 
                 for Subnode in xpath_findall(Node, './move_to_folder'):
                     action_to_add = RuleAction('move_to_folder')
-                    dest_folder = '\"' + Subnode.text.strip().strip(' \t\n\r') + '\"'
+                    dest_folder = '\"' + strip_xml_whitespace(Subnode.text) + '\"'
                     action_to_add.set_dest_folder(dest_folder)
                     mark_as_read_on_move = text_to_bool(
                         get_attribvalue_if_exists_in_xmlNode(Subnode, 'mark_as_read'),
@@ -150,27 +199,36 @@ def parse_config_tree(xml_config_tree, config, rules):
                     action_to_add = RuleAction('forward')
                     for address_node in xpath_findall(Subnode, './forward_to'):
                         action_to_add.add_email_recipient(
-                            address_node.text.strip().strip(' \t\n\r'))
+                            strip_xml_whitespace(address_node.text)
+                        )
                     rule.add_action(action_to_add)
 
             def parse_rule_matches(Node, rule):
                 for node in xpath_findall(Node, './match_field'):
                     rule.add_match(parse_generic_field_match(node))
+                for node in xpath_findall(Node, './match_date'):
+                    rule.add_match(parse_generic_date_match(node))
 
                 for node in xpath_findall(Node, './match_or'):
                     rule.start_match_or()
                     for node in xpath_findall(Node, './match_or/match_field'):
                         rule.add_match_or(parse_generic_field_match(node))
+                    for node in xpath_findall(Node, './match_or/match_date'):
+                        rule.add_match_or(parse_generic_date_match(node))
                     rule.stop_match_or()
 
             def parse_rule_match_exceptions(Node, rule):
                 for node in xpath_findall(Node, './match_field'):
                     rule.add_match_exception(parse_generic_field_match(node))
+                for node in xpath_findall(Node, './match_date'):
+                    rule.add_match_exception(parse_generic_date_match(node))
 
                 for node in xpath_findall(Node, './match_or'):
                     rule.start_exception_or()
                     for node in xpath_findall(Node, './match_or/match_field'):
                         rule.add_exception_or(parse_generic_field_match(node))
+                    for node in xpath_findall(Node, './match_or/match_date'):
+                        rule.add_exception_or(parse_generic_date_match(node))
                     rule.stop_exception_or()
 
             new_name = get_value_if_xmlnode_exists(Node, './rule_name')

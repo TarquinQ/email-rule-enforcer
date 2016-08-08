@@ -377,6 +377,7 @@ class MatchDate():
         self.match_type = set_match_type(match_type)
         self.set_value_to_match(value_to_match)
         self.parent_rule_id = parent_rule_id
+        self._ensure_sane_values()
 
     def set_field_to_match(self, field_to_match):
         self.field_to_match = field_to_match
@@ -387,10 +388,33 @@ class MatchDate():
     def set_value_to_match(self, value_to_match):
         self.value_to_match = value_to_match
 
+    def _ensure_sane_values(self):
+        """This makes sure that the config doesn't populate flawed or conflicting values here.
+        This function should detect incorrect values, and reset to safe defaults
+        that won't match if checked"""
+        if self.match_type not in match_types:
+            self._reset_to_safedefaults()
+        elif not (isinstance(self.value_to_match, datetime.datetime) or
+                  isinstance(self.value_to_match, datetime.timedelta)):
+            self._reset_to_safedefaults()
+
+    def _reset_to_safedefaults(self):
+        self.match_type = 'newer_than'
+        self.value_to_match = datetime.datetime.max
+        self.relative_date = False
+
     def test_match_value(self, value):
         matched_yn = False
-        if self.value_to_match > value:  # value of this test > value of email ?
-            # The return values from this if test might look backwards, but
+        if isinstance(self.value_to_match, datetime.timedelta):
+            # Create an absolute date to test against
+            date_to_match = datetime.datetime.today() - self.value_to_match
+        else:
+            # else just use the absolute date
+            date_to_match = self.value_to_match
+
+        if date_to_match > value:
+            # value of this test > value of email ?
+            # The dervied return values from this if test might look backwards, but
             # remember that this test is from the point of the email, not this code.
             # "Is this email older_than a specific value?" Yes => True
             if self.match_type == 'older_than':
