@@ -3,12 +3,13 @@ import datetime
 import email.utils
 
 
-def convert_emaildate_to_datetimestr(email_date_rfc2822):
-    # parsed_date = email.utils.parsedate(email_date_rfc2822)
-    # timestamp = time.mktime(parsed_date)
-    # parsed_datetime = datetime.datetime.fromtimestamp(timestamp)
+def convert_emaildate_to_datetime(email_date_rfc2822):
     parsed_datetime = email.utils.parsedate_to_datetime(email_date_rfc2822)
-    return parsed_datetime.isoformat(' ')
+    return parsed_datetime
+
+
+def convert_emaildate_to_datetimestr(email_date_rfc2822):
+    return convert_emaildate_to_datetime(email_date_rfc2822).isoformat(' ')
 
 
 def convert_bytes_to_utf8(byte_thing):
@@ -18,6 +19,16 @@ def convert_bytes_to_utf8(byte_thing):
         return byte_thing.decode('utf-8')
     else:
         return byte_thing
+
+
+def get_email_datetime(email_message):
+    parsed_datetime = None
+    try:
+        date_rfc2822 = email_message["Date"]
+        parsed_datetime = convert_emaildate_to_datetime(date_rfc2822)
+    except ValueError:
+        pass
+    return parsed_datetime
 
 
 def get_relevant_email_headers_for_logging(email_message):

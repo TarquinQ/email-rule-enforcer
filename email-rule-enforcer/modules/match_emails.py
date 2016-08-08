@@ -1,4 +1,4 @@
-from modules.models.RulesAndMatches import Rule, RuleAction, MatchField
+from modules.models.RulesAndMatches import Rule, RuleAction, MatchField, MatchDate
 from modules.email.make_new_emails import new_email
 from modules.email.smtp_send import send_email_from_config
 from modules.logging import LogMaster
@@ -26,8 +26,8 @@ def check_match_list(email_to_validate, matches):
             else:
                 LogMaster.ultra_debug('Email \'or\' is unmatched; matching over.')
 
-        elif isinstance(match_check, MatchField):
-            LogMaster.ultra_debug('Email matching is now a field match, Match ID %s.', match_check.id)
+        elif (isinstance(match_check, MatchField) or isinstance(match_check, MatchDate)):
+            LogMaster.ultra_debug('Email matching is now a match Match ID %s, of type %s.', match_check.id, type(match_check))
             if match_check.test_match_email(email_to_validate):
                 LogMaster.ultra_debug('Email matched this field; continuing matching.')
                 num_actual_matches += 1
@@ -35,7 +35,7 @@ def check_match_list(email_to_validate, matches):
                 LogMaster.ultra_debug('Email did not match this field.')
                 break
         else:
-            LogMaster.ultra_debug('Match ID %s is neither of type FieldMatch or List. Is actually type: %s.', match_check.id, type(match_check))
+            LogMaster.ultra_debug('Match ID %s is neither of type MatchField, MatchDate or List. Is actually type: %s.', match_check.id, type(match_check))
 
     if num_actual_matches == num_required_matches:
         LogMaster.ultra_debug('Email matched. Num matches required: %s, num matches found: %s', num_required_matches, num_actual_matches)
@@ -50,6 +50,10 @@ def iterate_rules_over_mailfolder(imap_connection, config, rules):
 
     if (imap_connection.is_connected is False):
         LogMaster.log(40, 'Aborting: IMAP server is not connected')
+        return None
+
+    if (imap_connection.get_currfolder() == ''):
+        LogMaster.log(40, 'Aborting: IMAP server is connected, but not attached to a Folder')
         return None
 
     for email_to_validate in imap_connection.get_emails_in_currfolder():
@@ -143,51 +147,4 @@ def iterate_rules_over_mailfolder(imap_connection, config, rules):
 
         LogMaster.log(20, 'Completed assessment of all rules against this email.\n')
 
-
-# class Rule():
-#     rule_count = 0
-#     def get_rule_count(cls):
-#     def __init__(self, rule_name=None):
-#         self.incr_rule_count()
-#         self.rule_num = self.get_rule_count()
-#         self.id = self.get_rule_count()
-#         self.set_name(rule_name)
-#         self.actions = []
-#         self.matches = []
-#         self.match_exceptions = []
-#         self.continue_rule_checks_if_matched = True
-
-#     # Set Basic variables
-#     def add_action(self, action):
-#     def add_match(self, match):
-#     def add_match_exception(self, match):
-#     def set_continue_rule_checks_if_matched(self, flag):
-#     # Handle or-matches in the match setion
-#     def start_match_or(self):
-#     def add_match_or(self, match):
-#     def end_match_or(self):
-#     # Handle or-matches in the exception setion
-#     def start_exception_or(self):
-#     def add_exception_or(self, match):
-#     def end_exception_or(self):
-
-
-
-# class MatchField():
-#     match_types = frozenset(['starts_with', 'contains', 'ends_with', 'is'])
-#     match_fields = frozenset(['to', 'from', 'subject', 'cc', 'bcc', 'body'])
-
-#     def __init__(self, field_to_match=None, match_type=None, str_to_match=None, case_sensitive=False, parent_rule_id=None):
-#     def set_field_to_match(self, field_to_match):
-#     def set_match_type(self, match_type):
-#     def set_str_to_match(self, str_to_match):
-#     def set_match_is_case_sensitive(self, flag):
-# class RuleAction():
-#     valid_actions = frozenset(['move_to_folder', 'forward', 'delete', 'mark_as_read', 'mark_as_unread'])
-#     def __init__(self, action_type):
-#     def set_dest_folder(self, dest_folder):
-#     def set_mark_as_read(self, mark_as_read):
-#     def set_mark_as_unread(self, mark_as_unread):
-#     def set_delete_permanently(self, flag):
-#     def add_email_recipient(self, email_addr):
 

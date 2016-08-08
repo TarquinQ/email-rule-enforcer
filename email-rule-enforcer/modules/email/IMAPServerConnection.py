@@ -4,7 +4,7 @@ import email
 import traceback
 from modules.logging import LogMaster
 from modules.email.supportingfunctions_email import get_relevant_email_headers_for_logging, convert_bytes_to_utf8
-from modules.email.supportingfunctions_email import get_email_body
+from modules.email.supportingfunctions_email import get_email_body, get_email_datetime
 
 
 class IMAPServerConnection():
@@ -12,7 +12,7 @@ class IMAPServerConnection():
         self.imapmove_is_supported = False
         self.initial_folder = 'INBOX'
         self.deletions_folder = 'Trash'
-        self.currfolder_name = self.initial_folder
+        self.currfolder_name = ''
         self.is_connected = False
         LogMaster.ultra_debug('New IMAP Server Connection object created')
 
@@ -108,6 +108,7 @@ class IMAPServerConnection():
         ret_email.uid = uid
         ret_email.uid_str = convert_bytes_to_utf8(uid)
         ret_email["body"] = get_email_body(ret_email)
+        ret_email.date_datetime = get_email_datetime(ret_email)
         return ret_email
 
     def get_parsed_emailandflags_byuid(self, uid):
@@ -123,7 +124,7 @@ class IMAPServerConnection():
     def get_parsed_headers_byuid(self, uid):
         return self.parse_raw_email(self.get_raw_headers_byuid(uid))
 
-    def get_parseheadersandflags_byuid(self, uid):
+    def get_parsed_headersandflags_byuid(self, uid):
         ret_email = self.get_parsed_headers_byuid(uid)
         ret_email.imap_flags = self.get_imap_flags_byuid(uid)
         return ret_email

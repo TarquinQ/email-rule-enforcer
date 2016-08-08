@@ -109,7 +109,7 @@ def parse_config_tree(xml_config_tree, config, rules):
             match_to_add = MatchField(
                 field_to_match=match_field,
                 match_type=match_type,
-                str_to_match=match_val,
+                value_to_match=match_val,
                 case_sensitive=case_sensitive
             )
             return match_to_add

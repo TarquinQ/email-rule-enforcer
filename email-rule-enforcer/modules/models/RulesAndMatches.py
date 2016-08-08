@@ -1,6 +1,8 @@
 import re
 from collections import OrderedDict
 from modules.logging import LogMaster
+import datetime
+from modules.email.supportingfunctions_email import get_email_datetime, convert_emaildate_to_datetime
 
 
 class Rule():
@@ -203,9 +205,15 @@ class RuleAction():
         return repr
 
 
-class MatchField():
-    match_types = frozenset(['starts_with', 'contains', 'ends_with', 'is'])
-    #match_fields = frozenset(['to', 'from', 'subject', 'cc', 'bcc', 'body'])
+class MatchOr(list):
+    def __repr__(self):
+        return "MatchOr" + super(self.__class__, self).__repr__()
+
+    def __str__(self):
+        return "MatchOr" + super(self.__class__, self).__str__()
+
+
+class MatchCounter():
     match_count = 0
 
     @classmethod
@@ -217,10 +225,28 @@ class MatchField():
         cls.match_count += 1
         return cls.match_count
 
-    def __init__(self, field_to_match=None, match_type=None, str_to_match=None, case_sensitive=False, parent_rule_id=None):
+    def __repr__(self):
+        return "MatchCounter: %s" % self.match_count
+
+    def __str__(self):
+        return self.__repr__()
+
+
+class MatchField():
+    match_types = frozenset(['starts_with', 'contains', 'ends_with', 'is'])
+
+    @classmethod
+    def get_match_count(cls):
+        return MatchCounter.get_match_count()
+
+    @classmethod
+    def incr_match_count(cls):
+        return MatchCounter.incr_match_count()
+
+    def __init__(self, field_to_match=None, match_type=None, value_to_match=None, case_sensitive=False, parent_rule_id=None):
         self.set_field_to_match(field_to_match)
         self.set_match_type(match_type)
-        self.set_str_to_match(str_to_match)
+        self.set_value_to_match(value_to_match)
         self.set_case_sensitive(case_sensitive)
         self.parent_rule_id = parent_rule_id
         self.id = self.incr_match_count()
@@ -240,8 +266,8 @@ class MatchField():
             self.match_type = match_type
         self.generate_re()
 
-    def set_str_to_match(self, str_to_match):
-        self.str_to_match = str_to_match
+    def set_value_to_match(self, value_to_match):
+        self.value_to_match = value_to_match
         self.generate_re()
 
     def set_case_sensitive(self, flag):
@@ -250,8 +276,8 @@ class MatchField():
 
     def generate_re(self):
         try:
-            if ((self.match_type in self.match_types) and (self.str_to_match is not None)):
-                match_str = str(self.str_to_match)[:]
+            if ((self.match_type in self.match_types) and (self.value_to_match is not None)):
+                match_str = str(self.value_to_match)[:]
                 if self.match_type == 'starts_with':
                     match_str = match_str + '.*'
                 if self.match_type == 'contains':
@@ -295,8 +321,8 @@ class MatchField():
     def get_match_type(self):
         return self.match_type
 
-    def get_str_to_match(self):
-        return self.str_to_match
+    def get_value_to_match(self):
+        return self.value_to_match
 
     def get_case_sensitive(self):
         return self.case_sensitive
@@ -310,7 +336,7 @@ class MatchField():
             return (False, 'Match type is invalid. Field type "' + self.match_type +
                 '" selected, but only valid fields are: ' + str(match_types))
 
-        if self.str_to_match is None:
+        if self.value_to_match is None:
             return (False, 'Match invalid. Missing field value string. Trying to match field ' +
                 self.field_to_match + '" selected, but no actual value is set for matching')
 
@@ -327,16 +353,121 @@ class MatchField():
         retval['id'] = self.id
         retval['field_to_match'] = self.field_to_match
         retval['match_type'] = self.match_type
-        retval['str_to_match'] = self.str_to_match
+        retval['value_to_match'] = self.value_to_match
         retval['case_sensitive'] = self.case_sensitive
         retval['parent_rule_id'] = self.parent_rule_id
         repr = '%s:(%s)' % (self.__class__.__name__, str(retval))
         return repr
 
 
-class MatchOr(list):
-    def __repr__(self):
-        return "MatchOr" + super(self.__class__, self).__repr__()
+class MatchDate():
+    match_types = frozenset(['older_than', 'newer_than'])
+
+    @classmethod
+    def get_match_count(cls):
+        return MatchCounter.get_match_count()
+
+    @classmethod
+    def incr_match_count(cls):
+        return MatchCounter.incr_match_count()
+
+    def __init__(self, field_to_match='Date', match_type='older_than', value_to_match=datetime.datetime.min, parent_rule_id=None):
+        self.id = self.incr_match_count()
+        self.set_field_to_match(field_to_match)
+        self.match_type = set_match_type(match_type)
+        self.set_value_to_match(value_to_match)
+        self.parent_rule_id = parent_rule_id
+
+    def set_field_to_match(self, field_to_match):
+        self.field_to_match = field_to_match
+
+    def set_match_type(self, match_type):
+        self.match_type = match_type
+
+    def set_value_to_match(self, value_to_match):
+        self.value_to_match = value_to_match
+
+    def test_match_value(self, value):
+        matched_yn = False
+        if self.value_to_match > value:  # value of this test > value of email ?
+            # The return values from this if test might look backwards, but
+            # remember that this test is from the point of the email, not this code.
+            # "Is this email older_than a specific value?" Yes => True
+            if self.match_type == 'older_than':
+                matched_yn = True
+            elif self.match_type == 'newer_than':
+                matched_yn = False
+        else:
+            if self.match_type == 'older_than':
+                matched_yn = False
+            elif self.match_type == 'newer_than':
+                matched_yn = True
+        return matched_yn
+
+    def test_match_email(self, email_to_validate):
+        LogMaster.insane_debug('Now matching a date value to an email field. Email UID: %s, field name \"%s\".', email_to_validate.uid_str, self.field_to_match)
+        matched_yn = False
+        datetime_to_check = None
+        if self.field_to_match.lower() == 'date':
+            try:
+                datetime_to_check = email_to_validate.date_datetime
+            except AttributeError:
+                pass
+
+        if (datetime_to_check is None):
+            try:
+                datetime_to_check = convert_emaildate_to_datetime(email_to_validate[self.field_to_match])
+            except Exception:  # yeah, unpythonic bad practice, but I don't care
+                pass
+
+        if (datetime_to_check is None):
+            datetime_to_check = datetime.datetime.max
+
+        LogMaster.insane_debug('Email Matching value is: \"%s\", To be matched against date: \"%s\"', datetime_to_check.isoformat(' '), self.value.isoformat(' '))
+
+        if (self.test_match_value(datetime_to_check)):
+            matched_yn = True
+            LogMaster.insane_debug('Field Matched: \"%s\"', email_to_validate[self.field_to_match])
+        else:
+            LogMaster.insane_debug('Field Not Matched: \"%s\"', email_to_validate[self.field_to_match])
+
+        return matched_yn
+
+    def get_field_to_match(self):
+        return self.field_to_match
+
+    def get_match_type(self):
+        return self.match_type
+
+    def get_value_to_match(self):
+        return self.value_to_match
+
+    def get_case_sensitive(self):
+        return self.case_sensitive
+
+    def validate(self):
+        if self.field_to_match not in self.match_fields:
+            return (False, 'Field to match is invalid. Field type "' + self.field_to_match +
+                '" selected, but only valid fields are: ' + str(match_fields))
+
+        if self.match_type not in self.match_types:
+            return (False, 'Match type is invalid. Field type "' + self.match_type +
+                '" selected, but only valid fields are: ' + str(match_types))
+
+        if self.value_to_match is None:
+            return (False, 'Match invalid. Missing field value string. Trying to match field ' +
+                self.field_to_match + '" selected, but no actual value is set for matching')
 
     def __str__(self):
-        return "MatchOr" + super(self.__class__, self).__str__()
+        return self.__repr__()
+
+    def __repr__(self):
+        retval = OrderedDict()
+        retval['id'] = self.id
+        retval['field_to_match'] = self.field_to_match
+        retval['match_type'] = self.match_type
+        retval['value_to_match'] = self.value_to_match
+        retval['parent_rule_id'] = self.parent_rule_id
+        repr = '%s:(%s)' % (self.__class__.__name__, str(retval))
+        return repr
+
