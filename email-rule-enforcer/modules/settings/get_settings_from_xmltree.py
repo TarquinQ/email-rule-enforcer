@@ -72,6 +72,7 @@ def parse_config_tree(xml_config_tree, config, rules):
         config['console_loglevel'] = text_to_int(config['console_loglevel'], 2)
         set_boolean_if_xmlnode_exists(config, 'console_ultra_debug', Node, './/console_ultra_debug')
         set_boolean_if_xmlnode_exists(config, 'console_insane_debug', Node, './/console_insane_debug')
+        set_boolean_if_xmlnode_exists(config, 'test_config_parse_only', Node, './/test_config_parse_only')
 
         parse_email_notification_settings(config, Node.find('./logging/notification_email_on_completion'))
         parse_logfile_settings(config, 'logfile', Node.find('./logging/logfile'))

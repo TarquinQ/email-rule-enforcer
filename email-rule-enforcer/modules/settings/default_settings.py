@@ -9,6 +9,7 @@ def set_defaults(config):
     config['console_loglevel'] = 2
     config['console_ultra_debug'] = False
     config['console_insane_debug'] = False
+    config['test_config_parse_only'] = False
 
     # IMAP Defaults
     config['imap_server_name'] = None
