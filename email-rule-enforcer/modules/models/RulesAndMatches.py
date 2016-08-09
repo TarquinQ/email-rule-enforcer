@@ -410,17 +410,14 @@ class MatchDate():
     def test_match_value(self, value):
         matched_yn = False
         if isinstance(self.value_to_match, datetime.timedelta):
-            # Create an absolute date to test against
             LogMaster.insane_debug('Date to be matched against is a timedelta: \"%s\"', self.value_to_match)
             date_to_match = datetime.datetime.now(tzinfo_UTC.utc) - self.value_to_match
             LogMaster.insane_debug('So we need to generate an appropriate fixed-date to test against, which is: %s', date_to_match)
         else:
-            # else just use the absolute date
             LogMaster.insane_debug('Date to be matched against is a fixed date: \"%s\"', self.value_to_match)
             date_to_match = self.value_to_match.replace(tzinfo=tzinfo_UTC.utc)
 
         if date_to_match > value:
-            # value of this test > value of email ?
             # The dervied return values from this if test might look backwards, but
             # remember that this test is from the point of the email, not this code.
             # "Is this email older_than a specific value?" Yes => True

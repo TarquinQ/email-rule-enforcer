@@ -108,15 +108,14 @@ def iterate_rules_over_mailfolder(imap_connection, config, rules):
                     rule.id, action_type, action_to_perform.get_relevant_value())
 
                 if action_type == "forward":
-                    LogMaster.insane_debug('Now constructing a new email for Rule ID %s, from %s', rule.id, config['smtp_forward_from'])
-                    forwarded_email(
-                        email_from=config['smtp_forward_from'],
-                        email_to=action_to_perform.email_recipients,
-                        subject='FWD: ' + email_to_validate['Subject'],
-                        bodytext=email_to_validate.as_string()
-                    )
                     LogMaster.info('Rule Action for Rule ID %s is a forward, so now forwarding to %s', rule.id, action_to_perform.email_recipients)
-                    send_email_from_config(config, forwarded_email)
+                    LogMaster.insane_debug('Now constructing a new email for Rule ID %s, to be sent From: %s', rule.id, config['smtp_forward_from'])
+                    email_to_forward = email_to_validate
+                    email_to_forward.replace_header("from", config['smtp_forward_from'])
+                    email_to_forward.replace_header("to", action_to_perform.email_recipients)
+                    email_to_forward.replace_header("subject", 'FWD: ' + email_to_validate['date'])
+
+                    send_email_from_config(config, email_to_forward)
 
                 if action_type == "mark_as_read":
                     LogMaster.info('Now Markng Email UID %s as Read', rule.id, email_to_validate.uid_str)
