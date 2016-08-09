@@ -3,6 +3,7 @@ from collections import OrderedDict
 from modules.logging import LogMaster
 import datetime
 from modules.email.supportingfunctions_email import get_email_datetime, convert_emaildate_to_datetime
+import modules.models.tzinfo_UTC as tzinfo_UTC
 
 
 class Rule():
@@ -243,13 +244,14 @@ class MatchField():
     def incr_match_count(cls):
         return MatchCounter.incr_match_count()
 
-    def __init__(self, field_to_match=None, match_type=None, value_to_match=None, case_sensitive=False, parent_rule_id=None):
+    def __init__(self, field_to_match=None, match_type=None, value_to_match=None, case_sensitive=False, name=None, parent_rule_id=None):
+        self.id = self.incr_match_count()
+        self.name = name
         self.set_field_to_match(field_to_match)
         self.set_match_type(match_type)
         self.set_value_to_match(value_to_match)
         self.set_case_sensitive(case_sensitive)
         self.parent_rule_id = parent_rule_id
-        self.id = self.incr_match_count()
         self.generate_re()
 
     def set_field_to_match(self, field_to_match):
@@ -351,6 +353,7 @@ class MatchField():
     def __repr__(self):
         retval = OrderedDict()
         retval['id'] = self.id
+        retval['name'] = self.name
         retval['field_to_match'] = self.field_to_match
         retval['match_type'] = self.match_type
         retval['value_to_match'] = self.value_to_match
@@ -371,10 +374,11 @@ class MatchDate():
     def incr_match_count(cls):
         return MatchCounter.incr_match_count()
 
-    def __init__(self, field_to_match='Date', match_type='older_than', value_to_match=datetime.datetime.min, parent_rule_id=None):
+    def __init__(self, field_to_match='Date', match_type='older_than', value_to_match=datetime.datetime.min, name=None, parent_rule_id=None):
         self.id = self.incr_match_count()
+        self.name = name
         self.set_field_to_match(field_to_match)
-        self.match_type = set_match_type(match_type)
+        self.set_match_type(match_type)
         self.set_value_to_match(value_to_match)
         self.parent_rule_id = parent_rule_id
         self._ensure_sane_values()
@@ -392,7 +396,7 @@ class MatchDate():
         """This makes sure that the config doesn't populate flawed or conflicting values here.
         This function should detect incorrect values, and reset to safe defaults
         that won't match if checked"""
-        if self.match_type not in match_types:
+        if self.match_type not in self.match_types:
             self._reset_to_safedefaults()
         elif not (isinstance(self.value_to_match, datetime.datetime) or
                   isinstance(self.value_to_match, datetime.timedelta)):
@@ -407,10 +411,13 @@ class MatchDate():
         matched_yn = False
         if isinstance(self.value_to_match, datetime.timedelta):
             # Create an absolute date to test against
-            date_to_match = datetime.datetime.today() - self.value_to_match
+            LogMaster.insane_debug('Date to be matched against is a timedelta: \"%s\"', self.value_to_match)
+            date_to_match = datetime.datetime.now(tzinfo_UTC.utc) - self.value_to_match
+            LogMaster.insane_debug('So we need to generate an appropriate fixed-date to test against, which is: %s', date_to_match)
         else:
             # else just use the absolute date
-            date_to_match = self.value_to_match
+            LogMaster.insane_debug('Date to be matched against is a fixed date: \"%s\"', self.value_to_match)
+            date_to_match = self.value_to_match.replace(tzinfo=tzinfo_UTC.utc)
 
         if date_to_match > value:
             # value of this test > value of email ?
@@ -447,7 +454,8 @@ class MatchDate():
         if (datetime_to_check is None):
             datetime_to_check = datetime.datetime.max
 
-        LogMaster.insane_debug('Email Matching value is: \"%s\", To be matched against date: \"%s\"', datetime_to_check.isoformat(' '), self.value.isoformat(' '))
+        LogMaster.insane_debug('Email Field value to be matched is: \"%s\", To be matched against date: \"%s\"',
+            datetime_to_check, self.value_to_match)
 
         if (self.test_match_value(datetime_to_check)):
             matched_yn = True
@@ -488,6 +496,7 @@ class MatchDate():
     def __repr__(self):
         retval = OrderedDict()
         retval['id'] = self.id
+        retval['name'] = self.name
         retval['field_to_match'] = self.field_to_match
         retval['match_type'] = self.match_type
         retval['value_to_match'] = self.value_to_match

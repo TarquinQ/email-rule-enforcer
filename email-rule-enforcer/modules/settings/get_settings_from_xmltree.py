@@ -31,6 +31,9 @@ def parse_config_tree(xml_config_tree, config, rules):
         if Node is None:
             return
 
+        set_value_if_xmlnode_exists(config, 'console_loglevel', Node, './logging/console_level')
+        config['console_loglevel'] = text_to_int(config['console_loglevel'], 2)
+
         def parse_email_notification_settings(config, Node):
             """Parses the email notification xml section"""
             if Node:
@@ -68,8 +71,6 @@ def parse_config_tree(xml_config_tree, config, rules):
 
         set_boolean_if_xmlnode_exists(config, 'empty_trash_on_exit', Node, './/empty_trash_on_exit')
         set_boolean_if_xmlnode_exists(config, 'mark_as_read_on_move', Node, './/mark_as_read_on_move')
-        set_value_if_xmlnode_exists(config, 'console_loglevel', Node, './logging/console_level')
-        config['console_loglevel'] = text_to_int(config['console_loglevel'], 2)
         set_boolean_if_xmlnode_exists(config, 'console_ultra_debug', Node, './/console_ultra_debug')
         set_boolean_if_xmlnode_exists(config, 'console_insane_debug', Node, './/console_insane_debug')
         set_boolean_if_xmlnode_exists(config, 'test_config_parse_only', Node, './/test_config_parse_only')
@@ -108,13 +109,15 @@ def parse_config_tree(xml_config_tree, config, rules):
         def parse_generic_field_match(Node):
             match_field = get_attribvalue_if_exists_in_xmlNode(Node, 'field')
             match_type = get_attribvalue_if_exists_in_xmlNode(Node, 'type')
+            match_name = get_attribvalue_if_exists_in_xmlNode(Node, 'name')
             case_sensitive = text_to_bool(get_attribvalue_if_exists_in_xmlNode(Node, 'case_sensitive'), False)
             match_val = Node.text
             match_to_add = MatchField(
                 field_to_match=match_field,
                 match_type=match_type,
                 value_to_match=match_val,
-                case_sensitive=case_sensitive
+                case_sensitive=case_sensitive,
+                name=match_name
             )
             return match_to_add
 
@@ -122,16 +125,18 @@ def parse_config_tree(xml_config_tree, config, rules):
             match_val = None
             match_field = get_attribvalue_if_exists_in_xmlNode(Node, 'field')
             match_type = get_attribvalue_if_exists_in_xmlNode(Node, 'type')
-            if Node.find('./fixed_date'):
+            match_name = get_attribvalue_if_exists_in_xmlNode(Node, 'name')
+            fixed_date = get_value_if_xmlnode_exists(Node, './fixed_date')
+            if fixed_date is not None:
                 # Then it's an absolute date
                 try:
                     match_val = datetime.datetime.strptime(
-                        strip_xml_whitespace(Node.text),
+                        strip_xml_whitespace(fixed_date),
                         '%Y-%m-%d')
                 except Exception:
                     pass
             else:
-                # Then it's a relative date, and we need to find the seconds->years of values
+                # else it's a relative date, and we need to find the seconds->years of values
                 time_names = OrderedDict(
                     [("seconds", 0), ("minutes", 0), ("hours", 0),
                      ("days", 0), ("weeks", 0), ("months", 0),
@@ -142,7 +147,7 @@ def parse_config_tree(xml_config_tree, config, rules):
                     time_val = get_value_if_xmlnode_exists(Node, './%s' % time_name)
                     time_val = text_to_int(strip_xml_whitespace(time_val), 0)
                     time_names[time_name] = time_val
-                # Now we mess with them a bit, b/c pythong's timedelta module needs specific values:
+                # Now we mess with them a bit, to match python's timedelta function call argumants:
                 time_names["days"] += round(365 / 12 * time_names["months"])
                 time_names["weeks"] += 52 * time_names["years"]
                 del time_names["months"]
@@ -157,10 +162,11 @@ def parse_config_tree(xml_config_tree, config, rules):
             if match_field is None:
                 match_field = 'date'
 
-            match_to_add = MatchField(
+            match_to_add = MatchDate(
                 field_to_match=match_field,
                 match_type=match_type,
                 value_to_match=match_val,
+                name=match_name
             )
             return match_to_add
 
