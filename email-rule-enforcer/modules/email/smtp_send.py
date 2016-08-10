@@ -1,4 +1,4 @@
-import smtplib
+from .SMTPServerConnection import SMTPServerConnection
 
 
 def send_email_from_config(config, email_msg):
@@ -13,64 +13,17 @@ def send_email_from_config(config, email_msg):
 
 def send_email(smtp_server_name, smtp_port, smtp_username, smtp_password, email_msg, smtp_use_tls=False, smtp_auth_required=False):
     success = False
-    server_connected = False
-    try:
-        if not (smtp_use_tls):
-            server = smtplib.SMTP(smtp_server_name, smtp_port)
-            server.ehlo()
-            server_connected = True
-        else:
-            if smtp_port == 587:
-                try_starttls_first = True
-            else:
-                try_starttls_first = False
-
-            if try_starttls_first:
-                try:
-                    server = smtplib.SMTP_SSL(host=smtp_server_name, port=smtp_port)
-                    server.ehlo()
-                    server_connected = True
-                except Exception:
-                    pass
-
-                if not server_connected:
-                    try:
-                        server = smtplib.SMTP(smtp_server_name, smtp_port)
-                        server.ehlo()
-                        server.starttls()  # enable TLS
-                        server.ehlo()
-                        server_connected = True
-                    except Exception:
-                        pass
-            else:
-                try:
-                    server = smtplib.SMTP(smtp_server_name, smtp_port)
-                    server.ehlo()
-                    server.starttls()  # enable TLS
-                    server.ehlo()
-                    server_connected = True
-                except Exception:
-                    pass
-
-                if not server_connected:
-                    try:
-                        server = smtplib.SMTP_SSL(host=smtp_server_name, port=smtp_port)
-                        server.ehlo()
-                        server_connected = True
-                    except Exception:
-                        pass
-
-        if (smtp_auth_required):
-            server.login(smtp_username, smtp_password)
-
-        server.send_message(email_msg)
-        server.close()
-
-    except Exception:
-        # Bad, unPythonic... and also not important here
-        pass
+    server_conn = SMTPServerConnection(server_name=smtp_server_name,
+        port=smtp_port, username=smtp_username, password=smtp_password,
+        use_tls=smtp_use_tls, auth_required=smtp_auth_required)
+    server_conn.connect()
+    if server_conn.is_connected:
+        try:
+            server.send_message(email_msg)
+            success = True
+        except:
+            pass
+    server_conn.disconnect()
     return success
-
-
 
 

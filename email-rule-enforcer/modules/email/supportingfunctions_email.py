@@ -68,6 +68,12 @@ def get_email_body(email_message):
                 break
     # not multipart - i.e. plain text, no attachments, keeping fingers crossed
     else:
-        body = email_message.get_payload(decode=True).decode('utf-8')
+        try:
+            body = email_message.get_payload(decode=True).decode('utf-8')
+        except Exception:
+            try:
+                body = email_message.get_payload(decode=True)
+            except Exception:
+                body = email_message.get_payload()
 
     return body
