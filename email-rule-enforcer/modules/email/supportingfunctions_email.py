@@ -14,9 +14,9 @@ def convert_emaildate_to_datetimestr(email_date_rfc2822):
 
 def convert_bytes_to_utf8(byte_thing):
     if isinstance(byte_thing, list):
-        return [a.decode('utf-8') for a in byte_thing]
+        return [convert_bytes_to_utf8(a) for a in byte_thing]
     elif isinstance(byte_thing, bytes):
-        return byte_thing.decode('utf-8')
+        return byte_thing.decode('utf-8', 'replace')
     else:
         return byte_thing
 
@@ -69,11 +69,12 @@ def get_email_body(email_message):
     # not multipart - i.e. plain text, no attachments, keeping fingers crossed
     else:
         try:
-            body = email_message.get_payload(decode=True).decode('utf-8')
+            body = email_message.get_payload(decode=True)
         except Exception:
             try:
                 body = email_message.get_payload(decode=True)
             except Exception:
                 body = email_message.get_payload()
 
+    body = convert_bytes_to_utf8(body)
     return body

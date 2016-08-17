@@ -104,12 +104,14 @@ class IMAPServerConnection():
         return raw_email
 
     def get_parsed_email_byuid(self, uid):
-        ret_email = self.parse_raw_email(self.get_raw_email_byuid(uid))
-        ret_email.uid = uid
-        ret_email.uid_str = convert_bytes_to_utf8(uid)
-        ret_email["body"] = get_email_body(ret_email)
-        ret_email.date_datetime = get_email_datetime(ret_email)
-        return ret_email
+        raw_email = self.get_raw_email_byuid(uid)
+        parsed_email = self.parse_raw_email(raw_email)
+        parsed_email.original_raw_email = raw_email
+        parsed_email.uid = uid
+        parsed_email.uid_str = convert_bytes_to_utf8(uid)
+        parsed_email.date_datetime = get_email_datetime(parsed_email)
+        parsed_email["body"] = get_email_body(parsed_email)
+        return parsed_email
 
     def get_parsed_emailandflags_byuid(self, uid):
         ret_email = self.get_parsed_email_byuid(uid)
@@ -129,10 +131,11 @@ class IMAPServerConnection():
         ret_email.imap_flags = self.get_imap_flags_byuid(uid)
         return ret_email
 
-    def parse_raw_email(self, raw_email_string):
+    @staticmethod
+    def parse_raw_email(raw_email_string):
         try:
             ret_msg = email.message_from_bytes(raw_email_string)
-        except email.MessageError as e:
+        except email.errors.MessageError as e:
             # This isn't /handling/ the error per se: it's just changing
             # it into an imaplib error to match the rest of this class
             raise imaplib.error('Error parsing raw email. Email Error was: %s' % e)

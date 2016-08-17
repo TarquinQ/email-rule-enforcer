@@ -1,5 +1,6 @@
 from email.mime.multipart import MIMEMultipart
 from email.mime.nonmultipart import MIMENonMultipart
+from email.mime.message import MIMEMessage
 from email.mime.text import MIMEText
 from email.headerregistry import Address
 from modules.logging import LogMaster
@@ -8,28 +9,21 @@ from modules.logging import LogMaster
 # sending: smtplib.SMTP().send_message(msg, email_fromaddr=None, email_toaddrs=None, mail_options=[], rcpt_options=[])
 
 
-def new_email_multipart(email_from, email_to, subject, bodytext, files_email_toattach):
+def new_email_forward(email_from, email_to, subject, bodytext, email_to_attach, cc=None, bcc=None):
     # Create the container (outer) email message.
     msg = MIMEMultipart()
     msg['Subject'] = subject
     msg['From'] = email_from
-    if type(email_to, list):
-        COMMASPACE = ', '
-        _to = COMMASPACE.join(email_to)
+    if isinstance(email_to, list):
+        _to = ', '.join(email_to)
     else:
         _to = email_to
     msg['To'] = _to
 
     body = MIMEText(bodytext)
+    attachment = MIMEMessage(email_to_attach)
     msg.attach(body)
-
-    # Assume we know that the image files are all in Text format
-    for file in files_email_toattach:
-        # Open the files in binary mode.  Let the MIMEText class automatically
-        # guess the specific type.
-        with open(file, 'rb') as fp:
-            part = MIMEText(fp.read())
-        msg.attach(part)
+    msg.attach(attachment)
 
     return msg
 
@@ -40,9 +34,8 @@ def new_email_nonmultipart(email_from, email_to, subject, bodytext, cc=None, bcc
     msg = MIMEText(bodytext)
     msg['Subject'] = subject
     msg['From'] = email_from
-    if type(email_to, list):
-        COMMASPACE = ', '
-        _to = COMMASPACE.join(email_to)
+    if isinstance(email_to, list):
+        _to = ', '.join(email_to)
     else:
         _to = email_to
     msg['To'] = _to

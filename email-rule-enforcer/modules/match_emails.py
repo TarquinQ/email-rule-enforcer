@@ -1,8 +1,9 @@
+from modules.logging import LogMaster
 from modules.models.RulesAndMatches import Rule, RuleAction, MatchField, MatchDate
 from modules.email.make_new_emails import new_email
 from modules.email.smtp_send import send_email_from_config
-from modules.logging import LogMaster
 from modules.email.supportingfunctions_email import get_relevant_email_headers_for_logging, convert_bytes_to_utf8
+from modules.email.make_new_emails import new_email_forward
 
 
 def check_match_list(email_to_validate, matches):
@@ -98,7 +99,7 @@ def iterate_rules_over_mailfolder(imap_connection, config, rules):
             # valid_actions = frozenset(['move_to_folder', 'forward', 'delete', 'mark_as_read', 'mark_as_unread'])
             LogMaster.info('Match found, Rule ID %s matched against Email UID %s', rule.id, email_to_validate.uid_str)
             if len(rule.get_actions()) == 0:
-                LogMaster.info('Zero matches required for this rule - rule invalid, not attempting actions.')
+                LogMaster.info('Zero matches actions for this rule - rule invalid, not attempting actions.')
                 continue
 
             LogMaster.info('Now performing all actions for Rule ID %s', rule.id)
@@ -110,10 +111,16 @@ def iterate_rules_over_mailfolder(imap_connection, config, rules):
                 if action_type == "forward":
                     LogMaster.info('Rule Action for Rule ID %s is a forward, so now forwarding to %s', rule.id, action_to_perform.email_recipients)
                     LogMaster.insane_debug('Now constructing a new email for Rule ID %s, to be sent From: %s', rule.id, config['smtp_forward_from'])
-                    email_to_forward = email_to_validate
-                    email_to_forward.replace_header("from", config['smtp_forward_from'])
-                    email_to_forward.replace_header("to", action_to_perform.email_recipients)
-                    email_to_forward.replace_header("subject", 'FWD: ' + email_to_validate['date'])
+
+                    email_to_attach = imap_connection.parse_raw_email(email_to_validate.original_raw_email)
+                    email_to_forward = new_email_forward(
+                        email_from=config['smtp_forward_from'],
+                        email_to=action_to_perform.email_recipients,
+                        subject='FWD: ' + email_to_validate['subject'],
+                        bodytext="Forwarded Email Attached",
+                        email_to_attach=email_to_attach)
+
+                    LogMaster.insane_debug('Constructed email for Rule ID %s:\n%s', rule.id, email_to_forward)
 
                     send_email_from_config(config, email_to_forward)
 
