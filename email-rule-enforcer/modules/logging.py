@@ -230,10 +230,12 @@ def add_log_files_from_config(config, rules):
         LogMaster.info('** Ultra Debug set. This will print a lot of extra debug info to the console.')
         ultradebug_rules_and_config(config, rules)
         config['imap_imaplib_debuglevel'] = 3
+        config['smtp_smtplib_debuglevel'] = True
     if config['console_insane_debug']:
         LogMaster.set_loglevel_console(4)
         LogMaster.info('** Insane Debug set. This will print an insane amount of extra debug info to the console.')
         config['imap_imaplib_debuglevel'] = 4
+        config['smtp_smtplib_debuglevel'] = True
 
     settings_logfile = config['log_settings_logfile']
     settings_debugfile = config['log_settings_logfile_debug']

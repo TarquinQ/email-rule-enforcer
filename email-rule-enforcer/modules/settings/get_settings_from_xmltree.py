@@ -95,6 +95,7 @@ def parse_config_tree(xml_config_tree, config, rules):
             set_value_if_xmlnode_exists(config, conf_prefix + 'initial_folder', Node, './initial_folder')  # IMAP only
             set_value_if_xmlnode_exists(config, conf_prefix + 'deletions_folder', Node, './deletions_folder')  # IMAP only
             set_value_if_xmlnode_exists(config, conf_prefix + 'imaplib_debuglevel', Node, './imaplib_debuglevel')  # IMAP only
+            set_boolean_if_xmlnode_exists(config, conf_prefix + 'smtplib_debug', Node, './smtplib_debug')  # SMTP only
 
         parse_email_server_settings(config, 'imap_', Node.find('./connection_imap'))
         parse_email_server_settings(config, 'smtp_', Node.find('./sending_email_smtp'))
