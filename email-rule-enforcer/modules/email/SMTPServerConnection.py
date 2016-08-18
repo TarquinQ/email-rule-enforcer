@@ -3,16 +3,18 @@ import smtplib
 
 
 class SMTPServerConnection():
-    def __init__(self, server_name, port=25, username="", password="", use_tls=False, auth_required=False):
+    def __init__(self, server_name, port=25, username="", password="", use_tls=False, auth_required=False, smtplib_debug=False):
         self.server_name = server_name
         self.port = port
         self.username = username
         self.password = password
         self.use_tls = use_tls
         self.auth_required = auth_required
+        self.smtplib_debug = smtplib_debug
         self.auth_is_safe = True
         self.server_connection = None
         self.is_connected = False
+        self.is_connected_ssl = False
         self.login_errror = False
         self.set_try_tls_first()
 
@@ -28,6 +30,8 @@ class SMTPServerConnection():
 
     def disconnect(self):
         try:
+            self.is_connected = False
+            self.is_connected_ssl = False
             self.server_connection.close()
         except Exception:
             pass
@@ -64,7 +68,8 @@ class SMTPServerConnection():
             self.server_connection = smtplib.SMTP_SSL(self.server_name, self.port)
             self.set_debuglevel()
             self.server_connection.ehlo()
-            self.server_connected = True
+            self.is_connected = True
+            self.is_connected_ssl = True
         except Exception:
             pass
 
@@ -80,20 +85,23 @@ class SMTPServerConnection():
             try:
                 self.server_connection.starttls()  # enable TLS
                 self.server_connection.ehlo()
-                self.is_connected = True
+                self.is_connected_ssl = True
             except (SMTPNotSupportedError, SMTPResponseException, SMTPHeloError):
-                self.auth_is_safe = False
                 self.disconnect()
 
     def set_debuglevel(self):
-        self.server_connection.set_debuglevel(1)
+        if (self.smtplib_debug):
+            self.server_connection.set_debuglevel(1)
 
     def login(self):
+        self.login_errror = False
         if self.is_connected and self.auth_required:
+            if (not self.is_connected_ssl and self.use_tls):
+                # Don't login over plaintext!
+                return
             try:
                 self.server_connection.login(self.username, self.password)
                 self.login_errror = False
             except Exception:
-                self.login_errror = True
-
+                pass
 
