@@ -115,6 +115,7 @@ class IMAPServerConnection():
             raw_email = self.get_raw_email_byuid(uid)
         parsed_email = self.parse_raw_email(raw_email)
         parsed_email.original_raw_email = raw_email
+        parsed_email.headers_only = headers_only
         parsed_email.uid = uid
         parsed_email.uid_str = convert_bytes_to_utf8(uid)
         parsed_email.date_datetime = get_email_datetime(parsed_email)

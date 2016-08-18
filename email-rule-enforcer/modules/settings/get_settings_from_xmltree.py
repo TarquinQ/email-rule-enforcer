@@ -298,6 +298,18 @@ def set_dependent_config(config):
         except:
             config['imap_imaplib_debuglevel'] = 0
 
+    config['imap_headers_only'] = True
+    for rule in rules:
+        for match in rule.matches:
+            if match.field_to_match == "body":
+                config['imap_headers_only'] = False
+                break
+        else:
+            for match in rule.match_exceptions:
+                if match.field_to_match == "body":
+                    config['imap_headers_only'] = False
+                    break
+
 
 def get_settings_from_configtree(xml_config_tree):
     config = dict()
