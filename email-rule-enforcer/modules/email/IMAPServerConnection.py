@@ -79,10 +79,10 @@ class IMAPServerConnection():
         LogMaster.log(10, 'List of all UIDs of emails in current folder: %s', convert_bytes_to_utf8(list_allemails))
         return list_allemails
 
-    def get_emails_in_currfolder(self):
+    def get_emails_in_currfolder(self, headers_only=False):
         """Return parsed emails from the curent folder, without marking as read"""
         for uid in self.get_list_alluids_in_currfolder():
-            yield self.get_parsed_emailandflags_byuid(uid)
+            yield self.get_parsed_email_byuid(uid)
 
     def get_imap_flags_byuid(self, uid):
         """Gets a list of flags in UTF-8 for a given uid"""
@@ -103,33 +103,24 @@ class IMAPServerConnection():
         raw_email = data[0][1]
         return raw_email
 
-    def get_parsed_email_byuid(self, uid):
-        raw_email = self.get_raw_email_byuid(uid)
-        parsed_email = self.parse_raw_email(raw_email)
-        parsed_email.original_raw_email = raw_email
-        parsed_email.uid = uid
-        parsed_email.uid_str = convert_bytes_to_utf8(uid)
-        parsed_email.date_datetime = get_email_datetime(parsed_email)
-        parsed_email["body"] = get_email_body(parsed_email)
-        return parsed_email
-
-    def get_parsed_emailandflags_byuid(self, uid):
-        ret_email = self.get_parsed_email_byuid(uid)
-        ret_email.imap_flags = self.get_imap_flags_byuid(uid)
-        return ret_email
-
     def get_raw_headers_byuid(self, uid):
         result, data = self.imap_connection.uid('fetch', uid, 'BODY.PEEK[HEADER]')
         raw_headers = data[0][1]
         return raw_headers
 
-    def get_parsed_headers_byuid(self, uid):
-        return self.parse_raw_email(self.get_raw_headers_byuid(uid))
-
-    def get_parsed_headersandflags_byuid(self, uid):
-        ret_email = self.get_parsed_headers_byuid(uid)
-        ret_email.imap_flags = self.get_imap_flags_byuid(uid)
-        return ret_email
+    def get_parsed_email_byuid(self, uid, headers_only=False):
+        if (headers_only):
+            raw_email = self.get_raw_headers_byuid(uid)
+        else:
+            raw_email = self.get_raw_email_byuid(uid)
+        parsed_email = self.parse_raw_email(raw_email)
+        parsed_email.original_raw_email = raw_email
+        parsed_email.uid = uid
+        parsed_email.uid_str = convert_bytes_to_utf8(uid)
+        parsed_email.date_datetime = get_email_datetime(parsed_email)
+        parsed_email.imap_flags = self.get_imap_flags_byuid(uid)
+        parsed_email["body"] = get_email_body(parsed_email)
+        return parsed_email
 
     @staticmethod
     def parse_raw_email(raw_email_string):
@@ -174,8 +165,10 @@ class IMAPServerConnection():
         if perm_delete:
             result, data = self.set_flag_byuid('(\Deleted)')
             self.expunge()
+            LogMaster.log(20, 'Deleted email (permanently). UID: %s', uid)
         else:
             self.move_email(uid, self.deletions_folder, mark_as_read_on_move=False)
+            LogMaster.log(20, 'Sent email to Deleted Items folder. UID: %s', uid)
 
     def is_email_currently_read_byuid(self, uid):
         if '(\\Seen)' in self.get_imap_flags_byuid(uid):
