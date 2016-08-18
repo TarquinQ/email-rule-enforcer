@@ -6,10 +6,9 @@ def set_defaults(config):
     config['mark_as_read_on_move'] = True
     config['send_notification_email_on_completion'] = False
     config['notification_email_on_completion'] = None
-    config['console_loglevel'] = 2
-    config['console_ultra_debug'] = False
-    config['console_insane_debug'] = False
+    # Testing Settings
     config['test_config_parse_only'] = False
+    config['actually_perform_actions'] = False
 
     # IMAP Defaults
     config['imap_server_name'] = None
@@ -29,8 +28,12 @@ def set_defaults(config):
     config['smtp_server_port'] = None
     config['smtp_auth_required'] = False
     config['smtp_forward_from'] = None
+    config['smtp_smtplib_debug'] = False
 
     # Logging Defaults
+    config['console_loglevel'] = 2
+    config['console_ultra_debug'] = False
+    config['console_insane_debug'] = False
     config['log_settings_logfile'] = None
     config['log_settings_logfile_debug'] = None
 

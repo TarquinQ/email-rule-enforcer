@@ -94,7 +94,7 @@ class IMAPServerConnection():
             flags.extend(new_flags)
         return flags
 
-    def get_list_all_folders(self):
+    def get_all_folders(self):
         """Returns a list of all IMAP folders"""
         return self.imap_connection.list()[1]
 
