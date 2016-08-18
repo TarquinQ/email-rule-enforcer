@@ -257,10 +257,13 @@ def parse_config_tree(xml_config_tree, config, rules):
 
         # End Parsing of Rules Section
 
+    # Now we actually perform the parsin of each section
     parse_auth(xml_config_tree.find('config_authinfo'), config)
     parse_general(xml_config_tree.find('config_general'), config)
     parse_serverinfo(xml_config_tree.find('config_serverinfo'), config)
-    parse_rules(xml_config_tree.find('config_rules'), config, rules)
+    # We allow multiple Rules sections, to allow smaller/reusable config files
+    for rule_node in xml_config_tree.findall('config_rules'):
+        parse_rules(rule_node, config, rules)
 
 
 def set_dependent_config(config):
