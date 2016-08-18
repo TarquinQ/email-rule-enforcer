@@ -1,12 +1,11 @@
 from modules.logging import LogMaster
 from modules.models.RulesAndMatches import Rule, RuleAction, MatchField, MatchDate
-from modules.email.make_new_emails import new_email
 from modules.email.smtp_send import send_email_from_config
 from modules.email.supportingfunctions_email import get_relevant_email_headers_for_logging, convert_bytes_to_utf8
 from modules.email.make_new_emails import new_email_forward
 
 
-def check_match_list(email_to_validate, matches):
+def check_match_list(matches, email_to_validate):
     num_required_matches = len(matches)
     num_actual_matches = 0
 
@@ -46,6 +45,112 @@ def check_match_list(email_to_validate, matches):
         return False
 
 
+def check_email_against_rule(rule, email_to_validate):
+    email_matched = False
+    email_excepted = False
+    # First we check each match, to see if they all match
+    # If not matched, exit this rule and onto the next
+    if not (check_match_list(rule.get_matches(), email_to_validate)):
+        LogMaster.insane_debug('Now checking Rule ID %s: not matched', rule.id)
+    else:
+        LogMaster.insane_debug('Now checking Rule ID %s: matched against all criteria', rule.id)
+        email_matched = True
+
+    if (email_matched):
+        # Now we see if the exceptions apply
+        LogMaster.insane_debug('Now checking Rule ID %s against match exceptions', rule.id)
+        # If so, exit this rule and onto the next
+        if len(rule.get_match_exceptions()) != 0:
+            if (check_match_list(rule.match_exceptions, email_to_validate)):
+                LogMaster.insane_debug('Valid exception(s) found. Rule ID %s was matched, but also excepted', rule.id)
+                email_excepted = True
+            else:
+                LogMaster.insane_debug('Exceptions not matched on Rule ID %s', rule.id)
+        else:
+            LogMaster.insane_debug('Skipping exception checking: No exceptions in Rule ID %s.', rule.id)
+
+        if (email_excepted):
+            email_matched = False
+        else:
+            # Now we know that it is matched and not excepted, so we will perform actions
+            LogMaster.info('Match found, Rule ID %s matched against Email UID %s', rule.id, email_to_validate.uid_str)
+
+    return email_matched
+
+
+def perform_actions(imap_connection, config, rule, email_to_validate):
+    for action_to_perform in rule.actions:
+        action_type = action_to_perform.action_type
+        LogMaster.ultra_debug('Rule Action for Rule ID %s is type %s. Relevant value is \"%s\"',
+            rule.id, action_type, action_to_perform.get_relevant_value())
+
+        if action_type == "forward":
+            LogMaster.info('Rule Action for Rule ID %s is a forward, so now forwarding to %s', rule.id, action_to_perform.email_recipients)
+            LogMaster.insane_debug('Now constructing a new email for Rule ID %s, to be sent From: %s', rule.id, config['smtp_forward_from'])
+
+            email_to_attach = imap_connection.parse_raw_email(email_to_validate.original_raw_email)
+            email_to_forward = new_email_forward(
+                email_from=config['smtp_forward_from'],
+                email_to=action_to_perform.email_recipients,
+                subject='FWD: ' + email_to_validate['subject'],
+                bodytext="Forwarded Email Attached",
+                email_to_attach=email_to_attach)
+
+            LogMaster.insane_debug('Constructed email for Rule ID %s:\n%s', rule.id, email_to_forward)
+
+            send_email_from_config(config, email_to_forward)
+
+        if action_type == "mark_as_read":
+            LogMaster.info('Now Markng Email UID %s as Read', rule.id, email_to_validate.uid_str)
+            imap_connection.mark_email_as_read_byuid(email_to_validate.uid)
+
+        if action_type == "mark_as_unread":
+            LogMaster.info('Now Markng Email UID %s as Unread', rule.id, email_to_validate.uid_str)
+            imap_connection.mark_email_as_unread_byuid(email_to_validate.uid)
+
+    for action_to_perform in rule.actions:
+        action_type = action_to_perform.action_type
+        LogMaster.insane_debug('2nd Run through Actions: Rule Action for Rule ID %s is type %s', rule.id, action_type)
+
+        if action_type == "move_to_folder":
+            imap_connection.move_email(
+                uid=email_to_validate.uid,
+                dest_folder=action_to_perform.dest_folder,
+                mark_as_read_on_move=action_to_perform.mark_as_unread_on_action
+            )
+            LogMaster.info('Now Moving Email UID %s to folder', action_to_perform.dest_folder)
+            break  # Email gone now, no more actions
+
+        if action_type == "Delete":
+            perm_delete = action_to_perform.delete_permanently
+            imap_connection.del_email(email_to_validate.uid, perm_delete)
+            LogMaster.info('Now Moving Email UID %s to folder', action_to_perform.dest_folder)
+            break  # Email gone now, no more actions
+
+
+def check_email_against_rules_and_perform_actions(imap_connection, config, rules, email_to_validate):
+    for rule in rules:
+        email_matched = False
+        email_actioned = False
+
+        LogMaster.insane_debug('Now checking Email UID %s against Rule ID %s (Rule Name: \"%s\"")', email_to_validate.uid_str, rule.id, rule.name)
+
+        if len(rule.get_matches()) == 0:
+            LogMaster.ultra_debug('Zero matches required for Rule %s - rule invalid, not attempting.', rule.id)
+            continue
+        if len(rule.get_actions()) == 0:
+            LogMaster.info('Zero matches actions for this rule - rule invalid, not attempting actions.')
+            continue
+
+        email_matched = check_email_against_rule(rule, email_to_validate)
+
+        if (email_matched):
+            LogMaster.info('Now performing all actions for Rule ID %s', rule.id)
+            perform_actions(imap_connection, config, rule, email_to_validate)
+        else:
+            LogMaster.debug('Rule ID %s not matched, ignoring.', rule.id)
+
+
 def iterate_rules_over_mailfolder(imap_connection, config, rules):
     LogMaster.log(40, 'Now commencing iteration of Rules over all emails in folder')
 
@@ -65,91 +170,7 @@ def iterate_rules_over_mailfolder(imap_connection, config, rules):
         #LogMaster.insane_debug('Instance variables: %s', email_to_validate.__dict__)
         #LogMaster.insane_debug('Full Email Contents: %s\n\n', email_to_validate.as_string())
 
-        for rule in rules:
-            email_matched = False
-            email_actioned = False
-
-            LogMaster.insane_debug('Now checking Email UID %s against Rule ID %s (Rule Name: \"%s\"")', email_to_validate.uid_str, rule.id, rule.name)
-
-            if len(rule.get_matches()) == 0:
-                LogMaster.ultra_debug('Zero matches required for Rule %s - rule invalid, not attempting.', rule.id)
-                continue
-
-            # First we check each match, to see if they all match
-            # If not matched, exit this rule and onto the next
-            if not (check_match_list(email_to_validate, rule.get_matches())):
-                LogMaster.insane_debug('Now checking Rule ID %s: not matched', rule.id)
-                continue
-            else:
-                LogMaster.insane_debug('Now checking Rule ID %s: matched against all criteria', rule.id)
-
-            # Now we see if the exceptions apply
-            LogMaster.insane_debug('Now checking Rule ID %s against match exceptions', rule.id)
-            # If so, exit this rule and onto the next
-            if len(rule.get_match_exceptions()) != 0:
-                if (check_match_list(email_to_validate, rule.match_exceptions)):
-                    LogMaster.insane_debug('Valid exception(s) found. Rule ID %s was matched, but also excepted', rule.id)
-                    continue
-                else:
-                    LogMaster.insane_debug('Exceptions not matched on Rule ID %s', rule.id)
-            else:
-                LogMaster.insane_debug('Skipping exception checking: No exceptions in Rule ID %s.', rule.id)
-
-            # Now we know that it is matched and not excepted, so we perform actions
-            # valid_actions = frozenset(['move_to_folder', 'forward', 'delete', 'mark_as_read', 'mark_as_unread'])
-            LogMaster.info('Match found, Rule ID %s matched against Email UID %s', rule.id, email_to_validate.uid_str)
-            if len(rule.get_actions()) == 0:
-                LogMaster.info('Zero matches actions for this rule - rule invalid, not attempting actions.')
-                continue
-
-            LogMaster.info('Now performing all actions for Rule ID %s', rule.id)
-            for action_to_perform in rule.actions:
-                action_type = action_to_perform.action_type
-                LogMaster.ultra_debug('Rule Action for Rule ID %s is type %s. Relevant value is \"%s\"',
-                    rule.id, action_type, action_to_perform.get_relevant_value())
-
-                if action_type == "forward":
-                    LogMaster.info('Rule Action for Rule ID %s is a forward, so now forwarding to %s', rule.id, action_to_perform.email_recipients)
-                    LogMaster.insane_debug('Now constructing a new email for Rule ID %s, to be sent From: %s', rule.id, config['smtp_forward_from'])
-
-                    email_to_attach = imap_connection.parse_raw_email(email_to_validate.original_raw_email)
-                    email_to_forward = new_email_forward(
-                        email_from=config['smtp_forward_from'],
-                        email_to=action_to_perform.email_recipients,
-                        subject='FWD: ' + email_to_validate['subject'],
-                        bodytext="Forwarded Email Attached",
-                        email_to_attach=email_to_attach)
-
-                    LogMaster.insane_debug('Constructed email for Rule ID %s:\n%s', rule.id, email_to_forward)
-
-                    send_email_from_config(config, email_to_forward)
-
-                if action_type == "mark_as_read":
-                    LogMaster.info('Now Markng Email UID %s as Read', rule.id, email_to_validate.uid_str)
-                    imap_connection.mark_email_as_read_byuid(email_to_validate.uid)
-
-                if action_type == "mark_as_unread":
-                    LogMaster.info('Now Markng Email UID %s as Unread', rule.id, email_to_validate.uid_str)
-                    imap_connection.mark_email_as_unread_byuid(email_to_validate.uid)
-
-            for action_to_perform in rule.actions:
-                action_type = action_to_perform.action_type
-                LogMaster.insane_debug('2nd Run through Actions: Rule Action for Rule ID %s is type %s', rule.id, action_type)
-
-                if action_type == "move_to_folder":
-                    imap_connection.move_email(
-                        uid=email_to_validate.uid,
-                        dest_folder=action_to_perform.dest_folder,
-                        mark_as_read_on_move=action_to_perform.mark_as_unread_on_action
-                    )
-                    LogMaster.info('Now Moving Email UID %s to folder', action_to_perform.dest_folder)
-                    break  # Email gone now, no more actions
-
-                if action_type == "Delete":
-                    perm_delete = action_to_perform.delete_permanently
-                    imap_connection.del_email(email_to_validate.uid, perm_delete)
-                    LogMaster.info('Now Moving Email UID %s to folder', action_to_perform.dest_folder)
-                    break  # Email gone now, no more actions
+        check_email_against_rules_and_perform_actions(imap_connection, config, rules, email_to_validate)
 
         LogMaster.log(20, 'Completed assessment of all rules against this email.\n')
 
