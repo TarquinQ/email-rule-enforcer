@@ -19,6 +19,7 @@ def set_defaults(config):
     config['imap_initial_folder'] = 'INBOX'
     config['imap_deletions_folder'] = 'Trash'
     config['imap_imaplib_debuglevel'] = 0
+    config['imap_headers_only'] = True
 
     # SMTP Defaults
     config['smtp_server_name'] = None

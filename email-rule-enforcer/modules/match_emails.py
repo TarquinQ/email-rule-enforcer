@@ -88,7 +88,12 @@ def perform_actions(imap_connection, config, rule, email_to_validate):
             LogMaster.info('Rule Action for Rule ID %s is a forward, so now forwarding to %s', rule.id, action_to_perform.email_recipients)
             LogMaster.insane_debug('Now constructing a new email for Rule ID %s, to be sent From: %s', rule.id, config['smtp_forward_from'])
 
-            email_to_attach = imap_connection.parse_raw_email(email_to_validate.original_raw_email)
+            if (email_to_validate.headers_only):
+                raw_email = imap_connection.get_raw_email_byuid(email_to_validate.uid)
+            else:
+                raw_email = email_to_validate.original_raw_email
+            email_to_attach = imap_connection.parse_raw_email(raw_email)
+
             email_to_forward = new_email_forward(
                 email_from=config['smtp_forward_from'],
                 email_to=action_to_perform.email_recipients,

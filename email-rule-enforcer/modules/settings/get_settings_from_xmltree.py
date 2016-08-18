@@ -120,6 +120,9 @@ def parse_config_tree(xml_config_tree, config, rules):
                 case_sensitive=case_sensitive,
                 name=match_name
             )
+            if match_field == "body":
+                config['imap_headers_only'] = False
+
             return match_to_add
 
         def parse_generic_date_match(Node):
@@ -267,7 +270,7 @@ def parse_config_tree(xml_config_tree, config, rules):
         parse_rules(rule_node, config, rules)
 
 
-def set_dependent_config(config):
+def set_dependent_config(config, rules):
     if config['imap_server_port'] is None:
         if config['imap_use_tls']:
             config['imap_server_port'] = 993
@@ -298,25 +301,13 @@ def set_dependent_config(config):
         except:
             config['imap_imaplib_debuglevel'] = 0
 
-    config['imap_headers_only'] = True
-    for rule in rules:
-        for match in rule.matches:
-            if match.field_to_match == "body":
-                config['imap_headers_only'] = False
-                break
-        else:
-            for match in rule.match_exceptions:
-                if match.field_to_match == "body":
-                    config['imap_headers_only'] = False
-                    break
-
 
 def get_settings_from_configtree(xml_config_tree):
     config = dict()
     rules = []
     set_defaults(config)
     parse_config_tree(xml_config_tree, config, rules)
-    set_dependent_config(config)
+    set_dependent_config(config, rules)
     return (config, rules)
     #validate_config(config)
 
