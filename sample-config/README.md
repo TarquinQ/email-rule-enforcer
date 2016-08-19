@@ -85,10 +85,11 @@ A sample config shows the following:
 </emailenforcer>
 ```
 In this example:
-* Each XML node name is represented a path (eg "emailenforcer/config_general/mailhandling_bahaviour/sample_path")
+* Each XML node name is represented a path (eg "emailenforcer/config_general/mailhandling_behaviour/sample_path")
 * Modifiers (optional) appear against the node such as "<sample_path modifier="something">"
 * Values are the text in between the <>s, as shown by "my_value"
-For the purposes of all documentation, the initial path name of <emailenforcer> will be ignored, so the above example path would be referred to as "config_general/mailhandling_bahaviour/sample_path"
+For the purposes of all documentation, the initial path name of <emailenforcer> will be ignored, so the above example path would be referred to as "config_general/mailhandling_behaviour/sample_path"
+  
 
 ## Major Section: General
 
@@ -108,19 +109,19 @@ The general section contains settings to control general program behaviour.
 |logging/console_level|-|Integer|2|Yes|Console Log Level|
 |logging/console_ultra_debug|-|Text|off|Yes|Pours out a large amount of debug info to the console|
 |logging/console_insane_debug|-|Text|off|Yes|Pours out an enourmous amount of debug info to the console|
-|logging/test_config_parse_only|-|Boolean|False|Program will parse all config and then ceases prior to IMAP|
+|logging/test_config_parse_only|-|Boolean|False|Yes|Program will parse all config and then ceases prior to IMAP|
 |logfile/|-|(node)|(node)|Yes|Controls standard Logfile output|
 |logfile/log_folder|-|Text|-|Yes| |Trailing slash can be omitted|
 |logfile/log_filename|-|Text|-|Yes| |First bit of log filename|
 |logfile/append_date_to_filename|-|Boolean|Yes|Yes| |ISO format, including current time|
-|logfile/filename_extension>|-|Text|.log|Yes| |
+|logfile/filename_extension|-|Text|.log|Yes| |
 |logfile/continue_on_log_fail|-|Boolean|No|Yes| |Continue even if log file is not writeable|
 |logfile/logfile_level|-|Integer|2|Yes| |1-5 verbose-quiet|
 |logfile_debug/|-|(node)|(node)|Yes|Controls debug Logfile output|
 |logfile_debug/log_folder|-|Text|-|Yes| |Trailing slash can be omitted|
 |logfile_debug/log_filename|-|Text|-|Yes| |First bit of log filename|
 |logfile_debug/append_date_to_filename|-|Boolean|Yes|Yes| |ISO format, including current time|
-|logfile_debug/filename_extension>|-|Text|.log|Yes| |
+|logfile_debug/filename_extension|-|Text|.log|Yes| |
 |logfile_debug/continue_on_log_fail|-|Boolean|No|Yes| |Continue even if log file is not writeable|
 |logfile_debug/logfile_level|-|Integer|2|Yes| |1-5, verbose-quiet|
   
