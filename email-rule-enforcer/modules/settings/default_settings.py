@@ -38,4 +38,7 @@ def set_defaults(config):
     config['log_settings_logfile'] = None
     config['log_settings_logfile_debug'] = None
 
+    # Exchange Defaults
+    config['Exchange_shared_mailbox_alias'] = None
+
     config['defaults_are_set'] = True
