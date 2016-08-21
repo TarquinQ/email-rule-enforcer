@@ -13,7 +13,7 @@ def main():
     # Set up Logging
     add_log_files_from_config(config, rules)
 
-    if config['test_config_parse_only']:
+    if config['parse_config_and_stop']:
         die_with_errormsg('Config Testing only, dont connect. Now exiting', 0)
 
     # Connect to IMAP
@@ -27,7 +27,9 @@ def main():
 
     # Parse IMAP Emails
     if imap_connection.is_connected:
-        match_emails.iterate_rules_over_mailfolder(imap_connection, config, rules)
+        if config['assess_mailbox_rules']:
+            match_emails.iterate_rules_over_mailfolder(imap_connection, config, rules)
+
         imap_connection.disconnect()
         # Send Completion Email
         # send_smtp_completion_email()

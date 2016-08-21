@@ -103,33 +103,38 @@ def perform_actions(imap_connection, config, rule, email_to_validate):
 
             LogMaster.insane_debug('Constructed email for Rule ID %s:\n%s', rule.id, email_to_forward)
 
-            send_email_from_config(config, email_to_forward)
+            if config['actually_perform_actions']:
+                send_email_from_config(config, email_to_forward)
 
         if action_type == "mark_as_read":
-            LogMaster.info('Now Markng Email UID %s as Read', rule.id, email_to_validate.uid_str)
-            imap_connection.mark_email_as_read_byuid(email_to_validate.uid)
+            LogMaster.info('Now Marking Email UID %s as Read', rule.id, email_to_validate.uid_str)
+            if config['actually_perform_actions']:
+                imap_connection.mark_email_as_read_byuid(email_to_validate.uid)
 
         if action_type == "mark_as_unread":
-            LogMaster.info('Now Markng Email UID %s as Unread', rule.id, email_to_validate.uid_str)
-            imap_connection.mark_email_as_unread_byuid(email_to_validate.uid)
+            LogMaster.info('Now Marking Email UID %s as Unread', rule.id, email_to_validate.uid_str)
+            if config['actually_perform_actions']:
+                imap_connection.mark_email_as_unread_byuid(email_to_validate.uid)
 
     for action_to_perform in rule.actions:
         action_type = action_to_perform.action_type
         LogMaster.insane_debug('2nd Run through Actions: Rule Action for Rule ID %s is type %s', rule.id, action_type)
 
         if action_type == "move_to_folder":
-            imap_connection.move_email(
-                uid=email_to_validate.uid,
-                dest_folder=action_to_perform.dest_folder,
-                mark_as_read_on_move=action_to_perform.mark_as_unread_on_action
-            )
-            LogMaster.info('Now Moving Email UID %s to folder', action_to_perform.dest_folder)
+            LogMaster.info('Now Moving Email UID %s to folder', email_to_validate.uid_str, action_to_perform.dest_folder)
+            if config['actually_perform_actions']:
+                imap_connection.move_email(
+                    uid=email_to_validate.uid,
+                    dest_folder=action_to_perform.dest_folder,
+                    mark_as_read_on_move=action_to_perform.mark_as_unread_on_action
+                )
             break  # Email gone now, no more actions
 
         if action_type == "Delete":
             perm_delete = action_to_perform.delete_permanently
-            imap_connection.del_email(email_to_validate.uid, perm_delete)
-            LogMaster.info('Now Moving Email UID %s to folder', action_to_perform.dest_folder)
+            LogMaster.info('Now Deleting Email UID %s, permanently=%s', email_to_validate.uid_str, perm_delete)
+            if config['actually_perform_actions']:
+                imap_connection.del_email(email_to_validate.uid, perm_delete)
             break  # Email gone now, no more actions
 
 

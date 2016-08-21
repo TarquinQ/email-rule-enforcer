@@ -6,9 +6,6 @@ def set_defaults(config):
     config['mark_as_read_on_move'] = True
     config['send_notification_email_on_completion'] = False
     config['notification_email_on_completion'] = None
-    # Testing Settings
-    config['test_config_parse_only'] = False
-    config['actually_perform_actions'] = False
 
     # IMAP Defaults
     config['imap_server_name'] = None
@@ -41,4 +38,10 @@ def set_defaults(config):
     # Exchange Defaults
     config['Exchange_shared_mailbox_alias'] = None
 
+    # Testing Settings
+    config['parse_config_and_stop'] = False
+    config['assess_mailbox_rules'] = True
+    config['actually_perform_actions'] = True
+
+    # Finalise
     config['defaults_are_set'] = True

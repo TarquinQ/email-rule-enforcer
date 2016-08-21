@@ -1,4 +1,3 @@
-import re
 import datetime
 import xml.etree.ElementTree as ET
 import modules.supportingfunctions
@@ -7,10 +6,10 @@ from modules.supportingfunctions import text_to_bool, text_to_int, die_with_erro
 from modules.settings.models.EmailNotificationSettings import EmailNotificationSettings
 from modules.settings.models.LogfileSettings import LogfileSettings
 from modules.settings.default_settings import set_defaults
-from modules.models.RulesAndMatches import Rule, RuleAction, MatchField, MatchDate
+from modules.models.RulesAndMatches import Rule, RuleAction, MatchField, MatchDate, Rules
 from modules.settings.supportingfunctions_xml import set_value_if_xmlnode_exists, get_value_if_xmlnode_exists, get_attributes_if_xmlnode_exists
-from modules.settings.supportingfunctions_xml import get_attribvalue_if_exists_in_xmlNode, set_boolean_if_xmlnode_exists, xpath_findall
-from modules.settings.supportingfunctions_xml import strip_xml_whitespace
+from modules.settings.supportingfunctions_xml import get_attribvalue_if_exists_in_xmlNode, strip_xml_whitespace, xpath_findall
+from modules.settings.supportingfunctions_xml import set_boolean_if_xmlnode_exists, set_invertedboolean_if_xmlnode_exists
 
 
 def parse_config_tree(xml_config_tree, config, rules):
@@ -30,9 +29,6 @@ def parse_config_tree(xml_config_tree, config, rules):
         """This function takes the XML node for config_general and parses all expected contents"""
         if Node is None:
             return
-
-        set_value_if_xmlnode_exists(config, 'console_loglevel', Node, './logging/console_level')
-        config['console_loglevel'] = text_to_int(config['console_loglevel'], 2)
 
         def parse_email_notification_settings(config, Node):
             """Parses the email notification xml section"""
@@ -69,11 +65,18 @@ def parse_config_tree(xml_config_tree, config, rules):
                     logset.set_continute_on_log_fail(text_to_bool(subnode.text, True))
                 config['log_settings_%s' % logtitle] = logset
 
+        set_value_if_xmlnode_exists(config, 'console_loglevel', Node, './logging/console_level')
+        config['console_loglevel'] = text_to_int(config['console_loglevel'], 2)
+
         set_boolean_if_xmlnode_exists(config, 'empty_trash_on_exit', Node, './/empty_trash_on_exit')
         set_boolean_if_xmlnode_exists(config, 'mark_as_read_on_move', Node, './/mark_as_read_on_move')
         set_boolean_if_xmlnode_exists(config, 'console_ultra_debug', Node, './/console_ultra_debug')
         set_boolean_if_xmlnode_exists(config, 'console_insane_debug', Node, './/console_insane_debug')
-        set_boolean_if_xmlnode_exists(config, 'test_config_parse_only', Node, './/test_config_parse_only')
+
+        # Testing Settings
+        set_boolean_if_xmlnode_exists(config, 'parse_config_and_stop', Node, './/parse_config_and_stop')
+        set_invertedboolean_if_xmlnode_exists(config, 'assess_mailbox_rules', Node, './/dont_assess_rules_againt_inbox')
+        set_invertedboolean_if_xmlnode_exists(config, 'actually_perform_actions', Node, './/dont_perform_actions')
 
         parse_email_notification_settings(config, Node.find('./logging/notification_email_on_completion'))
         parse_logfile_settings(config, 'logfile', Node.find('./logging/logfile'))
@@ -312,7 +315,7 @@ def set_dependent_config(config, rules):
 
 def get_settings_from_configtree(xml_config_tree):
     config = dict()
-    rules = []
+    rules = Rules()
     set_defaults(config)
     parse_config_tree(xml_config_tree, config, rules)
     set_dependent_config(config, rules)

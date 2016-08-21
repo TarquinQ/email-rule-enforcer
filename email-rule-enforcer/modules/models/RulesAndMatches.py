@@ -6,6 +6,11 @@ from modules.email.supportingfunctions_email import get_email_datetime, convert_
 import modules.models.tzinfo_UTC as tzinfo_UTC
 
 
+class Rules(list):
+    def __init__(self):
+        rule_for_all_folders = None
+
+
 class Rule():
     rule_count = 0
 

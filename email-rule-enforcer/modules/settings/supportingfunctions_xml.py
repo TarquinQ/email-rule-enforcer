@@ -44,6 +44,15 @@ def set_boolean_if_xmlnode_exists(configdict, key, Node, xpath):
             configdict[key] = node_val
 
 
+def set_invertedboolean_if_xmlnode_exists(configdict, key, Node, xpath):
+    """Set a config value only if the value is in the xml"""
+    node_found = Node.find(xpath)
+    if node_found is not None and isinstance(node_found, ET.Element):
+        node_val = not text_to_bool_force(node_found.text)
+        if node_val is not None:
+            configdict[key] = node_val
+
+
 def xpath_findall(Node, xpath):
     """Performs XPath findall search, handling errors"""
     try:
