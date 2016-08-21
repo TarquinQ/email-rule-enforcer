@@ -40,7 +40,8 @@ def set_defaults(config):
 
     # Testing Settings
     config['parse_config_and_stop'] = False
-    config['assess_mailbox_rules'] = True
+    config['assess_mainfolder_rules'] = True
+    config['assess_allfolders_rules'] = True
     config['actually_perform_actions'] = True
 
     # Finalise

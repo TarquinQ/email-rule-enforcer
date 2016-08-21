@@ -8,7 +8,7 @@ import modules.models.tzinfo_UTC as tzinfo_UTC
 
 class Rules(list):
     def __init__(self):
-        rule_for_all_folders = None
+        self.rule_for_all_folders = None
 
 
 class Rule():

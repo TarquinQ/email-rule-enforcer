@@ -27,8 +27,11 @@ def main():
 
     # Parse IMAP Emails
     if imap_connection.is_connected:
-        if config['assess_mailbox_rules']:
+        if config['assess_mainfolder_rules']:
             match_emails.iterate_rules_over_mailfolder(imap_connection, config, rules)
+
+        if config['assess_allfolders_rules']:
+            match_emails.iterate_over_allfolders(imap_connection, config, rules)
 
         imap_connection.disconnect()
         # Send Completion Email

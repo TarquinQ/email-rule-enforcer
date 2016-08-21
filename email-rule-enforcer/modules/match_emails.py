@@ -173,15 +173,59 @@ def iterate_rules_over_mailfolder(imap_connection, config, rules):
         return None
 
     for email_to_validate in imap_connection.get_emails_in_currfolder(headers_only=config['imap_headers_only']):
-        LogMaster.log(20, '\n\nNew Email found. Email Details:\n%s',
+        LogMaster.log(20, '\n\Email in found in folder. UID %s. Email Details:\n%s',
+            email_to_validate.uid_str,
             get_relevant_email_headers_for_logging(email_to_validate))
-        LogMaster.log(20, 'Now assessing an email against all rules.')
-        #LogMaster.insane_debug('Full email object instance variables and RFC contents:')
-        #LogMaster.insane_debug('Instance variables: %s', email_to_validate.__dict__)
-        #LogMaster.insane_debug('Full Email Contents: %s\n\n', email_to_validate.as_string())
+        LogMaster.log(20, 'Now assessing this email against all rules.')
 
         check_email_against_rules_and_perform_actions(imap_connection, config, rules, email_to_validate)
 
         LogMaster.log(20, 'Completed assessment of all rules against this email.\n')
+
+
+def iterate_over_allfolders(imap_connection, config, rules):
+
+    if (imap_connection.is_connected is False):
+        LogMaster.log(40, 'Aborting: IMAP server is not connected')
+        return None
+
+    if (rules.rule_for_all_folders is None):
+        LogMaster.debug('Ignoring: no global all_folders rule is set, no need to connect to all folders')
+        return None
+
+    LogMaster.log(40, 'Now commencing iteration of a rule over all emails in all folders in the mailbox')
+    LogMaster.info('\nNow looping over all folders in the mailbox.')
+    LogMaster.ultra_debug("All folders: %s", imap_connection.get_all_folders())
+    for folder_record in imap_connection.get_all_folders():
+        print ("Folder: ", folder_record)
+        folder_record_utf8 = convert_bytes_to_utf8(folder_record)
+        (folder_flags, folder_parent_and_name) = folder_record_utf8.split(')', 1)
+        (empty_str, folder_parent, folder_name) = folder_parent_and_name.split('"', 2)
+        folder_name = folder_name.strip()
+
+        LogMaster.info('\nFolder found in mailbox, Folder Name: "%s".', folder_name)
+        LogMaster.info('Now connecting to folder "%s".', folder_name)
+        imap_connection.connect_to_folder(folder_name)
+
+        iterate_allfolderrules_over_mailfolder(imap_connection, config, rules)
+
+    LogMaster.info('Now resetting IMAP connection back to default folder.')
+    imap_connection.connect_to_default_folder()
+
+
+def iterate_allfolderrules_over_mailfolder(imap_connection, config, rules):
+    for email_to_validate in imap_connection.get_emails_in_currfolder(headers_only=True):
+        LogMaster.debug('\n\Email found in folder, UID %s.', email_to_validate.uid_str)
+        LogMaster.insane_debug('\n\nNew Email being processed, UID %s. Email Details:\n%s',
+            email_to_validate.uid_str,
+            get_relevant_email_headers_for_logging(email_to_validate))
+        LogMaster.insane_debug('Now assessing this email against all_folder rules.')
+
+        check_email_against_rules_and_perform_actions(imap_connection,
+            config,
+            [rules.rule_for_all_folders],
+            email_to_validate)
+
+        LogMaster.insane_debug('Completed assessment of the all_folder rules against this email.\n')
 
 

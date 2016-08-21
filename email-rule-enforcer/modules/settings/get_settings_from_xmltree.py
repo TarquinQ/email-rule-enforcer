@@ -75,7 +75,8 @@ def parse_config_tree(xml_config_tree, config, rules):
 
         # Testing Settings
         set_boolean_if_xmlnode_exists(config, 'parse_config_and_stop', Node, './/parse_config_and_stop')
-        set_invertedboolean_if_xmlnode_exists(config, 'assess_mailbox_rules', Node, './/dont_assess_rules_againt_inbox')
+        set_invertedboolean_if_xmlnode_exists(config, 'assess_mainfolder_rules', Node, './/dont_assess_rules_againt_inbox')
+        set_invertedboolean_if_xmlnode_exists(config, 'assess_allfolders_rules', Node, './/dont_assess_allfolders')
         set_invertedboolean_if_xmlnode_exists(config, 'actually_perform_actions', Node, './/dont_perform_actions')
 
         parse_email_notification_settings(config, Node.find('./logging/notification_email_on_completion'))
@@ -182,7 +183,7 @@ def parse_config_tree(xml_config_tree, config, rules):
             )
             return match_to_add
 
-        def parse_rule_node(Node, config, rules):
+        def parse_rule_node(Node, config):
             def parse_rule_actions(Node, config, rule):
                 """Parses all actions inside a defined rule """
                 if Node.find('./mark_as_read'):
@@ -262,10 +263,14 @@ def parse_config_tree(xml_config_tree, config, rules):
             for subnode in xpath_findall(Node, './rule_match_exceptions'):
                 parse_rule_match_exceptions(subnode, new_rule)
 
-            rules.append(new_rule)
+            return new_rule
 
         for rule_node in xpath_findall(Node, './rule'):
-                parse_rule_node(rule_node, config, rules)
+                rules.append(parse_rule_node(rule_node, config))
+
+        if rules.rule_for_all_folders is not None:
+            for rule_node in xpath_findall(Node, './rule_for_all_folders'):
+                    rules.rule_for_all_folders = parse_rule_node(rule_node, config)
 
         # End Parsing of Rules Section
 
