@@ -5,8 +5,10 @@ from collections import OrderedDict
 from modules.supportingfunctions import text_to_bool, text_to_int, die_with_errormsg
 from modules.settings.models.EmailNotificationSettings import EmailNotificationSettings
 from modules.settings.models.LogfileSettings import LogfileSettings
-from modules.settings.default_settings import set_defaults
+from modules.models.Config import Config
 from modules.models.RulesAndMatches import Rule, RuleAction, MatchField, MatchDate, Rules
+from modules.settings.default_settings import set_defaults
+from modules.settings.set_dependent_config import set_dependent_config
 from modules.settings.supportingfunctions_xml import set_value_if_xmlnode_exists, get_value_if_xmlnode_exists, get_attributes_if_xmlnode_exists
 from modules.settings.supportingfunctions_xml import get_attribvalue_if_exists_in_xmlNode, strip_xml_whitespace, xpath_findall
 from modules.settings.supportingfunctions_xml import set_boolean_if_xmlnode_exists, set_invertedboolean_if_xmlnode_exists
@@ -268,7 +270,7 @@ def parse_config_tree(xml_config_tree, config, rules):
         for rule_node in xpath_findall(Node, './rule'):
                 rules.append(parse_rule_node(rule_node, config))
 
-        if rules.rule_for_all_folders is not None:
+        if rules.rule_for_all_folders is None:
             for rule_node in xpath_findall(Node, './rule_for_all_folders'):
                     rules.rule_for_all_folders = parse_rule_node(rule_node, config)
 
@@ -283,43 +285,8 @@ def parse_config_tree(xml_config_tree, config, rules):
         parse_rules(rule_node, config, rules)
 
 
-def set_dependent_config(config, rules):
-    if config['imap_server_port'] is None:
-        if config['imap_use_tls']:
-            config['imap_server_port'] = 993
-        else:
-            config['imap_server_port'] = 143
-
-    if config['smtp_server_port'] is None:
-        if config['smtp_use_tls']:
-            config['smtp_server_port'] = 587
-        else:
-            config['smtp_server_port'] = 25
-
-    if config['smtp_forward_from'] is None:
-        config['smtp_forward_from'] = config['smtp_username']
-
-    if config['smtp_forward_from'].lower() == 'same_as_imap_auth':
-        config['smtp_forward_from'] = config['imap_username']
-
-    if config['smtp_username'].lower() == 'same_as_imap_auth':
-        config['smtp_username'] = config['imap_username']
-
-    if config['smtp_password'].lower() == 'same_as_imap_auth':
-        config['smtp_password'] = config['imap_password']
-
-    if isinstance(config['imap_imaplib_debuglevel'], str):
-        try:
-            config['imap_imaplib_debuglevel'] = int(config['imap_imaplib_debuglevel'])
-        except:
-            config['imap_imaplib_debuglevel'] = 0
-
-    if config['Exchange_shared_mailbox_alias'] is not None:
-        config['imap_username'] = config['imap_username'] + '\\' + config['Exchange_shared_mailbox_alias']
-
-
 def get_settings_from_configtree(xml_config_tree):
-    config = dict()
+    config = Config()
     rules = Rules()
     set_defaults(config)
     parse_config_tree(xml_config_tree, config, rules)
