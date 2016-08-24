@@ -7,20 +7,24 @@
 			<use_tls>yes</use_tls>  <!-- default: no -->
 			<username>sample</username>  <!-- Optional here; may be included in authconfig section instead -->
 			<password>sample</password>  <!-- Optional here; may be included in authconfig section instead -->
-			<initial_folder>INBOX</initial_folder> <!-- Optional: default: INBOX -->
-			<deletions_folder>Trash</deletions_folder> <!-- Optional: default: Trash -->
-			<!-- <imaplib_debuglevel>4</imaplib_debuglevel> -->  <!-- Optional; turns on Python's IMAP logging; 0-5, default 0 -->
-			<!-- Note on IMAP username for Exchange/Office 365: Shared Mailboxes can be logged into using a username of the form: -->
-			<!--  'username@domain.name\Shared-Mailbox-Alias' -->
-			<!--  for a given username that has Full Control of the Shared Mailbox -->
+			<initial_folder>INBOX</initial_folder>  <!-- Optional: default: INBOX -->
+			<deletions_folder>Trash</deletions_folder>  <!-- Optional: default: Trash -->
+			<imaplib_debuglevel>0</imaplib_debuglevel>  <!-- Optional; turns on Python's IMAP logging; 0-5, default 0 -->
 		</connection_imap>
+<!--		<exchange_shared_mailbox> -->  <!-- Optional. If accessing a Shared Mailbox on Exchange (or Office365), this can be specified here -->
+<!--			<shared_mailbox_alias>Mail-Alias</shared_mailbox_alias>  --> <!-- Must be mailbox Alias, not Name -->
+<!--		</exchange_shared_mailbox>  -->
+			<!-- Note on IMAP username for Exchange/Office 365: Shared Mailboxes can also be logged into using an IMAP username of the form: -->
+			<!--  'username@domain.name\Shared-Mailbox-Alias' -->
+			<!--  for a given username that has Full Control of the Shared Mailbox. Or use config option above. -->
 		<sending_email_smtp>  <!-- Optional. However, config will fail validation if email notification is set or any rules require Forwarding -->
 			<server_name>full.domain.name</server_name>  <!-- Or IP.  Special Value: "same_as_imap" -->
-			<server_port>465</server_port>  <!-- Optional: Leave out for protocol default (which will differ SSL vs non-SSL) -->
+			<server_port>465</server_port>  <!-- Optional: Defaults are Port 25 for non-SSL, Port 587 for SSL -->
 			<use_tls>yes</use_tls>  <!-- Optional: default: no -->
 			<auth_required>yes</auth_required>  <!-- default: no -->
 			<username>sample</username>  <!-- Optional here; may be included in authconfig section instead -->
 			<password>sample</password>  <!-- Optional here; may be included in authconfig section instead -->
+			<forward_from>someone@somewhere</forward_from>  <!-- Required if using Final-Status Email and/or any Forwarding Rules -->
 		</sending_email_smtp>
 	</config_serverinfo>
 </emailenforcer>

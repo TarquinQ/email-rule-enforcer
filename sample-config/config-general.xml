@@ -34,5 +34,11 @@
 				<logfile_level>1</logfile_level>  <!-- 1-5 verbose-quiet; default: 1 -->
 			</logfile_debug>
 		</logging>
+		<testing>
+			<parse_config_and_stop>false</parse_config_and_stop>  <!-- Program will parse all config but cease prior to IMAP -->
+			<dont_assess_rules_againt_inbox>false</dont_assess_rules_againt_inbox>  <!-- IMAP connects, but emails not assessed against ruleset. -->
+			<dont_assess_allfolders>false</dont_assess_allfolders>  <!-- IMAP connects, but all_folders_rules not assessed against malbox. -->
+			<dont_perform_actions>false</dont_perform_actions>  <!-- Emails are assessed against ruleset, but no actions carried out. -->
+		</testing>
 	</config_general>
 </emailenforcer>

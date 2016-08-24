@@ -3,16 +3,11 @@
 	<config_rules>
 		<rule>
 			<rule_name>Name of this rule</rule_name>
-			<rule_actions>
-				<!-- All Move or Forward operations will mark an email as read - this will move it without marking it -->
-				<move_to_folder mark_as_read="no">Archived Items</move_to_folder>    <!-- Please provide full IMAP folder path, separated by '/' for nested folders -->
-				<mark_as_read />   <!-- This will mark the email as read, regardless of current read-status -->
-				<mark_as_unread />   <!-- This will mark the email as unread, regardless of current read-status -->
-			</rule_actions>
 			<rule_matches> <!-- all matches are required to match at the same time, unless added as an "match_or" -->
 				<match_field field="to" type="contains">recipient@domain2</match_field>
 				<match_or>
-					<match_field field="from" type="contains">sender@domain1</match_field>
+					<!-- "name" attribute will show up in logs -->
+					<match_field field="from" type="contains" name="match_PhillPott_from_SwiggottPartners">sender@domain1</match_field>
 					<match_field field="body" type="ends_with">Undeliverable: </match_field>
 				</match_or>
 			</rule_matches>
@@ -23,36 +18,82 @@
 					<match_field field="from" type="equals">mailerdaemon@spammydomain.com</match_field>
 				</match_or>
 			</rule_match_exceptions>
+			<rule_actions>
+				<!-- All Move or Forward operations will mark an email as read - this will move it without marking it -->
+				<move_to_folder mark_as_read="no">Archived Items</move_to_folder>    <!-- Please provide full IMAP folder path, separated by '/' for nested folders -->
+				<mark_as_read />   <!-- This will mark the email as read, regardless of current read-status -->
+				<mark_as_unread />   <!-- This will mark the email as unread, regardless of current read-status -->
+			</rule_actions>
 			<continue_rule_checks_if_matched>no</continue_rule_checks_if_matched> <!-- Optional; Default = yes -->
 		</rule>
 		<rule>
 			<rule_name>Move Undeliverable Emails to Trash folder</rule_name>
+			<rule_matches> <!-- all matches are required to match at the same time, unless added as an "match_or" -->
+				<match_field field="subject" type="starts_with" case_sensitive="no">Undeliverable: </match_field>
+			</rule_matches>
 			<rule_actions>
 				<forward>
 					<forward_to>forwardingaddr1@somewhere.com</forward_to>
 					<forward_to>forwardingaddr2@somewhereelse.com</forward_to>
 				</forward>
-				<delete permanently="no" />  <!-- delete permanent=no moves the email into the Deleted Items/Trash folder as specified in config-serverinfo -->
-				<!-- permanent=no is default -->
+				<delete permanently="no" />  <!-- This Action moves the email into the Deleted Items/Trash folder as specified in config-serverinfo -->
+				<!-- permanently=no is default -->
 			</rule_actions>
-			<rule_matches> <!-- all matches are required to match at the same time, unless added as an "match_or" -->
-				<match_field field="subject" type="starts_with" case_sensitive="no">Undeliverable: </match_field>
-			</rule_matches>
 		</rule>
+		<!-- Now we match some dates. Date can be relative or absolute. -->
+		<!-- Types can be "older_than" or "newer_than". Default is "older_than". -->
+		<!-- Emails usually only have one date header, "date". This fieldname is assumed if left off. -->
+		<!-- Bodies cant be matched for dates, and nor can other not-actual-dates headers. -->
+		<!-- Relative dates are specifed as sub-elements of "minutes", "hours", "days", "weeks", "months", or "years" -->
+		<!-- Relative dates can have mutiple types of sub-elememts (eg 2 days and 1 month and 1 year), which simply add together. -->
+		<!-- Relative dates are assumed, and absolute dates are detected if a "fixed_date" element is supplied. -->
+		<!-- Absolute dates are always to be specified in ISO Format, hypen-seperated and zero-padded. -->
+		<!-- Absolute dates are specified as "YYYY-MM-DD", eg "2014-12-31" for Dec 31, 2014  and "2015-08-06" for Aug 6th, 2015 -->
 		<rule>
 			<rule_name>Delete older emails Permanently</rule_name>
-			<rule_actions>
-				<delete permanently="yes" />  <!-- delete permanently=yes deletes the email permanently -->
-			</rule_actions>
 			<rule_matches>
-				<match_date type="older_than">Now + 3 months</match_date>  <!-- Relative date -->
+				<match_or>
+					<match_date field="date" type="older_than" name="time_relative">  <!-- Relative date -->
+						<months>3</months>
+						<years>2</years>
+					</match_date>
+					<match_date field="date" type="older_than" name="time_absolute">
+						<fixed_date>2014-01-01</fixed_date>
+					</match_date>
+				</match_or>
 			</rule_matches>
+			<rule_actions>
+				<delete permanently="no" />  <!-- delete permanently=yes deletes the email permanently -->
+			</rule_actions>
 		</rule>
 		<rule>
-			<rule_name>Default</rule_name>  <!-- Default rule - no matches, no exceptions -->
+			<rule_name>Forward newer emails</rule_name>
+			<rule_matches>
+				<match_date field="date" type="newer_than" name="absolute_time">
+					<fixed_date>2016-10-04</fixed_date>
+				</match_date>
+			</rule_matches>
 			<rule_actions>
-				<move_to_folder>Archived Items</move_to_folder>  <!-- Please provide full IMAP folder path, separated by '/' for nested folders -->
+				<forward>
+					<forward_to>recipient1@gmail.com</forward_to>
+					<forward_to>recipient2@fastmail.com</forward_to>
+				</forward>
 			</rule_actions>
 		</rule>
+		<!-- This next rule is a special, one-of-a-kind rule. Only one of these rules runs. -->
+		<!-- This rule applies to all emails in all folders, except the main/Inbox folder. -->
+		<!-- This rule is designed to allow cleanup of old messages in all folders (including Deleted Items folder). -->
+		<!-- This rule follows the exact same Rule, Matches, Exceptions & Actions structure as all other rules. -->
+		<rule_for_all_folders>
+			<rule_name>Delete all emails older than 3 months in all mailbox Folders</rule_name>
+			<rule_matches>
+				<match_date field="date" type="older_than">
+					<months>3</months>
+				</match_date>
+			</rule_matches>
+			<rule_actions>
+				<delete permanently="no" />
+			</rule_actions>
+		</rule_for_all_folders>
 	</config_rules>
 </emailenforcer>
