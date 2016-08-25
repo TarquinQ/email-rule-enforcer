@@ -83,7 +83,7 @@ class IMAPServerConnection():
     def get_emails_in_currfolder(self, headers_only=False):
         """Return parsed emails from the curent folder, without marking as read"""
         for uid in self.get_list_alluids_in_currfolder():
-            yield self.get_parsed_email_byuid(uid)
+            yield self.get_parsed_email_byuid(uid, headers_only)
 
     def get_imap_flags_byuid(self, uid):
         """Gets a list of flags in UTF-8 for a given uid"""
@@ -99,29 +99,35 @@ class IMAPServerConnection():
         """Returns a list of all IMAP folders"""
         return self.imap_connection.list()[1]
 
-    def get_raw_email_byuid(self, uid):
-        result, data = self.imap_connection.uid('fetch', uid, 'BODY.PEEK[]')
-        raw_email = data[0][1]
+    def get_raw_email_byuid(self, uid, headers_only=False):
+        if headers_only:
+            data_to_fetch = 'BODY.PEEK[HEADER]'
+        else:
+            data_to_fetch = 'BODY.PEEK[]'
+        result, data = self.imap_connection.uid('fetch', uid, data_to_fetch)
+        if isinstance(data, list) and (data[0] is not None):
+            raw_email = data[0][1]
+        else:
+            raw_email = None
         return raw_email
 
     def get_raw_headers_byuid(self, uid):
-        result, data = self.imap_connection.uid('fetch', uid, 'BODY.PEEK[HEADER]')
-        raw_headers = data[0][1]
-        return raw_headers
+        return self.get_raw_email_byuid(uid=uid, headers_only=True)
 
     def get_parsed_email_byuid(self, uid, headers_only=False):
-        if (headers_only):
-            raw_email = self.get_raw_headers_byuid(uid)
+        raw_email = self.get_raw_email_byuid(uid, headers_only)
+        if raw_email is not None:
+            parsed_email = self.parse_raw_email(raw_email)
+            parsed_email.original_raw_email = raw_email
+            parsed_email.headers_only = headers_only
+            parsed_email.uid = uid
+            parsed_email.uid_str = convert_bytes_to_utf8(uid)
+            parsed_email.imap_folder = self.currfolder_name
+            parsed_email.date_datetime = get_email_datetime(parsed_email)
+            parsed_email.imap_flags = self.get_imap_flags_byuid(uid)
+            parsed_email["body"] = get_email_body(parsed_email)
         else:
-            raw_email = self.get_raw_email_byuid(uid)
-        parsed_email = self.parse_raw_email(raw_email)
-        parsed_email.original_raw_email = raw_email
-        parsed_email.headers_only = headers_only
-        parsed_email.uid = uid
-        parsed_email.uid_str = convert_bytes_to_utf8(uid)
-        parsed_email.date_datetime = get_email_datetime(parsed_email)
-        parsed_email.imap_flags = self.get_imap_flags_byuid(uid)
-        parsed_email["body"] = get_email_body(parsed_email)
+            parsed_email = None
         return parsed_email
 
     @staticmethod

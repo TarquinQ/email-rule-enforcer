@@ -3,7 +3,6 @@ from email.mime.nonmultipart import MIMENonMultipart
 from email.mime.message import MIMEMessage
 from email.mime.text import MIMEText
 from email.headerregistry import Address
-from modules.logging import LogMaster
 
 
 def new_email_forward(email_from, email_to, subject, bodytext, email_to_attach, cc=None, bcc=None):

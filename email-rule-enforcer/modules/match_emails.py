@@ -173,6 +173,8 @@ def iterate_rules_over_mailfolder(imap_connection, config, rules):
         return None
 
     for email_to_validate in imap_connection.get_emails_in_currfolder(headers_only=config['imap_headers_only']):
+        if email_to_validate is None:
+            continue
         LogMaster.log(20, '\n\Email in found in folder. UID %s. Email Details:\n%s',
             email_to_validate.uid_str,
             get_relevant_email_headers_for_logging(email_to_validate))
@@ -215,6 +217,8 @@ def iterate_over_allfolders(imap_connection, config, rules):
 
 def iterate_allfolderrules_over_mailfolder(imap_connection, config, rules):
     for email_to_validate in imap_connection.get_emails_in_currfolder(headers_only=True):
+        if email_to_validate is None:
+            continue
         LogMaster.debug('\n\Email found in folder, UID %s.', email_to_validate.uid_str)
         LogMaster.insane_debug('\n\nNew Email being processed, UID %s. Email Details:\n%s',
             email_to_validate.uid_str,
