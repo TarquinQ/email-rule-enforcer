@@ -41,6 +41,8 @@ class IMAPServerConnection():
         self.imap_connection.login(self.username, self.password)
         LogMaster.log(50, 'Successfully connected to IMAP Server: %s', self.server_name)
         self._check_imapmove_supported()
+        if imaplib._MAXLINE < 1000000:
+            imaplib._MAXLINE = 10000000
 
     def connect_to_default_folder(self):
         return self.connect_to_folder(self.initial_folder)

@@ -4,29 +4,28 @@ import datetime
 from modules.settings.models.LogfileSettings import LogfileSettings
 from modules.supportingfunctions import die_with_errormsg, get_username, get_hostname, get_os_str
 from modules.supportingfunctions import nested_data_to_str
-
-
-class Singleton(type):
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-        return cls._instances[cls]
+from modules.models.Singleton import Singleton
+try:
+    import colorlog
+    console_colours = True
+except ImportError:
+    console_colours = False
 
 
 class LogController():
     debug_this_class = False
     """Wraps around the standard Logger class, and builds logs the way we want to."""
-    def __init__(self, name, log_level=10, filepath=None):
+    def __init__(self, name, log_level=10, filepath=None, console=False):
         # Sets up a new logger, and sets it to Null by default
         self.name = name
-        self.logger = logging.getLogger(name)
         self.formatter_default = self.get_formatter_plainmsg()
         self.handler_null = logging.NullHandler()
-        self.logger.addHandler(self.handler_null)
+        if console and console_colours:
+            self.logger = colorlog.getLogger(name)
+        else:
+            self.logger = logging.getLogger(name)
+            self.logger.addHandler(self.handler_null)
         self.set_loglevel(log_level)
-        # if filepath:
         #     self.filepath = filepath
         # else:
         #     self.set_logger_console()
@@ -37,8 +36,11 @@ class LogController():
         return self.get_formatter_plainmsg()
 
     @staticmethod
-    def get_formatter_plainmsg():
-        return logging.Formatter('%(message)s')
+    def get_formatter_plainmsg(coloured=False):
+        if coloured:
+            return colorlog.ColoredFormatter('%(log_color)s%(message)s')
+        else:
+            return logging.Formatter('%(message)s')
 
     @staticmethod
     def get_formatter_msgwithtime():
@@ -48,10 +50,13 @@ class LogController():
     def get_handler_console():
         return logging.StreamHandler(sys.stdout)
 
+    def get_formatter_console(self):
+        return self.get_formatter_plainmsg(console_colours)
+
     def set_logger_console(self):
         """Enables output from this LogController to the console, via stdout"""
         self.handler_console = self.get_handler_console()
-        self.formatter = self.get_formatter_plainmsg()
+        self.formatter = self.get_formatter_console()
         self.handler_console.setFormatter(self.formatter)
         self.logger.addHandler(self.handler_console)
         if self.debug_this_class:
