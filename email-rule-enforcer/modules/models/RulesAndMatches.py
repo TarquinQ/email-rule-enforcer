@@ -1,7 +1,9 @@
 import re
+import datetime
 from collections import OrderedDict
 from modules.logging import LogMaster
-import datetime
+from modules.models.Counter import Counter
+from modules.models.Singleton import Singleton
 from modules.email.supportingfunctions_email import get_email_datetime, convert_emaildate_to_datetime
 import modules.models.tzinfo_UTC as tzinfo_UTC
 
@@ -13,20 +15,19 @@ class Rules(list):
 
 
 class Rule():
-    rule_count = 0
+    count = Counter()
 
     @classmethod
-    def get_rule_count(cls):
-        return cls.rule_count
+    def get_count(cls):
+        return cls.count.get_count()
 
     @classmethod
-    def incr_rule_count(cls):
-        cls.rule_count += 1
+    def incr_count(cls):
+        return cls.count.incr()
 
     def __init__(self, rule_name=None):
         self.set_name(rule_name)
-        self.incr_rule_count()
-        self.id = self.get_rule_count()
+        self.id = self.incr_count()
         self.actions = []
         self.matches = []
         self.match_exceptions = []
@@ -37,7 +38,7 @@ class Rule():
         if rule_name is not None:
             self.name = str(rule_name)
         else:
-            self.name = 'Rule' + str(self.get_rule_count())
+            self.name = 'Rule' + str(self.get_count())
 
     def add_action(self, action):
         action.parent_rule_id = self.id
@@ -118,25 +119,24 @@ class Rule():
 
 class RuleAction():
     valid_actions = frozenset(['move_to_folder', 'forward', 'delete', 'mark_as_read', 'mark_as_unread'])
-    action_count = 0
+    count = Counter()
 
     @classmethod
-    def get_action_count(cls):
-        return cls.action_count
+    def get_count(cls):
+        return cls.count.get()
 
     @classmethod
-    def incr_action_count(cls):
-        cls.action_count += 1
-        return cls.action_count
+    def incr_count(cls):
+        return cls.count.incr()
 
     def __init__(self, action_type, parent_rule_id=None):
         self.action_type = action_type
+        self.id = self.incr_count()
         self.parent_rule_id = parent_rule_id
         self.delete_permanently = False
         self.mark_as_read_on_action = False
         self.mark_as_unread_on_action = False
         self.email_recipients = []
-        self.id = self.incr_action_count()
         self.dest_folder = ''
 
     def set_dest_folder(self, dest_folder):
@@ -220,38 +220,33 @@ class MatchOr(list):
         return "MatchOr" + super(self.__class__, self).__str__()
 
 
-class MatchCounter():
-    match_count = 0
+class MatchesCounter(Singleton):
+    """Enables a global count of matches"""
+    count = Counter()
 
     @classmethod
-    def get_match_count(cls):
-        return cls.match_count
+    def get(cls):
+        return cls.count.get()
 
     @classmethod
-    def incr_match_count(cls):
-        cls.match_count += 1
-        return cls.match_count
-
-    def __repr__(self):
-        return "MatchCounter: %s" % self.match_count
-
-    def __str__(self):
-        return self.__repr__()
+    def incr(cls):
+        return cls.count.incr()
 
 
 class MatchField():
     match_types = frozenset(['starts_with', 'contains', 'ends_with', 'is'])
+    count = MatchesCounter
 
     @classmethod
-    def get_match_count(cls):
-        return MatchCounter.get_match_count()
+    def get_count(cls):
+        return cls.count.get()
 
     @classmethod
-    def incr_match_count(cls):
-        return MatchCounter.incr_match_count()
+    def incr_count(cls):
+        return cls.count.incr()
 
     def __init__(self, field_to_match=None, match_type=None, value_to_match=None, case_sensitive=False, name=None, parent_rule_id=None):
-        self.id = self.incr_match_count()
+        self.id = self.incr_count()
         self.name = name
         self.set_field_to_match(field_to_match)
         self.set_match_type(match_type)
@@ -371,17 +366,18 @@ class MatchField():
 
 class MatchDate():
     match_types = frozenset(['older_than', 'newer_than'])
+    count = MatchesCounter
 
     @classmethod
-    def get_match_count(cls):
-        return MatchCounter.get_match_count()
+    def get_count(cls):
+        return cls.count.get()
 
     @classmethod
-    def incr_match_count(cls):
-        return MatchCounter.incr_match_count()
+    def incr_count(cls):
+        return cls.count.incr()
 
     def __init__(self, field_to_match='Date', match_type='older_than', value_to_match=datetime.datetime.min, name=None, parent_rule_id=None):
-        self.id = self.incr_match_count()
+        self.id = self.incr_count()
         self.name = name
         self.set_field_to_match(field_to_match)
         self.set_match_type(match_type)
