@@ -107,7 +107,7 @@ class IMAPServerConnection():
         else:
             data_to_fetch = 'BODY.PEEK[]'
         result, data = self.imap_connection.uid('fetch', uid, data_to_fetch)
-        if isinstance(data, list) and (data[0] is not None):
+        if (result == 'OK') and isinstance(data, list) and (data[0] is not None):
             raw_email = data[0][1]
         else:
             raw_email = None
