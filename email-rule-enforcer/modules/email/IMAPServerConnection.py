@@ -38,8 +38,19 @@ class IMAPServerConnection():
         else:
             self.imap_connection = imaplib.IMAP4(self.server_name, self.server_port)
         self.is_connected = True
-        self.imap_connection.login(self.username, self.password)
-        LogMaster.log(50, 'Successfully connected to IMAP Server: %s', self.server_name)
+
+        try:
+            result = self.imap_connection.login(self.username, self.password)
+            if result != 'OK':
+                raise imaplib.IMAP4.error('Login Failed, result is: ' + str(result))
+            self.is_auth = True
+            LogMaster.critical('Successfully connected to IMAP Server: %s', self.server_name)
+        except imaplib.IMAP4.error:
+            LogMaster.critical('IMAP Server Login Failed: %s', str(imaplib.IMAP4.error))
+            self.is_auth = False
+            self.disconnect()
+            return False
+
         self._check_imapmove_supported()
         if imaplib._MAXLINE < 1000000:
             imaplib._MAXLINE = 10000000
@@ -106,7 +117,13 @@ class IMAPServerConnection():
             data_to_fetch = 'BODY.PEEK[HEADER]'
         else:
             data_to_fetch = 'BODY.PEEK[]'
-        result, data = self.imap_connection.uid('fetch', uid, data_to_fetch)
+
+        try:
+            result, data = self.imap_connection.uid('fetch', uid, data_to_fetch)
+        except Exception:
+            result = 'NO'
+            data = [None]  # I didn't make this data up, a list of None can also emanate from imaplib responses.
+
         if (result == 'OK') and isinstance(data, list) and (data[0] is not None):
             raw_email = data[0][1]
         else:
@@ -139,7 +156,7 @@ class IMAPServerConnection():
         except email.errors.MessageError as e:
             # This isn't /handling/ the error per se: it's just changing
             # it into an imaplib error to match the rest of this class
-            raise imaplib.error('Error parsing raw email. Email Error was: %s' % e)
+            raise imaplib.IMAP4.error('Error parsing raw email. Email Error was: %s' % e)
         return ret_msg
 
     def move_email(self, uid, dest_folder, mark_as_read_on_move=None):

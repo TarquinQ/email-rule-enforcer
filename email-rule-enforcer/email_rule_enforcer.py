@@ -1,7 +1,8 @@
+import sys
 import modules.python_require_min_pyversion  # checks for py >= 3.4, which we need for newer IMAP TLS support
+import modules.match_emails as match_emails
 from modules.settings.get_config import get_config
 from modules.email.IMAPServerConnection import IMAPServerConnection
-import modules.match_emails as match_emails
 from modules.logging import LogMaster, add_log_files_from_config
 from modules.supportingfunctions import die_with_errormsg
 
@@ -19,11 +20,16 @@ def main():
     # Connect to IMAP
     imap_connection = IMAPServerConnection()
     imap_connection.set_parameters_from_config(config)
-    try:
-        imap_connection.connect_to_server()
+    # try:
+    #     imap_connection.connect_to_server()
+    #     imap_connection.connect_to_folder(config['imap_initial_folder'])
+    # except Exception as e:
+    #     print("IMAP Connection fail")
+    imap_connection.connect_to_server()
+    if imap_connection.is_connected:
         imap_connection.connect_to_folder(config['imap_initial_folder'])
-    except Exception as e:
-        print("IMAP Connection fail")
+    else:
+        sys.exit(1)
 
     # Parse IMAP Emails
     if imap_connection.is_connected:
