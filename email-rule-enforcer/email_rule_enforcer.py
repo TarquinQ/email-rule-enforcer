@@ -30,14 +30,17 @@ def main():
     else:
         die_with_errormsg('IMAP Server failed, so we are now exiting.')
 
-    # Parse IMAP Emails
-    if config['assess_mainfolder_rules']:
-        match_emails.iterate_rules_over_mailfolder(imap_connection, config, rules)
+    try:
+        # Parse IMAP Emails
+        if config['assess_mainfolder_rules']:
+            match_emails.iterate_rules_over_mailfolder(imap_connection, config, rules)
 
-    if config['assess_allfolders_rules']:
-        match_emails.iterate_over_allfolders(imap_connection, config, rules)
+        if config['assess_allfolders_rules']:
+            match_emails.iterate_over_allfolders(imap_connection, config, rules)
 
-    imap_connection.disconnect()
+        imap_connection.disconnect()
+    except KeyboardInterrupt as KI:
+        imap_connection.disconnect()
 
     # Send Completion Email
     # send_smtp_completion_email()
