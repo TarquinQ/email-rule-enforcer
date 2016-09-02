@@ -151,6 +151,7 @@ class IMAPServerConnection():
             parsed_email.imap_folder = self.currfolder_name
             parsed_email.date_datetime = get_email_datetime(parsed_email)
             parsed_email.imap_flags = self.get_imap_flags_byuid(uid)
+            parsed_email.is_read = self.is_email_currently_read_byflags(parsed_email.imap_flags)
             parsed_email["body"] = get_email_body(parsed_email)
         else:
             parsed_email = None
@@ -206,6 +207,13 @@ class IMAPServerConnection():
 
     def is_email_currently_read_byuid(self, uid):
         if '(\\Seen)' in self.get_imap_flags_byuid(uid):
+            return True
+        else:
+            return False
+
+    @staticmethod
+    def is_email_currently_read_byflags(flags):
+        if '(\\Seen)' in flags:
             return True
         else:
             return False
