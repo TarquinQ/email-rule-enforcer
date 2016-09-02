@@ -104,7 +104,6 @@ def parse_config_tree(xml_config_tree, config, rules):
             set_boolean_if_xmlnode_exists(config, conf_prefix + 'smtplib_debug', Node, './smtplib_debug')  # SMTP only
 
         def parse_email_Exchange_settings(config, Node):
-            print ("now parsing Exchange settings")
             set_value_if_xmlnode_exists(config, 'Exchange_shared_mailbox_alias', Node, './shared_mailbox_alias')
 
         parse_email_server_settings(config, 'imap_', Node.find('./connection_imap'))
