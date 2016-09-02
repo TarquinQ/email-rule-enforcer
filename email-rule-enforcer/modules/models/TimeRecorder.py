@@ -15,7 +15,7 @@ class TimeRecorder():
 
     def __repr__(self):
         ret_str = 'TimeRecorder:'
-        ret_str += 'Init Time: ' + str(init_time.iso_format())
+        ret_str += 'Init Time: ' + str(init_datetime.isoformat(' '))
         ret_str += 'Elapsed Seconds: ' + str(self.get_elapsed_seconds())
         return ret_str
 

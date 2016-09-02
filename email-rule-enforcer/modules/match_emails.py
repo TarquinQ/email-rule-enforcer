@@ -73,7 +73,7 @@ def check_email_against_rule(rule, email_to_validate):
             email_matched = False
         else:
             # Now we know that it is matched and not excepted, so we will perform actions
-            LogMaster.info('Match found, Rule ID %s (Name %s) matched against Email UID %s (From %s, Date %s)',
+            LogMaster.info('Match found, Rule ID %s (Name: \"%s\"") matched against Email UID %s (From: \"%s\", Date: \"%s\")',
                 rule.id, rule.name,
                 email_to_validate.uid_str, email_to_validate["from"], email_to_validate["date"]
                 )
