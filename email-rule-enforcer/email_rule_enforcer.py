@@ -5,11 +5,15 @@ from modules.settings.get_config import get_config
 from modules.email.IMAPServerConnection import IMAPServerConnection
 from modules.logging import LogMaster, add_log_files_from_config
 from modules.supportingfunctions import die_with_errormsg
+from modules.ui.display_headers import get_header_preconfig, get_header_postconfig
 
 
 def main():
+    print(get_header_preconfig())
+
     # Get the configs
     (config, rules) = get_config()
+    print(get_header_postconfig(config))
 
     # Set up Logging
     add_log_files_from_config(config, rules)
@@ -20,28 +24,23 @@ def main():
     # Connect to IMAP
     imap_connection = IMAPServerConnection()
     imap_connection.set_parameters_from_config(config)
-    # try:
-    #     imap_connection.connect_to_server()
-    #     imap_connection.connect_to_folder(config['imap_initial_folder'])
-    # except Exception as e:
-    #     print("IMAP Connection fail")
     imap_connection.connect_to_server()
     if imap_connection.is_connected:
         imap_connection.connect_to_folder(config['imap_initial_folder'])
     else:
-        sys.exit(1)
+        die_with_errormsg('IMAP Server failed, so we are now exiting.')
 
     # Parse IMAP Emails
-    if imap_connection.is_connected:
-        if config['assess_mainfolder_rules']:
-            match_emails.iterate_rules_over_mailfolder(imap_connection, config, rules)
+    if config['assess_mainfolder_rules']:
+        match_emails.iterate_rules_over_mailfolder(imap_connection, config, rules)
 
-        if config['assess_allfolders_rules']:
-            match_emails.iterate_over_allfolders(imap_connection, config, rules)
+    if config['assess_allfolders_rules']:
+        match_emails.iterate_over_allfolders(imap_connection, config, rules)
 
-        imap_connection.disconnect()
-        # Send Completion Email
-        # send_smtp_completion_email()
+    imap_connection.disconnect()
+
+    # Send Completion Email
+    # send_smtp_completion_email()
 
 
 if __name__ == "__main__":
