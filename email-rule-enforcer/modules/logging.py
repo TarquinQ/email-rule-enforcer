@@ -82,13 +82,13 @@ class LogController():
                 self.handler_file = new_handler
                 self.handler_file.setFormatter(self.formatter_file)
                 self.logger.addHandler(self.handler_file)
-                print('Added new file as a log handler. Lofile name:', filepath)
+                #print('Added new file as a log handler. Lofile name:', filepath)
         except:
             if die_if_file_fails:
-                self.log_exception('FATAL: Died when opening log file: ', filepath)
+                print('FATAL: Died when opening log file: %s' % filepath)
                 die_with_errormsg('FATAL: Died when opening log file: ', filepath)
             else:
-                self.log('ERROR: Failed to open log file: ', filepath, '\nContinuing with program anyway.')
+                print('ERROR: Failed to open log file: %s\nContinuing with program anyway.' % filepath)
         if self.debug_this_class:
             print("Log controller filename added; Controller name: ", self.name, " new level is ", self.log_level)
 
@@ -105,10 +105,10 @@ class LogController():
             new_handler = logging.FileHandler(filepath, mode, encoding='utf8')
         except:
             if die_if_file_fails:
-                self.log_exception('FATAL: Died when opening log file: ', filepath)
+                print('FATAL: Died when opening log file: %s' % filepath)
                 die_with_errormsg('FATAL: Died when opening log file: ', filepath)
             else:
-                self.log('ERROR: Failed to open log file: ', filepath, '\nContinuing with program anyway.')
+                print('ERROR: Failed to open log file: %s\nContinuing with program anyway.' % filepath)
                 new_handler = None
 
         return new_handler
