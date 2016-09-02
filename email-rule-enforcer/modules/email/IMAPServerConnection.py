@@ -14,6 +14,7 @@ class IMAPServerConnection():
         self.deletions_folder = 'Trash'
         self.currfolder_name = ''
         self.is_connected = False
+        self.is_auth = False
         LogMaster.ultra_debug('New IMAP Server Connection object created')
 
     def set_parameters_from_config(self, config):
@@ -32,6 +33,7 @@ class IMAPServerConnection():
         return self.connect_to_server()
 
     def connect_to_server(self):
+        LogMaster.info('Now attempting to connect to IMAP Server: %s', self.server_name)
         if self.use_ssl:
             ssl_context = ssl.create_default_context()
             self.imap_connection = imaplib.IMAP4_SSL(self.server_name, self.server_port, ssl_context=ssl_context)
@@ -41,17 +43,22 @@ class IMAPServerConnection():
 
         try:
             result = self.imap_connection.login(self.username, self.password)
-            if result != 'OK':
-                raise imaplib.IMAP4.error('Login Failed, result is: ' + str(result))
+            if (result is None) or (not isinstance(result, tuple)) or (not result[0][0] != 'OK'):
+                raise imaplib.IMAP4.error('IMAP Server Login Failed, exiting')
             self.is_auth = True
             LogMaster.critical('Successfully connected to IMAP Server: %s', self.server_name)
-        except imaplib.IMAP4.error:
-            LogMaster.critical('IMAP Server Login Failed: %s', str(imaplib.IMAP4.error))
+        except imaplib.IMAP4.error as e:
+            LogMaster.critical('IMAP Server Login Failed. Exiting.')
             self.is_auth = False
             self.disconnect()
             return False
 
         self._check_imapmove_supported()
+        self.fix_imaplib_maxline()
+
+    @staticmethod
+    def fix_imaplib_maxline():
+        """This method hotfixes a bug fixed in later py3.4 and 3.5 releases"""
         if imaplib._MAXLINE < 1000000:
             imaplib._MAXLINE = 10000000
 
