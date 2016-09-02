@@ -73,7 +73,10 @@ def check_email_against_rule(rule, email_to_validate):
             email_matched = False
         else:
             # Now we know that it is matched and not excepted, so we will perform actions
-            LogMaster.info('Match found, Rule ID %s matched against Email UID %s', rule.id, email_to_validate.uid_str)
+            LogMaster.info('Match found, Rule ID %s (Name %s) matched against Email UID %s (From %s, Date %s)',
+                rule.id, rule.name,
+                email_to_validate.uid_str, email_to_validate["from"], email_to_validate["date"]
+                )
 
     return email_matched
 
@@ -199,13 +202,11 @@ def iterate_over_allfolders(imap_connection, config, rules):
     LogMaster.info('\nNow looping over all folders in the mailbox.')
     LogMaster.ultra_debug("All folders: %s", imap_connection.get_all_folders())
     for folder_record in imap_connection.get_all_folders():
-        print ("Folder: ", folder_record)
         folder_record_utf8 = convert_bytes_to_utf8(folder_record)
         (folder_flags, folder_parent_and_name) = folder_record_utf8.split(')', 1)
         (empty_str, folder_parent, folder_name) = folder_parent_and_name.split('"', 2)
         folder_name = folder_name.strip()
 
-        LogMaster.info('\nFolder found in mailbox, Folder Name: "%s".', folder_name)
         LogMaster.info('Now connecting to folder "%s".', folder_name)
         imap_connection.connect_to_folder(folder_name)
 
