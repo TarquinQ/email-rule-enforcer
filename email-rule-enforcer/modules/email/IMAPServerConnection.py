@@ -1,4 +1,5 @@
 import imaplib
+import socket
 import ssl
 import email
 import traceback
@@ -9,12 +10,13 @@ from modules.email.supportingfunctions_email import get_email_body, get_email_da
 
 class IMAPServerConnection():
     def __init__(self):
+        self.imap_connection = None
         self.imapmove_is_supported = False
+        self._is_connected = False
+        self.is_auth = False
         self.initial_folder = 'INBOX'
         self.deletions_folder = 'Trash'
         self.currfolder_name = ''
-        self.is_connected = False
-        self.is_auth = False
         LogMaster.ultra_debug('New IMAP Server Connection object created')
 
     def set_parameters_from_config(self, config):
@@ -32,33 +34,52 @@ class IMAPServerConnection():
     def connect(self):
         return self.connect_to_server()
 
+    def is_connected(self):
+        return self._is_connected
+
     def connect_to_server(self):
         LogMaster.info('Now attempting to connect to IMAP Server: %s', self.server_name)
-        if self.use_ssl:
-            ssl_context = ssl.create_default_context()
-            self.imap_connection = imaplib.IMAP4_SSL(self.server_name, self.server_port, ssl_context=ssl_context)
-        else:
-            self.imap_connection = imaplib.IMAP4(self.server_name, self.server_port)
-        self.is_connected = True
+
+        if self._is_connected:
+            return True
 
         try:
-            result = self.imap_connection.login(self.username, self.password)
-            if (result is None) or (not isinstance(result, tuple)) or (not result[0][0] != 'OK'):
-                raise imaplib.IMAP4.error('IMAP Server Login Failed, exiting')
-            self.is_auth = True
-            LogMaster.critical('Successfully connected to IMAP Server: %s', self.server_name)
+            try:
+                # Frist we connect to the server. This can throw gaierror or TimeoutError
+                if self.use_ssl:
+                    ssl_context = ssl.create_default_context()
+                    self.imap_connection = imaplib.IMAP4_SSL(self.server_name, self.server_port, ssl_context=ssl_context)
+                else:
+                    self.imap_connection = imaplib.IMAP4(self.server_name, self.server_port)
+                self._is_connected = True
+
+                # Now we're connected, log in. This can throw (or raise) IMAP4.error
+                result = self.imap_connection.login(self.username, self.password)
+                if (result is None) or (not isinstance(result, tuple)) or (not result[0][0] != 'OK'):
+                    raise imaplib.IMAP4.error('IMAP Server Login Failed, exiting')
+                self.is_auth = True
+
+                LogMaster.critical('Successfully connected to IMAP Server: %s', self.server_name)
+
+            except socket.gaierror as sock_err:
+                raise imaplib.IMAP4.error('Connection Error: Invalid IMAP Server Hostname \"%s\"' % self.server_name)
+            except TimeoutError as timeout:
+                raise imaplib.IMAP4.error('Connection Error: Timeout when trying to connect to IMAP Server \"%s:%s\"' % (self.server_name, self.server_port))
         except imaplib.IMAP4.error as e:
-            LogMaster.critical('IMAP Server Login Failed. Exiting.')
+            LogMaster.critical('IMAP Server Connect Failed. Exiting.')
+            LogMaster.critical('Connect Error is: %s' % repr(e))
             self.is_auth = False
-            self.disconnect()
+            if self._is_connected:
+                self.disconnect()
             return False
 
         self._check_imapmove_supported()
         self.fix_imaplib_maxline()
+        return True
 
     @staticmethod
     def fix_imaplib_maxline():
-        """This method hotfixes a bug fixed in later py3.4 and 3.5 releases"""
+        """This method hotfixes a bug in python's imaplib (also fixed in later mainline py3.4 and 3.5 releases)"""
         if imaplib._MAXLINE < 1000000:
             imaplib._MAXLINE = 10000000
 
@@ -73,9 +94,13 @@ class IMAPServerConnection():
         return msg_count
 
     def disconnect(self):
-        self.imap_connection.logout()
-        self.is_connected = False
+        try:
+            self.imap_connection.logout()
+        except Exception as e:
+            pass
+        self._is_connected = False
         LogMaster.log(50, 'Successfully disconnected from IMAP Server')
+        return True
 
     def logout(self):
         return self.disconnect()
