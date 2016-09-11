@@ -80,27 +80,14 @@
 				</forward>
 			</rule_actions>
 		</rule>
-		<!-- This next rule is a special, one-of-a-kind rule. Only one of these rules runs. -->
-		<!-- This rule applies to all emails in all folders, except the main/Inbox folder. -->
-		<!-- This rule is designed to allow cleanup of old messages in all folders (including Deleted Items folder). -->
-		<!-- This rule follows the exact same Rule, Matches, Exceptions & Actions structure as all other rules. -->
-		<rule_for_all_folders>
-			<rule_name>Delete all emails older than 3 months in all mailbox Folders</rule_name>
-			<rule_matches>
-				<match_date field="date" type="older_than">
-					<months>3</months>
-				</match_date>
-			</rule_matches>
-			<rule_actions>
-				<delete permanently="no" />
-			</rule_actions>
-		</rule_for_all_folders>
 	</config_rules_mainfolder>
 
 	<!-- These rules run over _all_ emails in _all_ folders. -->
+	<!-- These generally allow cleanup of old messages in all folders (including Inbox and Deleted Items folders). -->
+	<!-- These rules follow the same Matches, Exceptions & Actions structure as main folder rules. -->
 	<config_rules_allfolders>
 		<rule>
-			<rule_name>Delete all emails older than 3 months in all mailbox Folders</rule_name>
+			<rule_name>Delete all emails older than 3 months in All Folders</rule_name>
 			<rule_matches>
 				<match_date field="date" type="older_than">
 					<months>3</months>
