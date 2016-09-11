@@ -231,8 +231,7 @@ class MatchesCounter(Singleton):
         return cls.count.incr()
 
 
-class MatchField():
-    match_types = frozenset(['starts_with', 'contains', 'ends_with', 'is'])
+class Match():
     count = MatchesCounter
 
     @classmethod
@@ -243,39 +242,81 @@ class MatchField():
     def incr_count(cls):
         return cls.count.incr()
 
-    def __init__(self, field_to_match=None, match_type=None, value_to_match=None, case_sensitive=False, name=None, parent_rule_id=None):
+    def __init__(self, field_to_match=None, match_type=None, value_to_match=None, name=None, parent_rule_id=None):
         self.id = self.incr_count()
         self.name = name
         self.set_field_to_match(field_to_match)
         self.set_match_type(match_type)
         self.set_value_to_match(value_to_match)
-        self.set_case_sensitive(case_sensitive)
         self.parent_rule_id = parent_rule_id
-        self.generate_re()
 
     def set_field_to_match(self, field_to_match):
         if isinstance(field_to_match, str):
             self.field_to_match = field_to_match.lower()
         else:
             self.field_to_match = field_to_match
-        self.generate_re()
 
     def set_match_type(self, match_type):
         if isinstance(match_type, str):
             self.match_type = match_type.lower()
         else:
             self.match_type = match_type
-        self.generate_re()
 
     def set_value_to_match(self, value_to_match):
         self.value_to_match = value_to_match
-        self.generate_re()
 
-    def set_case_sensitive(self, flag):
-        self.case_sensitive = flag
-        self.generate_re()
+    def get_field_to_match(self):
+        return self.field_to_match
 
-    def generate_re(self):
+    def get_match_type(self):
+        return self.match_type
+
+    def get_value_to_match(self):
+        return self.value_to_match
+
+    def test_match_value(self, value):
+        raise AttributeError('%s is Abstract Class, and should not be used in this manner' % (self.__class__.__name__))
+
+    def __str__(self):
+        return self.__repr__()
+
+    def __repr__(self):
+        retval = OrderedDict()
+        retval['id'] = self.id
+        retval['name'] = self.name
+        retval['field_to_match'] = self.field_to_match
+        retval['match_type'] = self.match_type
+        retval['value_to_match'] = self.value_to_match
+        retval['parent_rule_id'] = self.parent_rule_id
+        repr = '%s:(%s)' % (self.__class__.__name__, str(retval))
+        return repr
+
+
+class MatchField(Match):
+    match_types = frozenset(['starts_with', 'contains', 'ends_with', 'is'])
+
+    def __init__(self, field_to_match=None, match_type=None, value_to_match=None, case_sensitive=False, name=None, parent_rule_id=None):
+        super().__init__(field_to_match, match_type, value_to_match, name, parent_rule_id)
+        self.set_case_sensitive(case_sensitive)
+        self._generate_re()
+
+    def set_field_to_match(self, field_to_match):
+        super().set_field_to_match(field_to_match)
+        self._generate_re()
+
+    def set_match_type(self, match_type):
+        super().set_match_type(match_type)
+        self._generate_re()
+
+    def set_value_to_match(self, value_to_match):
+        super().set_value_to_match(value_to_match)
+        self._generate_re()
+
+    def set_case_sensitive(self, bool_flag):
+        self.case_sensitive = bool_flag
+        self._generate_re()
+
+    def _generate_re(self):
         try:
             if ((self.match_type in self.match_types) and (self.value_to_match is not None)):
                 match_str = str(self.value_to_match)[:]
@@ -316,18 +357,6 @@ class MatchField():
 
         return matched_yn
 
-    def get_field_to_match(self):
-        return self.field_to_match
-
-    def get_match_type(self):
-        return self.match_type
-
-    def get_value_to_match(self):
-        return self.value_to_match
-
-    def get_case_sensitive(self):
-        return self.case_sensitive
-
     def validate(self):
         if self.field_to_match not in self.match_fields:
             return (False, 'Field to match is invalid. Field type "' + self.field_to_match +
@@ -346,9 +375,6 @@ class MatchField():
                 self.action_type + '" selected, but delete_permanently flag not boolean: set to ' +
                 str(self.delete_permanently))
 
-    def __str__(self):
-        return self.__repr__()
-
     def __repr__(self):
         retval = OrderedDict()
         retval['id'] = self.id
@@ -362,35 +388,12 @@ class MatchField():
         return repr
 
 
-class MatchDate():
+class MatchDate(Match):
     match_types = frozenset(['older_than', 'newer_than'])
-    count = MatchesCounter
-
-    @classmethod
-    def get_count(cls):
-        return cls.count.get()
-
-    @classmethod
-    def incr_count(cls):
-        return cls.count.incr()
 
     def __init__(self, field_to_match='Date', match_type='older_than', value_to_match=datetime.datetime.min, name=None, parent_rule_id=None):
-        self.id = self.incr_count()
-        self.name = name
-        self.set_field_to_match(field_to_match)
-        self.set_match_type(match_type)
-        self.set_value_to_match(value_to_match)
-        self.parent_rule_id = parent_rule_id
+        super().__init__(field_to_match, match_type, value_to_match, name, parent_rule_id)
         self._ensure_sane_values()
-
-    def set_field_to_match(self, field_to_match):
-        self.field_to_match = field_to_match
-
-    def set_match_type(self, match_type):
-        self.match_type = match_type
-
-    def set_value_to_match(self, value_to_match):
-        self.value_to_match = value_to_match
 
     def _ensure_sane_values(self):
         """This makes sure that the config doesn't populate flawed or conflicting values here.
@@ -462,18 +465,6 @@ class MatchDate():
 
         return matched_yn
 
-    def get_field_to_match(self):
-        return self.field_to_match
-
-    def get_match_type(self):
-        return self.match_type
-
-    def get_value_to_match(self):
-        return self.value_to_match
-
-    def get_case_sensitive(self):
-        return self.case_sensitive
-
     def validate(self):
         if self.field_to_match not in self.match_fields:
             return (False, 'Field to match is invalid. Field type "' + self.field_to_match +
@@ -486,18 +477,4 @@ class MatchDate():
         if self.value_to_match is None:
             return (False, 'Match invalid. Missing field value string. Trying to match field ' +
                 self.field_to_match + '" selected, but no actual value is set for matching')
-
-    def __str__(self):
-        return self.__repr__()
-
-    def __repr__(self):
-        retval = OrderedDict()
-        retval['id'] = self.id
-        retval['name'] = self.name
-        retval['field_to_match'] = self.field_to_match
-        retval['match_type'] = self.match_type
-        retval['value_to_match'] = self.value_to_match
-        retval['parent_rule_id'] = self.parent_rule_id
-        repr = '%s:(%s)' % (self.__class__.__name__, str(retval))
-        return repr
 
