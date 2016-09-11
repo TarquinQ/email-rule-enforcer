@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <emailenforcer>
-	<config_rules>
+	<config_rules_mainfolder>
 		<rule>
 			<rule_name>Name of this rule</rule_name>
 			<rule_matches> <!-- all matches are required to match at the same time, unless added as an "match_or" -->
@@ -95,5 +95,20 @@
 				<delete permanently="no" />
 			</rule_actions>
 		</rule_for_all_folders>
-	</config_rules>
+	</config_rules_mainfolder>
+
+	<!-- These rules run over _all_ emails in _all_ folders. -->
+	<config_rules_allfolders>
+		<rule>
+			<rule_name>Delete all emails older than 3 months in all mailbox Folders</rule_name>
+			<rule_matches>
+				<match_date field="date" type="older_than">
+					<months>3</months>
+				</match_date>
+			</rule_matches>
+			<rule_actions>
+				<delete permanently="no" />
+			</rule_actions>
+		</rule>
+	</config_rules_allfolders>
 </emailenforcer>
