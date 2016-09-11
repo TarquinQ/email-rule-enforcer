@@ -28,10 +28,6 @@ class StartStopTimeRecorder():
         self.final_seconds = self.stop_perf - self.start_perf
         self.final_timedelta = self.stop_datetime - self.start_datetime
         self._is_running = False
-        if self.final_seconds < 30.0:
-            self.final_seconds = round(self.final_seconds, 2)
-        else:
-            self.final_seconds = round(self.final_seconds, 0)
 
     def is_running(self):
         return self._is_running
@@ -44,9 +40,16 @@ class StartStopTimeRecorder():
 
     def get_elapsed_seconds(self):
         if self._is_running is True:
-            return time.perf_counter() - self.start_perf
+            ret_val = time.perf_counter() - self.start_perf
         else:
-            return self.final_seconds
+            ret_val = self.final_seconds
+
+        if isinstance(ret_val, float):
+            if ret_val < 30.0:
+                ret_val = round(ret_val, 2)
+            else:
+                ret_val = round(ret_val, 0)
+        return ret_val
 
     def get_elapsed_timedelta(self):
         if self._is_running is True:
