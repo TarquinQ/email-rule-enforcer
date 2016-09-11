@@ -1,7 +1,8 @@
 from modules.logging import LogMaster
-from modules.models.RulesAndMatches import Rule, RuleAction, MatchField, MatchDate
+from modules.models.RulesAndMatches import Rule, RuleAction, Match
 from modules.email.smtp_send import send_email_from_config
-from modules.email.supportingfunctions_email import get_relevant_email_headers_for_logging, convert_bytes_to_utf8
+from modules.email.supportingfunctions_email import convert_bytes_to_utf8
+from modules.email.supportingfunctions_email import get_extended_email_headers_for_logging, get_basic_email_headers_for_logging
 from modules.email.make_new_emails import new_email_forward
 
 
@@ -26,7 +27,7 @@ def check_match_list(matches, email_to_validate):
             else:
                 LogMaster.ultra_debug('Email \'or\' is unmatched; matching over.')
 
-        elif (isinstance(match_check, MatchField) or isinstance(match_check, MatchDate)):
+        elif (isinstance(match_check, Match)):
             LogMaster.ultra_debug('Email matching is now a match Match ID %s, of type %s.', match_check.id, type(match_check))
             if match_check.test_match_email(email_to_validate):
                 LogMaster.ultra_debug('Email matched this field; continuing matching.')
@@ -35,7 +36,7 @@ def check_match_list(matches, email_to_validate):
                 LogMaster.ultra_debug('Email did not match this field.')
                 break
         else:
-            LogMaster.ultra_debug('Match ID %s is neither of type MatchField, MatchDate or List. Is actually type: %s.', match_check.id, type(match_check))
+            LogMaster.ultra_debug('Match ID %s is neither of type Match nor List. Is actually type: %s.', match_check.id, type(match_check))
 
     if num_actual_matches == num_required_matches:
         LogMaster.ultra_debug('Email matched. Num matches required: %s, num matches found: %s', num_required_matches, num_actual_matches)
@@ -81,9 +82,10 @@ def check_email_against_rule(rule, email_to_validate):
     return email_matched
 
 
-def perform_actions(imap_connection, config, rule, email_to_validate):
+def perform_actions(imap_connection, config, rule, email_to_validate, counters):
     for action_to_perform in rule.actions:
         action_type = action_to_perform.action_type
+        counters.incr('actions_taken')
         LogMaster.ultra_debug('Rule Action for Rule ID %s is type %s. Relevant value is \"%s\"',
             rule.id, action_type, action_to_perform.get_relevant_value())
 
@@ -141,7 +143,7 @@ def perform_actions(imap_connection, config, rule, email_to_validate):
             break  # Email gone now, no more actions
 
 
-def check_email_against_rules_and_perform_actions(imap_connection, config, rules, email_to_validate):
+def check_email_against_rules_and_perform_actions(imap_connection, config, rules, email_to_validate, counters):
     for rule in rules:
         email_matched = False
         email_actioned = False
@@ -156,16 +158,43 @@ def check_email_against_rules_and_perform_actions(imap_connection, config, rules
             continue
 
         email_matched = check_email_against_rule(rule, email_to_validate)
+        counters.incr('rules_checked')
 
         if (email_matched):
             LogMaster.info('Now performing all actions for Rule ID %s', rule.id)
-            perform_actions(imap_connection, config, rule, email_to_validate)
+            perform_actions(imap_connection, config, rule, email_to_validate, counters)
+            counters.incr('emails_matched')
         else:
             LogMaster.debug('Rule ID %s not matched, ignoring.', rule.id)
 
 
-def iterate_rules_over_mailfolder(imap_connection, config, rules):
-    LogMaster.log(40, 'Now commencing iteration of Rules over all emails in folder')
+def iterate_rules_over_mailfolder(imap_connection, config, rules, counters, headers_only=False):
+    LogMaster.log(40, 'Now commencing iteration of Rules over all emails in folder {0}'.format(
+        imap_connection.currfolder_name
+    ))
+
+    for email_to_validate in imap_connection.get_emails_in_currfolder(headers_only):
+        if email_to_validate is None:
+            continue
+        LogMaster.info('Email UID %s found in IMAP folder (\"%s\"). Email Details: %s',
+            email_to_validate.uid_str,
+            imap_connection.get_currfolder(),
+            get_basic_email_headers_for_logging(email_to_validate)
+        )
+
+        LogMaster.debug('Now assessing this email against all rules.')
+        LogMaster.ultra_debug('Extended Email Details:\n%s',
+            email_to_validate.uid_str,
+            get_extended_email_headers_for_logging(email_to_validate))
+
+        counters.incr('emails_seen')
+        check_email_against_rules_and_perform_actions(imap_connection, config, rules, email_to_validate, counters)
+
+        LogMaster.debug('Completed assessment of all rules against this email.\n')
+
+
+def iterate_rules_over_mainfolder(imap_connection, config, rules, counters):
+    LogMaster.log(40, 'Now commencing iteration of Rules over all emails in Main folder')
 
     if (imap_connection.is_connected() is False):
         LogMaster.log(40, 'Aborting: IMAP server is not connected')
@@ -175,20 +204,10 @@ def iterate_rules_over_mailfolder(imap_connection, config, rules):
         LogMaster.log(40, 'Aborting: IMAP server is connected, but not attached to a Folder')
         return None
 
-    for email_to_validate in imap_connection.get_emails_in_currfolder(headers_only=config['imap_headers_only']):
-        if email_to_validate is None:
-            continue
-        LogMaster.log(20, '\n\Email in found in folder. UID %s. Email Details:\n%s',
-            email_to_validate.uid_str,
-            get_relevant_email_headers_for_logging(email_to_validate))
-        LogMaster.log(20, 'Now assessing this email against all rules.')
-
-        check_email_against_rules_and_perform_actions(imap_connection, config, rules, email_to_validate)
-
-        LogMaster.log(20, 'Completed assessment of all rules against this email.\n')
+    return iterate_rules_over_mailfolder(imap_connection, config, rules, counters, headers_only=config['imap_headers_only'])
 
 
-def iterate_over_allfolders(imap_connection, config, rules):
+def iterate_rules_over_allfolders(imap_connection, config, rules, counters):
 
     if (imap_connection.is_connected is False):
         LogMaster.log(40, 'Aborting: IMAP server is not connected')
@@ -210,27 +229,10 @@ def iterate_over_allfolders(imap_connection, config, rules):
         LogMaster.info('Now connecting to folder "%s".', folder_name)
         imap_connection.connect_to_folder(folder_name)
 
-        iterate_allfolderrules_over_mailfolder(imap_connection, config, rules)
+        iterate_rules_over_mailfolder(imap_connection, config, rules, counters, headers_only=config['imap_headers_only'])
 
     LogMaster.info('Now resetting IMAP connection back to default folder.')
     imap_connection.connect_to_default_folder()
 
-
-def iterate_allfolderrules_over_mailfolder(imap_connection, config, rules):
-    for email_to_validate in imap_connection.get_emails_in_currfolder(headers_only=True):
-        if email_to_validate is None:
-            continue
-        LogMaster.debug('\n\Email found in folder, UID %s.', email_to_validate.uid_str)
-        LogMaster.insane_debug('\n\nNew Email being processed, UID %s. Email Details:\n%s',
-            email_to_validate.uid_str,
-            get_relevant_email_headers_for_logging(email_to_validate))
-        LogMaster.insane_debug('Now assessing this email against all_folder rules.')
-
-        check_email_against_rules_and_perform_actions(imap_connection,
-            config,
-            rules,
-            email_to_validate)
-
-        LogMaster.insane_debug('Completed assessment of the all_folder rules against this email.\n')
 
 
