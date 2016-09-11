@@ -1,4 +1,4 @@
-def set_dependent_config(config, rules):
+def set_dependent_config(config):
     if config['imap_server_port'] is None:
         if config['imap_use_tls']:
             config['imap_server_port'] = 993

@@ -13,6 +13,6 @@ def get_config():
     config_files.log_config_file_details(40)
     xml_config_tree = config_files.full_config_tree
     # Parse XML Tree into actual config
-    (config, rules) = get_settings_from_configtree(xml_config_tree)
+    (config, rules_main, rules_all) = get_settings_from_configtree(xml_config_tree)
 
-    return (config, rules)
+    return (config, rules_main, rules_all)

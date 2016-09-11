@@ -14,7 +14,7 @@ from modules.settings.supportingfunctions_xml import get_attribvalue_if_exists_i
 from modules.settings.supportingfunctions_xml import set_boolean_if_xmlnode_exists, set_invertedboolean_if_xmlnode_exists
 
 
-def parse_config_tree(xml_config_tree, config, rules):
+def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
     """Parses the XML config tree, and all fields therein."""
 
     def parse_auth(Node, config):
@@ -115,9 +115,9 @@ def parse_config_tree(xml_config_tree, config, rules):
 
     def parse_rules(Node, config, rules):
         if Node is None:
-            return
+            return None
 
-        def parse_generic_field_match(Node):
+        def parse_generic_field_match(Node, config):
             match_field = get_attribvalue_if_exists_in_xmlNode(Node, 'field')
             match_type = get_attribvalue_if_exists_in_xmlNode(Node, 'type')
             match_name = get_attribvalue_if_exists_in_xmlNode(Node, 'name')
@@ -226,28 +226,28 @@ def parse_config_tree(xml_config_tree, config, rules):
 
             def parse_rule_matches(Node, rule):
                 for node in xpath_findall(Node, './match_field'):
-                    rule.add_match(parse_generic_field_match(node))
+                    rule.add_match(parse_generic_field_match(node, config))
                 for node in xpath_findall(Node, './match_date'):
                     rule.add_match(parse_generic_date_match(node))
 
                 for node in xpath_findall(Node, './match_or'):
                     rule.start_match_or()
                     for node in xpath_findall(Node, './match_or/match_field'):
-                        rule.add_match_or(parse_generic_field_match(node))
+                        rule.add_match_or(parse_generic_field_match(node, config))
                     for node in xpath_findall(Node, './match_or/match_date'):
                         rule.add_match_or(parse_generic_date_match(node))
                     rule.stop_match_or()
 
             def parse_rule_match_exceptions(Node, rule):
                 for node in xpath_findall(Node, './match_field'):
-                    rule.add_match_exception(parse_generic_field_match(node))
+                    rule.add_match_exception(parse_generic_field_match(node, config))
                 for node in xpath_findall(Node, './match_date'):
                     rule.add_match_exception(parse_generic_date_match(node))
 
                 for node in xpath_findall(Node, './match_or'):
                     rule.start_exception_or()
                     for node in xpath_findall(Node, './match_or/match_field'):
-                        rule.add_exception_or(parse_generic_field_match(node))
+                        rule.add_exception_or(parse_generic_field_match(node, config))
                     for node in xpath_findall(Node, './match_or/match_date'):
                         rule.add_exception_or(parse_generic_date_match(node))
                     rule.stop_exception_or()
@@ -268,11 +268,6 @@ def parse_config_tree(xml_config_tree, config, rules):
 
         for rule_node in xpath_findall(Node, './rule'):
                 rules.append(parse_rule_node(rule_node, config))
-
-        if rules.rule_for_all_folders is None:
-            for rule_node in xpath_findall(Node, './rule_for_all_folders'):
-                    rules.rule_for_all_folders = parse_rule_node(rule_node, config)
-
         # End Parsing of Rules Section
 
     # Now we actually perform the parsin of each section
@@ -280,16 +275,18 @@ def parse_config_tree(xml_config_tree, config, rules):
     parse_general(xml_config_tree.find('config_general'), config)
     parse_serverinfo(xml_config_tree.find('config_serverinfo'), config)
     # We allow multiple Rules sections, to allow smaller/reusable config files
-    for rule_node in xml_config_tree.findall('config_rules'):
-        parse_rules(rule_node, config, rules)
+    for rule_node in xml_config_tree.findall('config_rules_mainfolder'):
+        parse_rules(rule_node, config, rules_main)
+    for rule_node in xml_config_tree.findall('config_rules_allfolders'):
+        parse_rules(rule_node, config, rules_allfolders)
 
 
 def get_settings_from_configtree(xml_config_tree):
     config = Config()
-    rules = Rules()
+    rules_main = Rules()
+    rules_allfolders = Rules()
     set_defaults(config)
-    parse_config_tree(xml_config_tree, config, rules)
-    set_dependent_config(config, rules)
-    return (config, rules)
-    #validate_config(config)
+    parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders)
+    set_dependent_config(config)
+    return (config, rules_main, rules_allfolders)
 

@@ -9,9 +9,7 @@ import modules.models.tzinfo_UTC as tzinfo_UTC
 
 
 class Rules(list):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.rule_for_all_folders = None
+    pass
 
 
 class Rule():

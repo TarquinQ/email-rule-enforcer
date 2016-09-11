@@ -225,7 +225,7 @@ class LogMaster(metaclass=Singleton):
         cls._add_logfile_to_namedcontr(cls.name_debugfile, *args, **kwargs)
 
 
-def add_log_files_from_config(config, rules):
+def add_log_files_from_config(config):
     """Add all of the logging config from config files and enacts them on the LogMaster object"""
 
     LogMaster.set_loglevel_console(config['console_loglevel'] * 10)
@@ -233,7 +233,6 @@ def add_log_files_from_config(config, rules):
     if config['console_ultra_debug']:
         LogMaster.set_loglevel_console(8)
         LogMaster.info('** Ultra Debug set. This will print a lot of extra debug info to the console.')
-        ultradebug_rules_and_config(config, rules)
         config['imap_imaplib_debuglevel'] = 3
         config['smtp_smtplib_debuglevel'] = True
     if config['console_insane_debug']:
@@ -269,9 +268,10 @@ def add_log_files_from_config(config, rules):
         LogMaster.info('New LogFile added, path: %s', settings_logfile.log_fullpath)
 
 
-def ultradebug_rules_and_config(config, rules):
+def ultradebug_rules_and_config(config, rules_main, rules_all):
     LogMaster.ultra_debug("Unified Config:\n%s", '\n'.join(nested_data_to_str(config)))
-    LogMaster.ultra_debug("Rules:\n%s", '\n'.join(nested_data_to_str(rules)))
+    LogMaster.ultra_debug("Rules for Main Folder (Inbox):\n%s", '\n'.join(nested_data_to_str(rules_main)))
+    LogMaster.ultra_debug("Rules for All Folders:\n%s", '\n'.join(nested_data_to_str(rules_all)))
 
 
 def log_file_headers(config, logname):

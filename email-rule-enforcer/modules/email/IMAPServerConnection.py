@@ -9,8 +9,8 @@ from modules.email.supportingfunctions_email import get_email_body, get_email_da
 
 
 class RawEmailResponse():
-    def __init__(self, raw_email=None, flags=None, size=None, server_date=None):
-        self.raw_email = raw_email
+    def __init__(self, raw_email_bytes=None, flags=None, size=None, server_date=None):
+        self.raw_email_bytes = raw_email_bytes
         self.size = size
         self.flags = flags
         self.server_date = server_date
@@ -21,7 +21,7 @@ class RawEmailResponse():
             self.size,
             self.flags,
             self.server_date,
-            self.raw_email
+            self.raw_email_bytes
         )
         return ret_str
 
@@ -174,7 +174,12 @@ class IMAPServerConnection():
 
     def get_all_folders(self):
         """Returns a list of all IMAP folders"""
-        return self.imap_connection.list()[1]
+        ret_list = [None]
+        try:
+            ret_list = self.imap_connection.list()[1]
+        except Exception:
+            pass
+        return ret_list
 
     def get_raw_email_byuid(self, uid, headers_only=False):
         if headers_only:
@@ -204,12 +209,11 @@ class IMAPServerConnection():
                 email_flags = self.parse_flags(response)
                 server_date = imaplib.Internaldate2tuple(response)
             raw_email = RawEmailResponse(
-                raw_email=raw_email_contents,
+                raw_email_bytes=raw_email_contents,
                 flags=email_flags,
                 size=email_size,
                 server_date=server_date
             )
-            print ('**** Got Email _and_ flags by UID: UID %s, RawEmailResponse: %s' % (uid, raw_email))
         else:
             raw_email = None
         return raw_email
@@ -220,30 +224,35 @@ class IMAPServerConnection():
     def get_parsed_email_byuid(self, uid, headers_only=False):
         raw_email = self.get_raw_email_byuid(uid, headers_only)
         if raw_email is not None:
-            parsed_email = self.parse_raw_email(raw_email.raw_email)
-            parsed_email.original_raw_email = raw_email.raw_email
-            parsed_email.size = raw_email.size
-            parsed_email.server_date = raw_email.server_date
-            parsed_email.headers_only = headers_only
-            parsed_email.uid = uid
-            parsed_email.uid_str = convert_bytes_to_utf8(uid)
-            parsed_email.imap_folder = self.currfolder_name
-            parsed_email.date_datetime = get_email_datetime(parsed_email)
-            parsed_email.imap_flags = raw_email.flags
-            parsed_email.is_read = self.is_email_currently_read_fromflags(parsed_email.imap_flags)
-            parsed_email["body"] = get_email_body(parsed_email)
+            try:
+                parsed_email = self.parse_raw_email(raw_email.raw_email_bytes)
+            except imaplib.IMAP4.error as parse_error:
+                parsed_email = None
+            else:
+                parsed_email.original_raw_email = raw_email.raw_email_bytes
+                parsed_email.size = raw_email.size
+                parsed_email.server_date = raw_email.server_date
+                parsed_email.headers_only = headers_only
+                parsed_email.uid = uid
+                parsed_email.uid_str = convert_bytes_to_utf8(uid)
+                parsed_email.imap_folder = self.currfolder_name
+                parsed_email.date_datetime = get_email_datetime(parsed_email)
+                parsed_email.imap_flags = raw_email.flags
+                parsed_email.is_read = self.is_email_currently_read_fromflags(parsed_email.imap_flags)
+                parsed_email["body"] = get_email_body(parsed_email)
         else:
             parsed_email = None
         return parsed_email
 
     @staticmethod
     def parse_raw_email(raw_email):
+        ret_msg = None
         if isinstance(raw_email, bytes):
-            raw_email_string = raw_email
+            raw_email_bytes = raw_email
         elif isinstance(raw_email, RawEmailResponse):
-            raw_email_string = raw_email.raw_email
+            raw_email_bytes = raw_email.raw_email_bytes
         try:
-            ret_msg = email.message_from_bytes(raw_email_string)
+            ret_msg = email.message_from_bytes(raw_email_bytes)
         except email.errors.MessageError as e:
             # This isn't /handling/ the error per se: it's just changing
             # it into an imaplib error to match the rest of this class
@@ -289,10 +298,9 @@ class IMAPServerConnection():
             LogMaster.log(20, 'Sent email to Deleted Items folder. UID: %s', uid)
 
     def is_email_currently_read_byuid(self, uid):
-        if '(\\Seen)' in self.get_imap_flags_byuid(uid):
-            return True
-        else:
-            return False
+        return self.is_email_currently_read_fromflags(
+            self.get_imap_flags_byuid(uid)
+        )
 
     @staticmethod
     def is_email_currently_read_fromflags(flags):

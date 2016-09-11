@@ -146,7 +146,7 @@ def check_email_against_rules_and_perform_actions(imap_connection, config, rules
         email_matched = False
         email_actioned = False
 
-        LogMaster.insane_debug('Now checking Email UID %s against Rule ID %s (Rule Name: \"%s\"")', email_to_validate.uid_str, rule.id, rule.name)
+        LogMaster.ultra_debug('Now checking Email UID %s against Rule ID %s (Rule Name: \"%s\"")', email_to_validate.uid_str, rule.id, rule.name)
 
         if len(rule.get_matches()) == 0:
             LogMaster.ultra_debug('Zero matches required for Rule %s - rule invalid, not attempting.', rule.id)
@@ -167,7 +167,7 @@ def check_email_against_rules_and_perform_actions(imap_connection, config, rules
 def iterate_rules_over_mailfolder(imap_connection, config, rules):
     LogMaster.log(40, 'Now commencing iteration of Rules over all emails in folder')
 
-    if (imap_connection.is_connected is False):
+    if (imap_connection.is_connected() is False):
         LogMaster.log(40, 'Aborting: IMAP server is not connected')
         return None
 
@@ -194,7 +194,7 @@ def iterate_over_allfolders(imap_connection, config, rules):
         LogMaster.log(40, 'Aborting: IMAP server is not connected')
         return None
 
-    if (rules.rule_for_all_folders is None):
+    if (rules is None):
         LogMaster.debug('Ignoring: no global all_folders rule is set, no need to connect to all folders')
         return None
 
@@ -228,7 +228,7 @@ def iterate_allfolderrules_over_mailfolder(imap_connection, config, rules):
 
         check_email_against_rules_and_perform_actions(imap_connection,
             config,
-            [rules.rule_for_all_folders],
+            rules,
             email_to_validate)
 
         LogMaster.insane_debug('Completed assessment of the all_folder rules against this email.\n')
