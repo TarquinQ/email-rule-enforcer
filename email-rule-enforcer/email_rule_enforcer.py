@@ -24,15 +24,15 @@ def main():
     (config, rules_mainfolder, rules_allfolders) = get_config()
     print(get_header_postconfig(config))
 
-    # Set up Logging
-    add_log_files_from_config(config)
-    ultradebug_rules_and_config(config, rules_mainfolder, rules_allfolders)
-
     # Die if in config-parse-only mode
     if config['parse_config_and_stop']:
         global_timers.stop('overall')
         print(get_completion_footer(global_timers, rule_counters_mainfolder, rule_counters_allfolders))
         die_with_errormsg('Config Testing only, dont connect. Now exiting', 0)
+
+    # Set up Logging
+    add_log_files_from_config(config)
+    ultradebug_rules_and_config(config, rules_mainfolder, rules_allfolders)
 
     # Connect to IMAP
     imap_connection = IMAPServerConnection()
@@ -49,12 +49,12 @@ def main():
         # Parse IMAP Emails
         if config['assess_mainfolder_rules']:
             global_timers.start('mainfolder')
-            match_emails.iterate_rules_over_mailfolder(imap_connection, config, rules_mainfolder)
+            match_emails.iterate_rules_over_mainfolder(imap_connection, config, rules_mainfolder, rule_counters_mainfolder)
             global_timers.stop('mainfolder')
 
         if config['assess_allfolders_rules']:
             global_timers.start('allfolders')
-            match_emails.iterate_over_allfolders(imap_connection, config, rules_allfolders)
+            match_emails.iterate_rules_over_allfolders(imap_connection, config, rules_allfolders, rule_counters_allfolders)
             global_timers.stop('allfolders')
 
         imap_connection.disconnect()
