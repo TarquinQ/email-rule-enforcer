@@ -13,6 +13,18 @@ class GlobalTimeRecorders(dict):
             self[counter_name] = StartStopTimeRecorder(start=start)
         return self[counter_name]
 
+    def get_start_datetime(self, counter_name):
+        try:
+            return self[counter_name].get_start_datetime()
+        except (KeyError, AttributeError):
+            return 0
+
+    def get_stop_datetime(self, counter_name):
+        try:
+            return self[counter_name].get_stop_datetime()
+        except (KeyError, AttributeError):
+            return 0
+
     def get_elapsed_seconds(self, counter_name):
         try:
             return self[counter_name].get_elapsed_seconds()

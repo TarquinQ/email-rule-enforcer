@@ -13,10 +13,10 @@ def create_default_rule_counters():
 
 def create_default_timers():
     ret_timers = GlobalTimeRecorders()
-    ret_timers.new_counter('program_start', start=True)
-    ret_timers.new_counter('inbox_start', start=True)
-    ret_timers.new_counter('inbox_start', start=True)
-    ret_timers.new_counter('allfolders_start', start=True)
+    ret_timers.new_counter('overall', start=True)
+    ret_timers.new_counter('mainfolder', start=False)
+    ret_timers.new_counter('allfolders', start=False)
+    return ret_timers
 
 
 # 2. Rule counts: Keep a count of the following items:

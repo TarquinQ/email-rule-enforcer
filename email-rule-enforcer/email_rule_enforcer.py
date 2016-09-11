@@ -9,10 +9,16 @@ from modules.email.IMAPServerConnection import IMAPServerConnection
 from modules.logging import LogMaster, add_log_files_from_config
 from modules.supportingfunctions import die_with_errormsg
 from modules.ui.display_headers import get_header_preconfig, get_header_postconfig
+from modules.ui.display_footers import get_completion_footer
 
 
 def main():
     print(get_header_preconfig())
+
+    # Create the Counters and Timers
+    global_timers = create_default_timers()
+    mainfolder_rule_counters = create_default_rule_counters()
+    allfolders_rule_counters = create_default_rule_counters()
 
     # Get the configs
     (config, rules) = get_config()
@@ -21,13 +27,10 @@ def main():
     # Set up Logging
     add_log_files_from_config(config, rules)
 
-    # Create the Counters and Timers
-    global_timers = create_default_timers()
-    inbox_rule_counters = create_default_rule_counters()
-    allfolders_rule_counters = create_default_rule_counters()
-
     # Die if in config-parse-only mode
     if config['parse_config_and_stop']:
+        global_timers.stop('overall')
+        print(get_completion_footer(global_timers, mainfolder_rule_counters, allfolders_rule_counters))
         die_with_errormsg('Config Testing only, dont connect. Now exiting', 0)
 
     # Connect to IMAP
@@ -37,16 +40,21 @@ def main():
     if imap_connection.is_connected():
         imap_connection.connect_to_folder(config['imap_initial_folder'])
     else:
-        die_with_errormsg('IMAP Server failed, so we are now exiting.')
+        global_timers.stop('overall')
+        die_with_errormsg('IMAP Server Connection failed before we did anything, so we are now exiting.')
 
     # Now we try to perform IMAP actions
     try:
         # Parse IMAP Emails
         if config['assess_mainfolder_rules']:
+            global_timers.start('mainfolder')
             match_emails.iterate_rules_over_mailfolder(imap_connection, config, rules)
+            global_timers.stop('mainfolder')
 
         if config['assess_allfolders_rules']:
+            global_timers.start('allfolders')
             match_emails.iterate_over_allfolders(imap_connection, config, rules)
+            global_timers.stop('allfolders')
 
         imap_connection.disconnect()
     except KeyboardInterrupt as KI:
@@ -60,6 +68,17 @@ def main():
         LogMaster.critical('We will now disconnect from IMAP and exit.')
         LogMaster.critical('Error was: %s', repr(socket_err))
         imap_connection.disconnect()
+
+    except (TypeError, AttributeError, KeyError) as e:
+        # Something went wrong with the IMAP socket. Safely Disconnect just in case.
+        LogMaster.critical('There has been an error with the email processing, and unhandled error occurred.')
+        LogMaster.critical('We will now disconnect from IMAP and exit.')
+        LogMaster.critical('Error was: %s', repr(e))
+        imap_connection.disconnect()
+
+    global_timers.stop('overall')
+    # Print the Footers
+    LogMaster.critical(get_completion_footer(global_timers, mainfolder_rule_counters, allfolders_rule_counters))
 
     # Send Completion Email
     # send_smtp_completion_email()
