@@ -31,7 +31,7 @@ def get_email_datetime(email_message):
     return parsed_datetime
 
 
-def get_relevant_email_headers_for_logging(email_message):
+def get_extended_email_headers_for_logging(email_message):
     def add_field_if_not_none(email_message, field, ret_list):
         if email_message[field] is not None:
             ret_list.append('%s: %s' % (field, email_message[field]))
@@ -53,6 +53,17 @@ def get_relevant_email_headers_for_logging(email_message):
     add_field_if_not_none(email_message, 'Date', ret_val)
     add_attrib_if_not_none(email_message, 'IMAP Flags', 'imap_flags', ret_val)
     return '\n'.join(ret_val)
+
+
+def get_basic_email_headers_for_logging(email_message):
+    def add_field_if_not_none(email_message, field, ret_list):
+        if email_message[field] is not None:
+            ret_list.append('%s: %s' % (field, email_message[field]))
+
+    ret_val = []
+    add_field_if_not_none(email_message, 'From', ret_val)
+    add_field_if_not_none(email_message, 'Date', ret_val)
+    return '; '.join(ret_val)
 
 
 def get_email_body(email_message):

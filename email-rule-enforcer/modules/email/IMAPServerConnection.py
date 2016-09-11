@@ -4,7 +4,7 @@ import ssl
 import email
 import traceback
 from modules.logging import LogMaster
-from modules.email.supportingfunctions_email import get_relevant_email_headers_for_logging, convert_bytes_to_utf8
+from modules.email.supportingfunctions_email import convert_bytes_to_utf8
 from modules.email.supportingfunctions_email import get_email_body, get_email_datetime
 
 
@@ -16,7 +16,7 @@ class RawEmailResponse():
         self.server_date = server_date
 
     def __str__(self):
-        ret_str = str(self.__class__)
+        ret_str = str(self.__class__.__name__)
         ret_str += ': Size {0}, Flags: {1}, ServerDate: {2}, raw_email:\n{3}'.format(
             self.size,
             self.flags,
