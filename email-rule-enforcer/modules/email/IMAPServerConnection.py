@@ -8,6 +8,27 @@ from modules.email.supportingfunctions_email import get_relevant_email_headers_f
 from modules.email.supportingfunctions_email import get_email_body, get_email_datetime
 
 
+class RawEmailResponse():
+    def __init__(self, raw_email=None, flags=None, size=None, server_date=None):
+        self.raw_email = raw_email
+        self.size = size
+        self.flags = flags
+        self.server_date = server_date
+
+    def __str__(self):
+        ret_str = str(self.__class__)
+        ret_str += ': Size {0}, Flags: {1}, ServerDate: {2}, raw_email:\n{3}'.format(
+            self.size,
+            self.flags,
+            self.server_date,
+            self.raw_email
+        )
+        return ret_str
+
+    def __repr__(self):
+        return self.__str__()
+
+
 class IMAPServerConnection():
     def __init__(self):
         self.imap_connection = None
@@ -74,11 +95,11 @@ class IMAPServerConnection():
             return False
 
         self._check_imapmove_supported()
-        self.fix_imaplib_maxline()
+        self._fix_imaplib_maxline()
         return True
 
     @staticmethod
-    def fix_imaplib_maxline():
+    def _fix_imaplib_maxline():
         """This method hotfixes a bug in python's imaplib (also fixed in later mainline py3.4 and 3.5 releases)"""
         if imaplib._MAXLINE < 1000000:
             imaplib._MAXLINE = 10000000
@@ -130,14 +151,25 @@ class IMAPServerConnection():
         for uid in self.get_list_alluids_in_currfolder():
             yield self.get_parsed_email_byuid(uid, headers_only)
 
+    @staticmethod
+    def parse_flags(flags_raw):
+        flags = []
+        try:
+            flags = [parsedflag.decode('utf-8') for parsedflag in imaplib.ParseFlags(flags_raw)]
+        except Exception:
+            pass
+        return flags
+
     def get_imap_flags_byuid(self, uid):
         """Gets a list of flags in UTF-8 for a given uid"""
         flags = []
-        result, flags_raw = self.imap_connection.uid('fetch', uid, '(FLAGS)')
-        #print ('FLAGS response: ', str(flags))
-        for flag in flags_raw:
-            new_flags = [parsedflag.decode('utf-8') for parsedflag in imaplib.ParseFlags(flag)]
-            flags.extend(new_flags)
+        try:
+            result, flags_raw = self.imap_connection.uid('fetch', uid, '(FLAGS)')
+        except imaplib.IMAP4.error:
+            pass
+        else:
+            for flag in flags_raw:
+                flags.extend(self.parse_flags(flag))
         return flags
 
     def get_all_folders(self):
@@ -146,18 +178,38 @@ class IMAPServerConnection():
 
     def get_raw_email_byuid(self, uid, headers_only=False):
         if headers_only:
-            data_to_fetch = 'BODY.PEEK[HEADER]'
+            header_text = 'HEADER'
         else:
-            data_to_fetch = 'BODY.PEEK[]'
+            header_text = ''
+        data_to_fetch = '(RFC822.SIZE FLAGS INTERNALDATE BODY.PEEK[{0}])'.format(header_text)
 
         try:
             result, data = self.imap_connection.uid('fetch', uid, data_to_fetch)
-        except Exception:
+        except imaplib.IMAP4.error as imap_error:
             result = 'NO'
-            data = [None]  # I didn't make this data up, a list of None can also emanate from imaplib responses.
+            data = [None]  # I didn't make up this value: [None] can also emanate from imaplib responses.
 
         if (result == 'OK') and isinstance(data, list) and (data[0] is not None):
-            raw_email = data[0][1]
+            response = data[0][0]
+            raw_email_contents = data[0][1]
+            email_size = 0
+            email_flags = None
+            server_date = None
+            if isinstance(response, bytes):
+                # Sample size_and_flags_response: b'1 RFC822.SIZE 9500 (FLAGS (\\Seen) BODY[HEADER] {1234}'
+                response_utf8 = response.decode('utf-8', 'replace')
+                tokens = response_utf8.split(' ')
+                if len(tokens) > 3:
+                    email_size = tokens[2]
+                email_flags = self.parse_flags(response)
+                server_date = imaplib.Internaldate2tuple(response)
+            raw_email = RawEmailResponse(
+                raw_email=raw_email_contents,
+                flags=email_flags,
+                size=email_size,
+                server_date=server_date
+            )
+            print ('**** Got Email _and_ flags by UID: UID %s, RawEmailResponse: %s' % (uid, raw_email))
         else:
             raw_email = None
         return raw_email
@@ -168,22 +220,28 @@ class IMAPServerConnection():
     def get_parsed_email_byuid(self, uid, headers_only=False):
         raw_email = self.get_raw_email_byuid(uid, headers_only)
         if raw_email is not None:
-            parsed_email = self.parse_raw_email(raw_email)
-            parsed_email.original_raw_email = raw_email
+            parsed_email = self.parse_raw_email(raw_email.raw_email)
+            parsed_email.original_raw_email = raw_email.raw_email
+            parsed_email.size = raw_email.size
+            parsed_email.server_date = raw_email.server_date
             parsed_email.headers_only = headers_only
             parsed_email.uid = uid
             parsed_email.uid_str = convert_bytes_to_utf8(uid)
             parsed_email.imap_folder = self.currfolder_name
             parsed_email.date_datetime = get_email_datetime(parsed_email)
-            parsed_email.imap_flags = self.get_imap_flags_byuid(uid)
-            parsed_email.is_read = self.is_email_currently_read_byflags(parsed_email.imap_flags)
+            parsed_email.imap_flags = raw_email.flags
+            parsed_email.is_read = self.is_email_currently_read_fromflags(parsed_email.imap_flags)
             parsed_email["body"] = get_email_body(parsed_email)
         else:
             parsed_email = None
         return parsed_email
 
     @staticmethod
-    def parse_raw_email(raw_email_string):
+    def parse_raw_email(raw_email):
+        if isinstance(raw_email, bytes):
+            raw_email_string = raw_email
+        elif isinstance(raw_email, RawEmailResponse):
+            raw_email_string = raw_email.raw_email
         try:
             ret_msg = email.message_from_bytes(raw_email_string)
         except email.errors.MessageError as e:
@@ -192,7 +250,7 @@ class IMAPServerConnection():
             raise imaplib.IMAP4.error('Error parsing raw email. Email Error was: %s' % e)
         return ret_msg
 
-    def move_email(self, uid, dest_folder, mark_as_read_on_move=None):
+    def move_email(self, uid, dest_folder, mark_as_read_on_move=False):
         intial_read_status = self.is_email_currently_read_byuid(uid)
         this_func_marked_email_as_read = False
 
@@ -215,15 +273,15 @@ class IMAPServerConnection():
             LogMaster.log(30, 'Failed to move email (UID: %s)', uid)
             if (this_func_marked_email_as_read is True):
                 # We need to unwind the Read status of any email that we may have marked as read
-                self.mark_email_as_unread_byuid(uid)
                 LogMaster.log(30, 'We marked this email as READ earlier, now unmarking (UID: %s)', uid)
-            return e
+                self.mark_email_as_unread_byuid(uid)
+            return False
 
         return True
 
     def del_email(self, uid, perm_delete=False):
         if perm_delete:
-            result, data = self.set_flag_byuid('(\Deleted)')
+            result, data = self.set_flag_byuid('(\\Deleted)')
             self.expunge()
             LogMaster.log(20, 'Deleted email (permanently). UID: %s', uid)
         else:
@@ -237,17 +295,17 @@ class IMAPServerConnection():
             return False
 
     @staticmethod
-    def is_email_currently_read_byflags(flags):
-        if '(\\Seen)' in flags:
+    def is_email_currently_read_fromflags(flags):
+        if '\\Seen' in flags:
             return True
         else:
             return False
 
     def set_flag_byuid(self, uid, flag):
-        return self.uid('STORE', uid, '+FLAGS', flag)
+        return self.uid_safe('STORE', uid, '+FLAGS', flag)
 
     def unset_flag_byuid(self, uid, flag):
-        return self.uid('STORE', uid, '-FLAGS', flag)
+        return self.uid_safe('STORE', uid, '-FLAGS', flag)
 
     def mark_email_as_read_byuid(self, uid):
         return self.set_flag_byuid(uid, '(\\Seen)')
@@ -264,6 +322,15 @@ class IMAPServerConnection():
     def uid(self, *args, **kwargs):
         """Straight IMAP UID command passthrough"""
         return self.imap_connection.uid(*args, **kwargs)
+
+    def uid_safe(self, *args, **kwargs):
+        """IMAP UID command wrapped safely"""
+        try:
+            result, data = self.imap_connection.uid(*args, **kwargs)
+        except imaplib.IMAP4.error as imap_error:
+            result = 'NO'
+            data = [None]  # I didn't make up this value: [None] can also emanate from imaplib responses.
+        return (result, data)
 
     @classmethod
     def set_imaplib_Debuglevel(cls, debuglevel):
