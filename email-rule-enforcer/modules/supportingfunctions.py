@@ -45,6 +45,14 @@ def text_to_int(text, default=None):
     return ret_val
 
 
+def strip_quotes(text):
+    try:
+        text = text.strip('\'\"')
+    except AttributeError:
+        pass
+    return text
+
+
 def print_nested_data(element, depth=0, maxdepth=30):
     def align_output(depth):
         print (" " * depth, end="")
@@ -127,7 +135,10 @@ def nested_data_to_str(element, depth=0, maxdepth=30):
         if isinstance(element, list):
             new_str += '['
             return_arr.append(new_str)
-        if isinstance(element, set) or isinstance(element, tuple):
+        if isinstance(element, set):
+            new_str += '{'
+            return_arr.append(new_str)
+        if isinstance(element, tuple):
             new_str += '('
             return_arr.append(new_str)
         if isinstance(element, (list, set, tuple)):
@@ -138,7 +149,9 @@ def nested_data_to_str(element, depth=0, maxdepth=30):
                     return_arr.append(align_output(depth) + str(el))
         if isinstance(element, list):
             return_arr.append(align_output(depth) + ']')
-        if isinstance(element, set) or isinstance(element, tuple):
+        if isinstance(element, set):
+            return_arr.append(align_output(depth) + '}')
+        if isinstance(element, tuple):
             return_arr.append(align_output(depth) + ')')
     return return_arr
 

@@ -6,10 +6,11 @@ from modules.settings.get_config import get_config
 from modules.settings.default_counters_and_timers import create_default_timers, create_default_rule_counters
 from modules.settings.get_config import get_config
 from modules.email.IMAPServerConnection import IMAPServerConnection
-from modules.logging import LogMaster, add_log_files_from_config, ultradebug_rules_and_config
+from modules.logging import LogMaster, add_log_files_from_config
 from modules.supportingfunctions import die_with_errormsg
 from modules.ui.display_headers import get_header_preconfig, get_header_postconfig
 from modules.ui.display_footers import get_completion_footer
+from modules.ui.debug_rules_and_config import debug_rules_and_config
 
 
 def main():
@@ -35,7 +36,7 @@ def main():
 
     # Set up Logging
     add_log_files_from_config(config)
-    ultradebug_rules_and_config(config, rules_mainfolder, rules_allfolders)
+    debug_rules_and_config(config, rules_mainfolder, rules_allfolders)
 
     # Connect to IMAP
     imap_connection = IMAPServerConnection()
@@ -63,7 +64,7 @@ def main():
         imap_connection.disconnect()
     except KeyboardInterrupt as KI:
         # Someone ressed Ctrl-C, so close & cleanup
-        LogMaster.info('Rules processing has been cancelled by user action. \
+        LogMaster.info('\n\nRules processing has been cancelled by user action. \
             Now disconnecting from IMAP and exiting')
         imap_connection.disconnect()
     except imaplib.IMAP4.abort as socket_err:

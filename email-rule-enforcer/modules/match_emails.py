@@ -4,6 +4,7 @@ from modules.email.smtp_send import send_email_from_config
 from modules.email.supportingfunctions_email import convert_bytes_to_utf8
 from modules.email.supportingfunctions_email import get_extended_email_headers_for_logging, get_basic_email_headers_for_logging
 from modules.email.make_new_emails import new_email_forward
+from modules.supportingfunctions import strip_quotes
 
 
 def check_match_list(matches, email_to_validate):
@@ -15,7 +16,7 @@ def check_match_list(matches, email_to_validate):
         return False
 
     for match_check in matches:
-        if isinstance(match_check, list):  # Then we know this is an 'OR'clause, and match on any of these
+        if isinstance(match_check, list):  # Then we know this is an 'OR' clause, and match on any of these
             LogMaster.ultra_debug('Email matching is now in \'or\' clause.')
             matched_or = False
             for match_or in match_check:
@@ -74,11 +75,9 @@ def check_email_against_rule(rule, email_to_validate):
             email_matched = False
         else:
             # Now we know that it is matched and not excepted, so we will perform actions
-            LogMaster.info('Match found, Rule ID %s (Name: \"%s\"") matched against Email UID %s (Date: \"%s\", From: \"%s\")',
+            LogMaster.info('Match found, Rule ID %s (Name: \"%s\"") matched against Email UID %s',
                 rule.id, rule.name,
-                email_to_validate.uid_str,
-                email_to_validate.date_datetime,
-                email_to_validate.from_addr
+                email_to_validate.uid_str
                 )
 
     return email_matched
@@ -178,9 +177,9 @@ def iterate_rules_over_mailfolder(imap_connection, config, rules, counters, head
     for email_to_validate in imap_connection.get_emails_in_currfolder(headers_only):
         if email_to_validate is None:
             continue
-        LogMaster.info('Email UID %s found in IMAP folder (\"%s\"). Email Details: Date %s; From: %s',
+        LogMaster.info('Email UID %s found in IMAP folder (\"%s\"). Email Date: %s; From: %s',
             email_to_validate.uid_str,
-            imap_connection.get_currfolder(),
+            strip_quotes(imap_connection.get_currfolder()),
             email_to_validate.date_datetime,
             email_to_validate.from_addr
         )

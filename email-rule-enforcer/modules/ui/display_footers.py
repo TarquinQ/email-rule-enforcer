@@ -4,12 +4,12 @@ def get_completion_footer(config, global_timers, mainfolder_counters, allfolders
 **
 ** Rules Enforcement Completed.
 **
-** IMAP server:                   {0}
-** IMAP Username:                 {1}
+** IMAP Server:    {0}
+** IMAP Mailbox:   {1}
 **
-** Start Time:                    {2}
-** Completion Time:               {3}
-** Total Elapsed Time (seconds):  {4}
+** Start Time:                {2}
+** Completion Time:           {3}
+** Total Elapsed Time (sec):  {4}
 **
 *********************************************************************
 **'''.format(
@@ -23,13 +23,13 @@ def get_completion_footer(config, global_timers, mainfolder_counters, allfolders
     ret_str += '''
 ** Process Details for Main Folder:
 **
-** Start Time:                    {0}
-** Completion Time:               {1}
-** Total Elapsed Time (seconds):  {2}
+** Start Time:                {0}
+** Completion Time:           {1}
+** Total Elapsed Time (sec):  {2}
 **
-** Total Emails Seen:    {3}
-** Total Emails Matched: {4}
-** Total Rules in Set:   {5}
+** Total Rules in Set:   {3}
+** Total Emails Checked: {4}
+** Total Emails Matched: {5}
 ** Total Rules Checked:  {6}
 ** Total Actions Taken:  {7}
 **
@@ -38,9 +38,9 @@ def get_completion_footer(config, global_timers, mainfolder_counters, allfolders
         global_timers.get_start_datetime('mainfolder'),
         global_timers.get_stop_datetime('mainfolder'),
         global_timers.get_elapsed_seconds('mainfolder'),
+        mainfolder_counters.get('rules_in_set'),
         mainfolder_counters.get('emails_seen'),
         mainfolder_counters.get('emails_matched'),
-        mainfolder_counters.get('rules_in_set'),
         mainfolder_counters.get('rules_checked'),
         mainfolder_counters.get('actions_taken')
     )
@@ -48,13 +48,13 @@ def get_completion_footer(config, global_timers, mainfolder_counters, allfolders
     ret_str += '''
 ** Process Details for All Folders:
 **
-** Start Time:                    {0}
-** Completion Time:               {1}
-** Total Elapsed Time (seconds):  {2}
+** Start Time:                {0}
+** Completion Time:           {1}
+** Total Elapsed Time (sec):  {2}
 **
-** Total Emails Seen:    {3}
-** Total Emails Matched: {4}
-** Total Rules in Set:   {5}
+** Total Rules in Set:   {3}
+** Total Emails Checked: {4}
+** Total Emails Matched: {5}
 ** Total Rules Checked:  {6}
 ** Total Actions Taken:  {7}
 **
@@ -63,9 +63,9 @@ def get_completion_footer(config, global_timers, mainfolder_counters, allfolders
         global_timers.get_start_datetime('allfolders'),
         global_timers.get_stop_datetime('allfolders'),
         global_timers.get_elapsed_seconds('allfolders'),
+        allfolders_counters.get('rules_in_set'),
         allfolders_counters.get('emails_seen'),
         allfolders_counters.get('emails_matched'),
-        allfolders_counters.get('rules_in_set'),
         allfolders_counters.get('rules_checked'),
         allfolders_counters.get('actions_taken')
     )
