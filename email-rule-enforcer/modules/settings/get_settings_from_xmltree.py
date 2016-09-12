@@ -8,7 +8,7 @@ from modules.settings.models.LogfileSettings import LogfileSettings
 from modules.models.Config import Config
 from modules.models.RulesAndMatches import Rule, RuleAction, MatchField, MatchDate, Rules
 from modules.settings.default_settings import set_defaults
-from modules.settings.set_dependent_config import set_dependent_config
+from modules.settings.set_dependent_config import set_dependent_config, set_headersonly_mode
 from modules.settings.supportingfunctions_xml import set_value_if_xmlnode_exists, get_value_if_xmlnode_exists, get_attributes_if_xmlnode_exists
 from modules.settings.supportingfunctions_xml import get_attribvalue_if_exists_in_xmlNode, strip_xml_whitespace, xpath_findall
 from modules.settings.supportingfunctions_xml import set_boolean_if_xmlnode_exists, set_invertedboolean_if_xmlnode_exists
@@ -75,11 +75,12 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
         set_boolean_if_xmlnode_exists(config, 'console_ultra_debug', Node, './/console_ultra_debug')
         set_boolean_if_xmlnode_exists(config, 'console_insane_debug', Node, './/console_insane_debug')
 
-        # Testing Settings
+        # Testing / Behaviour Settings
         set_boolean_if_xmlnode_exists(config, 'parse_config_and_stop', Node, './/parse_config_and_stop')
         set_invertedboolean_if_xmlnode_exists(config, 'assess_mainfolder_rules', Node, './/dont_assess_rules_againt_inbox')
         set_invertedboolean_if_xmlnode_exists(config, 'assess_allfolders_rules', Node, './/dont_assess_allfolders')
         set_invertedboolean_if_xmlnode_exists(config, 'actually_perform_actions', Node, './/dont_perform_actions')
+        set_boolean_if_xmlnode_exists(config, 'imap_force_headersonly', Node, './/force_imap_headers_only')
 
         parse_email_notification_settings(config, Node.find('./logging/notification_email_on_completion'))
         parse_logfile_settings(config, 'logfile', Node.find('./logging/logfile'))
@@ -117,7 +118,7 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
         if Node is None:
             return None
 
-        def parse_generic_field_match(Node, config):
+        def parse_generic_field_match(Node):
             match_field = get_attribvalue_if_exists_in_xmlNode(Node, 'field')
             match_type = get_attribvalue_if_exists_in_xmlNode(Node, 'type')
             match_name = get_attribvalue_if_exists_in_xmlNode(Node, 'name')
@@ -130,9 +131,6 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
                 case_sensitive=case_sensitive,
                 name=match_name
             )
-            if match_field == "body":
-                config['imap_headers_only'] = False
-
             return match_to_add
 
         def parse_generic_date_match(Node):
@@ -226,28 +224,28 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
 
             def parse_rule_matches(Node, rule):
                 for node in xpath_findall(Node, './match_field'):
-                    rule.add_match(parse_generic_field_match(node, config))
+                    rule.add_match(parse_generic_field_match(node))
                 for node in xpath_findall(Node, './match_date'):
                     rule.add_match(parse_generic_date_match(node))
 
                 for node in xpath_findall(Node, './match_or'):
                     rule.start_match_or()
                     for node in xpath_findall(Node, './match_or/match_field'):
-                        rule.add_match_or(parse_generic_field_match(node, config))
+                        rule.add_match_or(parse_generic_field_match(node))
                     for node in xpath_findall(Node, './match_or/match_date'):
                         rule.add_match_or(parse_generic_date_match(node))
                     rule.stop_match_or()
 
             def parse_rule_match_exceptions(Node, rule):
                 for node in xpath_findall(Node, './match_field'):
-                    rule.add_match_exception(parse_generic_field_match(node, config))
+                    rule.add_match_exception(parse_generic_field_match(node))
                 for node in xpath_findall(Node, './match_date'):
                     rule.add_match_exception(parse_generic_date_match(node))
 
                 for node in xpath_findall(Node, './match_or'):
                     rule.start_exception_or()
                     for node in xpath_findall(Node, './match_or/match_field'):
-                        rule.add_exception_or(parse_generic_field_match(node, config))
+                        rule.add_exception_or(parse_generic_field_match(node))
                     for node in xpath_findall(Node, './match_or/match_date'):
                         rule.add_exception_or(parse_generic_date_match(node))
                     rule.stop_exception_or()
@@ -266,8 +264,18 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
 
             return new_rule
 
+        def parse_folder_exceptions(Node, config):
+            for folder_name in xpath_findall(Node, './folder_to_exclude'):
+                config['imap_folders_to_exclude'].add(
+                    strip_xml_whitespace(folder_name.text)
+                )
+
         for rule_node in xpath_findall(Node, './rule'):
-                rules.append(parse_rule_node(rule_node, config))
+                rules.append(
+                    parse_rule_node(rule_node, config)
+                )
+        for folder_exception_node in xpath_findall(Node, './folder_exclusions'):
+                parse_folder_exceptions(folder_exception_node, config)
         # End Parsing of Rules Section
 
     # Now we actually perform the parsin of each section
@@ -288,5 +296,6 @@ def get_settings_from_configtree(xml_config_tree):
     set_defaults(config)
     parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders)
     set_dependent_config(config)
+    set_headersonly_mode(config, rules_main)
     return (config, rules_main, rules_allfolders)
 

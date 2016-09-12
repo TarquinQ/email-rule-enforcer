@@ -1,3 +1,6 @@
+from modules.models.RulesAndMatches import Match
+
+
 def set_dependent_config(config):
     if config['imap_server_port'] is None:
         if config['imap_use_tls']:
@@ -32,3 +35,26 @@ def set_dependent_config(config):
     if config['Exchange_shared_mailbox_alias'] is not None:
         config['imap_username'] = config['imap_username'] + '\\' + config['Exchange_shared_mailbox_alias']
 
+
+def set_headersonly_mode(config, rules):
+    if not config['imap_force_headersonly']:
+        turn_headers_on = False
+        for rule in rules:
+            for match in rule.matches:
+                if isinstance(match, list):  # Then we know this is an 'OR' clause
+                    for match_or in match:
+                        if isinstance(match_or, Match):
+                            if match_or.field_to_match.lower() == 'body':
+                                turn_headers_on = True
+                                break
+                elif isinstance(match, Match):
+                    if match.field_to_match.lower() == 'body':
+                        turn_headers_on = True
+                        break
+        if turn_headers_on:
+            config['imap_headers_only'] = True
+        else:
+            config['imap_headers_only'] = True
+
+    else:
+        config['imap_headers_only'] = True
