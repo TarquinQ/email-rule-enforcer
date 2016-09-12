@@ -6,18 +6,17 @@ This aims to be a simple implementation, whilst still able to handle a lot of ru
 
 ##Approach
 The fundamental idea is to connect to a mailbox, connect to an initial folder, get a list of emails in that folder, and process each email 
-acording to rules defined in a config file.  
-The script is designed to be run against a mailbox perdioidcally, via cron or similar, and designed to follow a set of specificed rules.
+acording to rules defined in a config file. There are two sets of rules: one set which applies to a main folder (usually Inbox), and another set which applies to all folders.  
+The script is designed to be run against a mailbox perdioidcally, via cron or similar, and designed to follow the sets of specificed rules.
 
 ##Usage Notes
-This software does not use IMAP4 server-side searching, instead using a complete client-side regex implementation. This is has maximum flexibility, but may not be suitable if you have a large mailbox and/or slow connection.  
-Each "run" is completely independent, and does not cache results locally.  
+This software does not use IMAP4 server-side searching, instead using a complete client-side regex implementation. This is has maximum flexibility, but may not be suitable if you have a large mailbox and/or slow connection. Each "run" is completely independent, and does not cache results locally.  
 In order to improve speed and reduce bandwidth, this software will only download the headers of each message, unless a "body" field search appears in the ruleset. Also, efforts have been made to reduce the number of IMAP commands issued during message retrival, which should also assist to reduce bandwidth (and time).   
 
 ## System Requirements
 Requires Python 3.4 -- written in python3, and uses SSL and other extensions added in v3.4. Version requirement is enforced at runtime.  
 The core is written in pure python (ie core libraries only, no external or package requirements), and designed to be usable via unix command line.  
-An optional extension adds colour to the console output - if the 'colorlog' python pip package is installed & accessible, then it gets used.  
+If the 'colorlog' python pip package is installed & accessible, then the console output becomes coloured -- however this is completely optional.  
 This is written and tested on a Linux system, however it should be fully portable to all other systems that can run Python (including Windows).  
 
 ##Usage
