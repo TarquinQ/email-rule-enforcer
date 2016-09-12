@@ -74,7 +74,7 @@ def main():
         LogMaster.critical('Error was: %s', repr(socket_err))
         imap_connection.disconnect()
 
-    except (TypeError, AttributeError, KeyError) as e:
+    except (TypeError, AttributeError, KeyError, IndexError) as e:
         # Something went wrong with the IMAP socket. Safely Disconnect just in case.
         LogMaster.critical('There has been an error with the email processing, and unhandled error occurred.')
         LogMaster.critical('We will now disconnect from IMAP and exit.')

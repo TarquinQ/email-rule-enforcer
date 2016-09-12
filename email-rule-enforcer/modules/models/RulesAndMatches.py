@@ -478,3 +478,80 @@ class MatchDate(Match):
             return (False, 'Match invalid. Missing field value string. Trying to match field ' +
                 self.field_to_match + '" selected, but no actual value is set for matching')
 
+
+class MatchSize(Match):
+    match_types = frozenset(['greater_than', 'less_than'])
+
+    def __init__(self, field_to_match='Size', match_type='greater_than', value_to_match=2147483647, name=None, parent_rule_id=None):
+        # 2147483647 is (2^32)-1, ie 2GB from bytes - plenty big for email comparison
+        super().__init__(field_to_match, match_type, value_to_match, name, parent_rule_id)
+        self._ensure_sane_values()
+
+    def _ensure_sane_values(self):
+        """This makes sure that the config doesn't populate flawed or conflicting values here.
+        This function should detect incorrect values, and reset to safe defaults
+        that won't match if checked"""
+        if self.match_type not in self.match_types:
+            self._reset_to_safedefaults()
+        elif not (isinstance(self.value_to_match, int)):
+            self._reset_to_safedefaults()
+
+    def _reset_to_safedefaults(self):
+        self.match_type = 'greater_than'
+        self.value_to_match = 2147483647
+
+    def test_match_value(self, value):
+        if value is None:
+            return False
+
+        matched_yn = False
+        size_to_match = self.value_to_match
+
+        if size_to_match >= value:
+            if self.match_type == 'greater_than':
+                matched_yn = True
+            elif self.match_type == 'less_than':
+                matched_yn = False
+        else:
+            if self.match_type == 'greater_than':
+                matched_yn = False
+            elif self.match_type == 'less_than':
+                matched_yn = True
+        return matched_yn
+
+    def test_match_email(self, email_to_validate):
+        LogMaster.insane_debug('Now matching a date value to an email size. Email UID: %s', email_to_validate.uid_str)
+        matched_yn = False
+        try:
+            size_to_check = email_to_validate.size
+        except AttributeError:
+            size_to_check = None
+
+        LogMaster.insane_debug('Email Size value to be matched is: \"%s\", \
+            to see if it is %s testing size of: \"%s\"',
+            size_to_check,
+            self.match_type,
+            self.value_to_match
+            )
+
+        if (self.test_match_value(size_to_check)):
+            matched_yn = True
+            LogMaster.insane_debug('Size Matched: \"%s\"', email_to_validate[self.field_to_match])
+        else:
+            LogMaster.insane_debug('Size Not Matched: \"%s\"', email_to_validate[self.field_to_match])
+
+        return matched_yn
+
+    def validate(self):
+        if self.field_to_match not in self.match_fields:
+            return (False, 'Field to match is invalid. Field type "' + self.field_to_match +
+                '" selected, but only valid fields are: ' + str(match_fields))
+
+        if self.match_type not in self.match_types:
+            return (False, 'Match type is invalid. Field type "' + self.match_type +
+                '" selected, but only valid fields are: ' + str(match_types))
+
+        if self.value_to_match is None:
+            return (False, 'Match invalid. Missing field value string. Trying to match field ' +
+                self.field_to_match + '" selected, but no actual value is set for matching')
+

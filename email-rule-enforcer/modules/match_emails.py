@@ -179,7 +179,7 @@ def iterate_rules_over_mailfolder(imap_connection, config, rules, counters, head
             continue
         LogMaster.info('Email UID %s found in IMAP folder (\"%s\"). Email Date: %s; From: %s',
             email_to_validate.uid_str,
-            strip_quotes(imap_connection.get_currfolder()),
+            imap_connection.get_currfolder(),
             email_to_validate.date_datetime,
             email_to_validate.from_addr
         )
@@ -227,14 +227,36 @@ def iterate_rules_over_allfolders(imap_connection, config, rules, counters):
         (folder_flags, folder_parent_and_name) = folder_record_utf8.split(')', 1)
         (empty_str, folder_parent, folder_name) = folder_parent_and_name.split('"', 2)
         folder_name = folder_name.strip()
+        folder_name_noquotes = strip_quotes(folder_name)
 
-        LogMaster.info('Now connecting to folder "%s".', folder_name)
-        imap_connection.connect_to_folder(folder_name)
-
-        iterate_rules_over_mailfolder(imap_connection, config, rules, counters, headers_only=config['imap_headers_only'])
+        LogMaster.ultra_debug('Now checking folder "%s" for folder exclusions.', folder_name)
+        if folder_is_excluded(folder_name_noquotes, config['imap_folders_to_exclude']):
+            LogMaster.info('Skipping folder "%s" due to folder exclusions.', folder_name)
+        else:
+            LogMaster.info('Now connecting to folder \"%s\".', folder_name_noquotes)
+            imap_connection.connect_to_folder(folder_name)
+            iterate_rules_over_mailfolder(imap_connection, config, rules, counters, headers_only=config['imap_headers_only'])
 
     LogMaster.info('Now resetting IMAP connection back to default folder.')
     imap_connection.connect_to_default_folder()
 
 
+def folder_is_excluded(folder_name, exclusion_set):
+    exclude = False
+    if folder_name in exclusion_set:
+        exclude = True
+    elif folder_name.find('/') > 0:
+        # There are parent folders of this folders to check
+        folder_path = folder_name.split('/')
+        path_to_check = folder_path[0]
+        if path_to_check in exclusion_set:
+            exclude = True
+        else:
+            for i in range(1, len(folder_path)):
+                path_to_check += '/' + folder_path[i]
+                if path_to_check in exclusion_set:
+                    exclude = True
+                    break
+
+    return exclude
 

@@ -2,7 +2,7 @@ import datetime
 import xml.etree.ElementTree as ET
 import modules.supportingfunctions
 from collections import OrderedDict
-from modules.supportingfunctions import text_to_bool, text_to_int, die_with_errormsg
+from modules.supportingfunctions import text_to_bool, text_to_int, die_with_errormsg, strip_quotes
 from modules.settings.models.EmailNotificationSettings import EmailNotificationSettings
 from modules.settings.models.LogfileSettings import LogfileSettings
 from modules.models.Config import Config
@@ -133,6 +133,20 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
             )
             return match_to_add
 
+        def parse_generic_size_match(Node):
+            match_field = 'size'
+            match_type = get_attribvalue_if_exists_in_xmlNode(Node, 'type')
+            match_name = get_attribvalue_if_exists_in_xmlNode(Node, 'name')
+            match_val = text_too_bool(strip_xml_whitespace(Node.text))
+            match_to_add = MatchField(
+                field_to_match=match_field,
+                match_type=match_type,
+                value_to_match=match_val,
+                case_sensitive=case_sensitive,
+                name=match_name
+            )
+            return match_to_add
+
         def parse_generic_date_match(Node):
             match_val = None
             match_field = get_attribvalue_if_exists_in_xmlNode(Node, 'field')
@@ -227,6 +241,8 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
                     rule.add_match(parse_generic_field_match(node))
                 for node in xpath_findall(Node, './match_date'):
                     rule.add_match(parse_generic_date_match(node))
+                for node in xpath_findall(Node, './match_size'):
+                    rule.add_match(parse_generic_size_match(node))
 
                 for node in xpath_findall(Node, './match_or'):
                     rule.start_match_or()
@@ -234,6 +250,8 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
                         rule.add_match_or(parse_generic_field_match(node))
                     for node in xpath_findall(Node, './match_or/match_date'):
                         rule.add_match_or(parse_generic_date_match(node))
+                    for node in xpath_findall(Node, './match_size'):
+                        rule.add_match_or(parse_generic_size_match(node))
                     rule.stop_match_or()
 
             def parse_rule_match_exceptions(Node, rule):
@@ -267,7 +285,9 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
         def parse_folder_exceptions(Node, config):
             for folder_name in xpath_findall(Node, './folder_to_exclude'):
                 config['imap_folders_to_exclude'].add(
-                    strip_xml_whitespace(folder_name.text)
+                    strip_quotes(
+                        strip_xml_whitespace(folder_name.text)
+                    )
                 )
 
         for rule_node in xpath_findall(Node, './rule'):

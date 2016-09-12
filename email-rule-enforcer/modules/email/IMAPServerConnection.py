@@ -4,6 +4,7 @@ import ssl
 import email
 import traceback
 from modules.logging import LogMaster
+from modules.supportingfunctions import strip_quotes
 from modules.email.supportingfunctions_email import convert_bytes_to_utf8
 from modules.email.supportingfunctions_email import get_email_body, get_email_datetime, get_email_fromaddr
 
@@ -110,7 +111,7 @@ class IMAPServerConnection():
     def connect_to_folder(self, folder_name):
         result = self.imap_connection.select(folder_name)
         msg_count = convert_bytes_to_utf8(result[1][0])
-        self.currfolder_name = folder_name
+        self.currfolder_name = strip_quotes(folder_name)
         LogMaster.log(20, 'Successfully connected to IMAP Folder: \"%s\". Message Count: %s', folder_name, msg_count)
         return msg_count
 
