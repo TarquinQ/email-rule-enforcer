@@ -1,10 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <emailenforcer>
 	<config_general>
-		<mailhandling_behaviour>
-			<empty_trash_on_exit>no</empty_trash_on_exit> <!-- default: no -->
-			<mark_as_read_on_move>yes</mark_as_read_on_move> <!-- default: yes -->
-		</mailhandling_behaviour>
 		<notification_email_on_completion>  <!-- Optional -->
 			<recipient_email>admin@domain.com</recipient_email>  <!-- Can have multiple recipients, one line per email -->
 			<recipient_email>other.admin@domain2.com</recipient_email><!-- Can have multiple recipients, one line per email -->
@@ -34,11 +30,17 @@
 				<logfile_level>1</logfile_level>  <!-- 1-5 verbose-quiet; default: 1 -->
 			</logfile_debug>
 		</logging>
-		<testing>
-			<parse_config_and_stop>false</parse_config_and_stop>  <!-- Program will parse all config but cease prior to IMAP -->
-			<dont_assess_rules_againt_inbox>false</dont_assess_rules_againt_inbox>  <!-- IMAP connects, but emails not assessed against ruleset. -->
-			<dont_assess_allfolders>false</dont_assess_allfolders>  <!-- IMAP connects, but all_folders_rules not assessed against malbox. -->
-			<dont_perform_actions>false</dont_perform_actions>  <!-- Emails are assessed against ruleset, but no actions carried out. -->
-		</testing>
+		<general_behaviour>  <!-- Optional section -->
+			<dont_perform_actions>false</dont_perform_actions>  <!-- Optional; Emails are assessed against ruleset, but no actions carried out. -->
+			<dont_assess_rules_againt_inbox>false</dont_assess_rules_againt_inbox>  <!-- Optional; IMAP connects, but emails not assessed against ruleset. -->
+			<dont_assess_allfolders>false</dont_assess_allfolders>  <!-- Optional; IMAP connects, but all_folders_rules not assessed against malbox. -->
+			<parse_config_and_stop>false</parse_config_and_stop>  <!-- Optional; Program will parse all config but cease prior to IMAP -->
+			<force_imap_headers_only>false</force_imap_headers_only>  <!-- Optional; IMAP will only download email headers when assessing rules -->
+			<!-- Note on HeadersOnly: This speeds up the connection and significantly reduces bandwidth, but will cause rules that match on "body" to fail to match correctly. This should not generally be set: if there are no "body" matching rules in the main ruleset, then Enforcer only downloads headers-only anyway. Full body is still downloaded for SMTP-Forwarding Action. -->
+		</general_behaviour>
+		<mailhandling_behaviour>
+			<empty_trash_on_exit>no</empty_trash_on_exit> <!-- default: no -->
+			<mark_as_read_on_move>yes</mark_as_read_on_move> <!-- default: yes -->
+		</mailhandling_behaviour>
 	</config_general>
 </emailenforcer>
