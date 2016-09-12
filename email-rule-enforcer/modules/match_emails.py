@@ -74,9 +74,11 @@ def check_email_against_rule(rule, email_to_validate):
             email_matched = False
         else:
             # Now we know that it is matched and not excepted, so we will perform actions
-            LogMaster.info('Match found, Rule ID %s (Name: \"%s\"") matched against Email UID %s (From: \"%s\", Date: \"%s\")',
+            LogMaster.info('Match found, Rule ID %s (Name: \"%s\"") matched against Email UID %s (Date: \"%s\", From: \"%s\")',
                 rule.id, rule.name,
-                email_to_validate.uid_str, email_to_validate["from"], email_to_validate["date"]
+                email_to_validate.uid_str,
+                email_to_validate.date_datetime,
+                email_to_validate.from_addr
                 )
 
     return email_matched
@@ -176,10 +178,11 @@ def iterate_rules_over_mailfolder(imap_connection, config, rules, counters, head
     for email_to_validate in imap_connection.get_emails_in_currfolder(headers_only):
         if email_to_validate is None:
             continue
-        LogMaster.info('Email UID %s found in IMAP folder (\"%s\"). Email Details: %s',
+        LogMaster.info('Email UID %s found in IMAP folder (\"%s\"). Email Details: Date %s; From: %s',
             email_to_validate.uid_str,
             imap_connection.get_currfolder(),
-            get_basic_email_headers_for_logging(email_to_validate)
+            email_to_validate.date_datetime,
+            email_to_validate.from_addr
         )
 
         LogMaster.debug('Now assessing this email against all rules.')

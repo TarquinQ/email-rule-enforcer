@@ -6,11 +6,7 @@ class GlobalCounters(dict):
         super().__init__(*args, **kwargs)
 
     def new_counter(self, counter_name, start_val=0):
-        try:
-            if not self[counter_name]:
-                self[counter_name] = Counter(start_val=start_val, allow_decr=True)
-        except KeyError:
-            self[counter_name] = Counter(start_val=start_val, allow_decr=True)
+        self[counter_name] = Counter(start_val=start_val, allow_decr=True)
         return self[counter_name]
 
     def incr(self, counter_name, incr=1):

@@ -9,7 +9,7 @@ def set_defaults(config):
 
     # IMAP Defaults
     config['imap_server_name'] = None
-    config['imap_username'] = None
+    config['imap_username'] = 'Not_Set'
     config['imap_password'] = None
     config['imap_use_tls'] = False
     config['imap_server_port'] = None
@@ -20,7 +20,7 @@ def set_defaults(config):
 
     # SMTP Defaults
     config['smtp_server_name'] = None
-    config['smtp_username'] = None
+    config['smtp_username'] = 'Not_Set'
     config['smtp_password'] = None
     config['smtp_use_tls'] = False
     config['smtp_server_port'] = None

@@ -38,7 +38,14 @@ class LogController():
     @staticmethod
     def get_formatter_plainmsg(coloured=False):
         if coloured:
-            return colorlog.ColoredFormatter('%(log_color)s%(message)s')
+            log_colours = {
+                'DEBUG': 'cyan',
+                'INFO': 'green',
+                'WARNING': 'yellow',
+                'ERROR': 'red',
+                'CRITICAL': 'bold_red'
+            }
+            return colorlog.ColoredFormatter('%(log_color)s%(message)s', log_colors=log_colours)
         else:
             return logging.Formatter('%(message)s')
 

@@ -22,12 +22,15 @@ def main():
 
     # Get the configs
     (config, rules_mainfolder, rules_allfolders) = get_config()
+
     print(get_header_postconfig(config))
+    rule_counters_mainfolder.new_counter(counter_name='rules_in_set', start_val=len(rules_mainfolder))
+    rule_counters_allfolders.new_counter(counter_name='rules_in_set', start_val=len(rules_allfolders))
 
     # Die if in config-parse-only mode
     if config['parse_config_and_stop']:
         global_timers.stop('overall')
-        print(get_completion_footer(global_timers, rule_counters_mainfolder, rule_counters_allfolders))
+        print(get_completion_footer(config, global_timers, rule_counters_mainfolder, rule_counters_allfolders))
         die_with_errormsg('Config Testing only, dont connect. Now exiting', 0)
 
     # Set up Logging
@@ -79,7 +82,7 @@ def main():
 
     global_timers.stop('overall')
     # Print the Footers
-    LogMaster.critical(get_completion_footer(global_timers, rule_counters_mainfolder, rule_counters_allfolders))
+    LogMaster.critical(get_completion_footer(config, global_timers, rule_counters_mainfolder, rule_counters_allfolders))
 
     # Send Completion Email
     # send_smtp_completion_email()

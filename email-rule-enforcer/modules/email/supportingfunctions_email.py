@@ -12,6 +12,10 @@ def convert_emaildate_to_datetimestr(email_date_rfc2822):
     return convert_emaildate_to_datetime(email_date_rfc2822).isoformat(' ')
 
 
+def parse_email_address(email_str):
+    return email.utils.parseaddr(email_str)
+
+
 def convert_bytes_to_utf8(byte_thing):
     if isinstance(byte_thing, list):
         return [convert_bytes_to_utf8(a) for a in byte_thing]
@@ -29,6 +33,16 @@ def get_email_datetime(email_message):
     except ValueError:
         pass
     return parsed_datetime
+
+
+def get_email_fromaddr(email_message):
+    parsed_from = 'Unknown_Email'
+    try:
+        from_addr = email_message["From"]
+        parsed_from = parse_email_address(from_addr)[1]
+    except ValueError:
+        pass
+    return parsed_from
 
 
 def get_extended_email_headers_for_logging(email_message):
