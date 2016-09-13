@@ -137,7 +137,7 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
             match_field = 'size'
             match_type = get_attribvalue_if_exists_in_xmlNode(Node, 'type')
             match_name = get_attribvalue_if_exists_in_xmlNode(Node, 'name')
-            match_val = text_too_bool(strip_xml_whitespace(Node.text))
+            match_val = text_to_int(strip_xml_whitespace(Node.text))
             match_to_add = MatchSize(
                 field_to_match=match_field,
                 match_type=match_type,

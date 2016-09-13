@@ -501,22 +501,27 @@ class MatchSize(Match):
         self.value_to_match = 2147483647
 
     def test_match_value(self, value):
+        matched_yn = False
+
         if value is None:
             return False
 
-        matched_yn = False
-        size_to_match = self.value_to_match
-
-        if size_to_match >= value:
-            if self.match_type == 'greater_than':
-                matched_yn = True
-            elif self.match_type == 'less_than':
-                matched_yn = False
+        try:
+            size_to_match = int(self.value_to_match)
+            value = int(value)
+        except ValueError:
+            pass
         else:
-            if self.match_type == 'greater_than':
-                matched_yn = False
-            elif self.match_type == 'less_than':
-                matched_yn = True
+            if size_to_match >= value:
+                if self.match_type == 'greater_than':
+                    matched_yn = True
+                elif self.match_type == 'less_than':
+                    matched_yn = False
+            else:
+                if self.match_type == 'greater_than':
+                    matched_yn = False
+                elif self.match_type == 'less_than':
+                    matched_yn = True
         return matched_yn
 
     def test_match_email(self, email_to_validate):
