@@ -41,9 +41,9 @@ class LogController():
             log_colours = {
                 'DEBUG': 'cyan',
                 'INFO': 'green',
-                'WARNING': 'yellow',
-                'ERROR': 'red',
-                'CRITICAL': 'bold_red'
+                'WARNING': 'red',
+                'ERROR': 'yellow',
+                'CRITICAL': 'bold_blue'
             }
             return colorlog.ColoredFormatter('%(log_color)s%(message)s', log_colors=log_colours)
         else:
