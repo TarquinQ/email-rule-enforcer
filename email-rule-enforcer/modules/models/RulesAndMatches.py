@@ -512,7 +512,7 @@ class MatchSize(Match):
         except ValueError as e:
             LogMaster.insane_debug('ValueError raised during int conversion. Error: %s' % str(e))
         else:
-            if size_to_match >= value:
+            if value >= size_to_match:
                 if self.match_type == 'greater_than':
                     matched_yn = True
                 elif self.match_type == 'less_than':
