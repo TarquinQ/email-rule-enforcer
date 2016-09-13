@@ -509,8 +509,8 @@ class MatchSize(Match):
         try:
             size_to_match = int(self.value_to_match)
             value = int(value)
-        except ValueError:
-            pass
+        except ValueError as e:
+            LogMaster.insane_debug('ValueError raised during int conversion. Error: %s' % str(e))
         else:
             if size_to_match >= value:
                 if self.match_type == 'greater_than':
@@ -522,6 +522,7 @@ class MatchSize(Match):
                     matched_yn = False
                 elif self.match_type == 'less_than':
                     matched_yn = True
+            LogMaster.insane_debug('Size matching performed. Result: %s', matched_yn)
         return matched_yn
 
     def test_match_email(self, email_to_validate):
@@ -532,8 +533,8 @@ class MatchSize(Match):
         except AttributeError:
             size_to_check = None
 
-        LogMaster.insane_debug('Email Size value to be matched is: \"%s\", \
-            to see if it is %s testing size of: \"%s\"',
+        LogMaster.insane_debug('Email Size value to be matched is: %s, \
+to see if it is %s testing size of: %s bytes',
             size_to_check,
             self.match_type,
             self.value_to_match
@@ -541,9 +542,9 @@ class MatchSize(Match):
 
         if (self.test_match_value(size_to_check)):
             matched_yn = True
-            LogMaster.insane_debug('Size Matched: \"%s\"', email_to_validate[self.field_to_match])
+            LogMaster.insane_debug('Size Matched.')
         else:
-            LogMaster.insane_debug('Size Not Matched: \"%s\"', email_to_validate[self.field_to_match])
+            LogMaster.insane_debug('Size Not Matched.')
 
         return matched_yn
 

@@ -29,7 +29,8 @@ def check_match_list(matches, email_to_validate):
                 LogMaster.ultra_debug('Email \'or\' is unmatched; matching over.')
 
         elif (isinstance(match_check, Match)):
-            LogMaster.ultra_debug('Email matching is now a match Match ID %s, of type %s.', match_check.id, type(match_check))
+            LogMaster.ultra_debug('Email matching is now a match Match ID %s, of type %s.',
+                match_check.id, match_check.__class__.__name__)
             if match_check.test_match_email(email_to_validate):
                 LogMaster.ultra_debug('Email matched this field; continuing matching.')
                 num_actual_matches += 1
@@ -185,7 +186,7 @@ def iterate_rules_over_mailfolder(imap_connection, config, rules, counters, head
         )
 
         LogMaster.debug('Now assessing this email against all rules.')
-        LogMaster.ultra_debug('Extended Email Details:\n%s',
+        LogMaster.ultra_debug('Extended Email Details for UID %s:\n%s',
             email_to_validate.uid_str,
             get_extended_email_headers_for_logging(email_to_validate))
 
