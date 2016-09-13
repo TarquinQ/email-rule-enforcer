@@ -223,7 +223,8 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
                     action_to_add = RuleAction('delete')
                     delete_permanently = text_to_bool(
                         get_attribvalue_if_exists_in_xmlNode(Subnode, 'permanently'),
-                        False)
+                        False
+                    )
                     action_to_add.set_delete_permanently(delete_permanently)
                     rule.add_action(action_to_add)
 
@@ -289,10 +290,14 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
                     )
                 )
 
+        def rule_is_enabled(Node):
+            return text_to_bool(get_attribvalue_if_exists_in_xmlNode(Node, 'enabled'), True)
+
         for rule_node in xpath_findall(Node, './rule'):
-                rules.append(
-                    parse_rule_node(rule_node, config)
-                )
+                if rule_is_enabled(rule_node):
+                    rules.append(
+                        parse_rule_node(rule_node, config)
+                    )
         for folder_exception_node in xpath_findall(Node, './folder_exclusions'):
                 parse_folder_exceptions(folder_exception_node, config)
         # End Parsing of Rules Section
