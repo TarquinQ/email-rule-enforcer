@@ -100,5 +100,14 @@
 				<delete permanently="no" />
 			</rule_actions>
 		</rule>
+		<rule>
+			<rule_name>Delete all emails bigger than 1MB in All Folders</rule_name>
+			<rule_matches>
+				<match_size type="greater_than">1000000</match_size>
+			</rule_matches>
+			<rule_actions>
+				<delete permanently="no" />
+			</rule_actions>
+		</rule>
 	</config_rules_allfolders>
 </emailenforcer>

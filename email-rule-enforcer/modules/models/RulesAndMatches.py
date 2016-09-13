@@ -482,7 +482,7 @@ class MatchDate(Match):
 class MatchSize(Match):
     match_types = frozenset(['greater_than', 'less_than'])
 
-    def __init__(self, field_to_match='Size', match_type='greater_than', value_to_match=2147483647, name=None, parent_rule_id=None):
+    def __init__(self, field_to_match='size', match_type='greater_than', value_to_match=2147483647, name=None, parent_rule_id=None):
         # 2147483647 is (2^32)-1, ie 2GB from bytes - plenty big for email comparison
         super().__init__(field_to_match, match_type, value_to_match, name, parent_rule_id)
         self._ensure_sane_values()

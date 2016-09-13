@@ -6,7 +6,7 @@ from modules.supportingfunctions import text_to_bool, text_to_int, die_with_erro
 from modules.settings.models.EmailNotificationSettings import EmailNotificationSettings
 from modules.settings.models.LogfileSettings import LogfileSettings
 from modules.models.Config import Config
-from modules.models.RulesAndMatches import Rule, RuleAction, MatchField, MatchDate, Rules
+from modules.models.RulesAndMatches import Rules, Rule, RuleAction, Match, MatchField, MatchDate, MatchSize
 from modules.settings.default_settings import set_defaults
 from modules.settings.set_dependent_config import set_dependent_config, set_headersonly_mode
 from modules.settings.supportingfunctions_xml import set_value_if_xmlnode_exists, get_value_if_xmlnode_exists, get_attributes_if_xmlnode_exists
@@ -138,11 +138,10 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
             match_type = get_attribvalue_if_exists_in_xmlNode(Node, 'type')
             match_name = get_attribvalue_if_exists_in_xmlNode(Node, 'name')
             match_val = text_too_bool(strip_xml_whitespace(Node.text))
-            match_to_add = MatchField(
+            match_to_add = MatchSize(
                 field_to_match=match_field,
                 match_type=match_type,
                 value_to_match=match_val,
-                case_sensitive=case_sensitive,
                 name=match_name
             )
             return match_to_add
