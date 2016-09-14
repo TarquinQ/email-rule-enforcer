@@ -123,7 +123,7 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
             match_type = get_attribvalue_if_exists_in_xmlNode(Node, 'type')
             match_name = get_attribvalue_if_exists_in_xmlNode(Node, 'name')
             case_sensitive = text_to_bool(get_attribvalue_if_exists_in_xmlNode(Node, 'case_sensitive'), False)
-            match_val = Node.text
+            match_val = strip_xml_whitespace(Node.text)
             match_to_add = MatchField(
                 field_to_match=match_field,
                 match_type=match_type,
@@ -195,6 +195,48 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
             )
             return match_to_add
 
+        def parse_generic_folder_match(Node):
+            match_field = 'IMAP_Folder'
+            match_type = get_attribvalue_if_exists_in_xmlNode(Node, 'type')
+            match_name = get_attribvalue_if_exists_in_xmlNode(Node, 'name')
+            case_sensitive = text_to_bool(get_attribvalue_if_exists_in_xmlNode(Node, 'case_sensitive'), False)
+            include_hierarchy = text_to_bool(get_attribvalue_if_exists_in_xmlNode(Node, 'include_hierarchy'), True)
+            match_val = strip_xml_whitespace(Node.text)
+            match_to_add = MatchFolder(
+                field_to_match=match_field,
+                match_type=match_type,
+                value_to_match=match_val,
+                case_sensitive=case_sensitive,
+                include_hierarchy=include_hierarchy,
+                name=match_name
+            )
+            return match_to_add
+
+        def parse_generic_unread_match(Node):
+            match_field = 'IMAP_Flag_Unread'
+            match_name = get_attribvalue_if_exists_in_xmlNode(Node, 'name')
+            match_to_add = MatchIsUnread(
+                field_to_match=match_field,
+                name=match_name
+            )
+            return match_to_add
+
+        def parse_generic_isunread_match(Node):
+            match_field = 'IMAP_Flag_Unread'
+            match_name = get_attribvalue_if_exists_in_xmlNode(Node, 'name')
+            match_to_add = MatchIsUnread(
+                name=match_name
+            )
+            return match_to_add
+
+        def parse_generic_isread_match(Node):
+            match_field = 'IMAP_Flag_Unread'
+            match_name = get_attribvalue_if_exists_in_xmlNode(Node, 'name')
+            match_to_add = MatchIsUnread(
+                name=match_name
+            )
+            return match_to_add
+
         def parse_rule_node(Node, config):
             def parse_rule_actions(Node, config, rule):
                 """Parses all actions inside a defined rule """
@@ -243,15 +285,16 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
                     rule.add_match(parse_generic_date_match(node))
                 for node in xpath_findall(Node, './match_size'):
                     rule.add_match(parse_generic_size_match(node))
+                for node in xpath_findall(Node, './match_folder'):
+                    rule.add_match(parse_generic_folder_match(node))
+                for node in xpath_findall(Node, './match_is_unread'):
+                    rule.add_match(parse_generic_isunread_match(node))
+                for node in xpath_findall(Node, './match_is_read'):
+                    rule.add_match(parse_generic_isread_match(node))
 
                 for node in xpath_findall(Node, './match_or'):
                     rule.start_match_or()
-                    for node in xpath_findall(Node, './match_or/match_field'):
-                        rule.add_match_or(parse_generic_field_match(node))
-                    for node in xpath_findall(Node, './match_or/match_date'):
-                        rule.add_match_or(parse_generic_date_match(node))
-                    for node in xpath_findall(Node, './match_size'):
-                        rule.add_match_or(parse_generic_size_match(node))
+                    parse_rule_matches(Node, rule)
                     rule.stop_match_or()
 
             def parse_rule_match_exceptions(Node, rule):
@@ -259,13 +302,18 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
                     rule.add_match_exception(parse_generic_field_match(node))
                 for node in xpath_findall(Node, './match_date'):
                     rule.add_match_exception(parse_generic_date_match(node))
+                for node in xpath_findall(Node, './match_size'):
+                    rule.add_match_exception(parse_generic_size_match(node))
+                for node in xpath_findall(Node, './match_folder'):
+                    rule.add_match_exception(parse_generic_folder_match(node))
+                for node in xpath_findall(Node, './match_is_unread'):
+                    rule.add_match_exception(parse_generic_isunread_match(node))
+                for node in xpath_findall(Node, './match_is_read'):
+                    rule.add_match_exception(parse_generic_isread_match(node))
 
                 for node in xpath_findall(Node, './match_or'):
                     rule.start_exception_or()
-                    for node in xpath_findall(Node, './match_or/match_field'):
-                        rule.add_exception_or(parse_generic_field_match(node))
-                    for node in xpath_findall(Node, './match_or/match_date'):
-                        rule.add_exception_or(parse_generic_date_match(node))
+                    parse_rule_match_exceptions(Node, rule)
                     rule.stop_exception_or()
 
             new_name = get_value_if_xmlnode_exists(Node, './rule_name')
@@ -291,7 +339,14 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
                 )
 
         def rule_is_enabled(Node):
-            return text_to_bool(get_attribvalue_if_exists_in_xmlNode(Node, 'enabled'), True)
+            rule_enabled = True
+            if text_to_bool(get_attribvalue_if_exists_in_xmlNode(Node, 'enabled'), True) is False:
+                rule_enabled = False
+            if text_to_bool(get_attribvalue_if_exists_in_xmlNode(Node, 'disabled'), False) is True:
+                rule_enabled = False
+            if text_to_bool(get_attribvalue_if_exists_in_xmlNode(Node, 'ignore'), True) is False:
+                rule_enabled = False
+            return rule_enabled
 
         for rule_node in xpath_findall(Node, './rule'):
                 if rule_is_enabled(rule_node):

@@ -30,13 +30,15 @@ class Rule():
         self.matches = []
         self.match_exceptions = []
         self.continue_rule_checks_if_matched = True
+        self._now_adding_or = False
+        self._now_adding_excep_or = False
 
     # Set Basic variables
     def set_name(self, rule_name):
         if rule_name is not None:
             self.name = str(rule_name)
         else:
-            self.name = 'Rule' + str(self.get_count())
+            self.name = 'Rule_' + str(self.get_count())
 
     def add_action(self, action):
         action.parent_rule_id = self.id
@@ -44,11 +46,17 @@ class Rule():
 
     def add_match(self, match):
         match.parent_rule_id = self.id
-        self.matches.append(match)
+        if self._now_adding_or is True:
+            self._temp_match_or.append(match)
+        else:
+            self.matches.append(match)
 
     def add_match_exception(self, match):
         match.parent_rule_id = self.id
-        self.match_exceptions.append(match)
+        if self._now_adding_excep_or is True:
+            self._temp_exception_or.append(match)
+        else:
+            self.match_exceptions.append(match)
 
     def set_continue_rule_checks_if_matched(self, flag):
         self.continue_rule_checks_if_matched = flag
@@ -56,24 +64,23 @@ class Rule():
     # Handle or-matches in the match setion
     def start_match_or(self):
         self._temp_match_or = MatchOr()
-
-    def add_match_or(self, match):
-        match.parent_rule_id = self.id
-        self._temp_match_or.append(match)
+        self._now_adding_or = True
 
     def stop_match_or(self):
+        self._now_adding_or = False
         self.matches.append(self._temp_match_or)
         del self._temp_match_or
 
     # Handle or-matches in the exception setion
     def start_exception_or(self):
         self._temp_exception_or = MatchOr()
+        self._now_adding_excep_or = True
 
     def add_exception_or(self, match):
         match.parent_rule_id = self.id
-        self._temp_exception_or.append(match)
 
     def stop_exception_or(self):
+        self._now_adding_excep_or = False
         self.match_exceptions.append(self._temp_exception_or)
         del self._temp_exception_or
 
@@ -295,7 +302,7 @@ class Match():
 class MatchField(Match):
     match_types = frozenset(['starts_with', 'contains', 'ends_with', 'is'])
 
-    def __init__(self, field_to_match=None, match_type=None, value_to_match=None, case_sensitive=False, name=None, parent_rule_id=None):
+    def __init__(self, field_to_match=None, match_type=None, value_to_match=None, name=None, parent_rule_id=None, case_sensitive=False):
         super().__init__(field_to_match, match_type, value_to_match, name, parent_rule_id)
         self.set_case_sensitive(case_sensitive)
         self._generate_re()
@@ -317,6 +324,7 @@ class MatchField(Match):
         self._generate_re()
 
     def _generate_re(self):
+        self.re = re.compile('This is a default value, never to be matched')
         try:
             if ((self.match_type in self.match_types) and (self.value_to_match is not None)):
                 match_str = str(self.value_to_match)[:]
@@ -342,18 +350,21 @@ class MatchField(Match):
         return matched_yn
 
     def test_match_email(self, email_to_validate):
-        LogMaster.insane_debug('Now matching a value to an email field. Email UID: %s, field name \"%s\".', email_to_validate.uid_str, self.field_to_match)
+        LogMaster.ultra_debug('Now matching a value to an email field. Email UID: %s, field name \"%s\".',
+            email_to_validate.uid_str, self.field_to_match)
         matched_yn = False
         try:
-            LogMaster.insane_debug('Email Matching value is: \"%s\", To be matched against regexp: \"%s\"', email_to_validate[self.field_to_match], self.re.pattern)
+            LogMaster.ultra_debug('Email Matching value is: \"%s\", To be matched against regexp: \"%s\"',
+                email_to_validate[self.field_to_match], self.re.pattern)
             str_to_test = email_to_validate[self.field_to_match]
             if (self.test_match_value(str_to_test)):
                 matched_yn = True
-                LogMaster.insane_debug('Field Matched: \"%s\"', email_to_validate[self.field_to_match])
+                LogMaster.ultra_debug('Field Matched: \"%s\"', email_to_validate[self.field_to_match])
             else:
-                LogMaster.insane_debug('Field Not Matched: \"%s\"', email_to_validate[self.field_to_match])
+                LogMaster.ultra_debug('Field Not Matched: \"%s\"', email_to_validate[self.field_to_match])
         except AttributeError:
-            LogMaster.insane_debug('Error: AttributeError incurred when testing Email UID: %s against field name %s.')
+            LogMaster.ultra_debug('Error: AttributeError incurred when testing Email UID: %s against field name %s.',
+                email_to_validate.uid_str, self.field_to_match)
 
         return matched_yn
 
@@ -436,7 +447,7 @@ class MatchDate(Match):
         return matched_yn
 
     def test_match_email(self, email_to_validate):
-        LogMaster.insane_debug('Now matching a date value to an email field. Email UID: %s, field name \"%s\".', email_to_validate.uid_str, self.field_to_match)
+        LogMaster.ultra_debug('Now matching a date value to an email field. Email UID: %s, field name \"%s\".', email_to_validate.uid_str, self.field_to_match)
         matched_yn = False
         datetime_to_check = None
         if self.field_to_match.lower() == 'date':
@@ -454,14 +465,14 @@ class MatchDate(Match):
         if (datetime_to_check is None):
             datetime_to_check = datetime.datetime.max
 
-        LogMaster.insane_debug('Email Field value to be matched is: \"%s\", To be matched against date: \"%s\"',
+        LogMaster.ultra_debug('Email Field value to be matched is: \"%s\", To be matched against date: \"%s\"',
             datetime_to_check, self.value_to_match)
 
         if (self.test_match_value(datetime_to_check)):
             matched_yn = True
-            LogMaster.insane_debug('Field Matched: \"%s\"', email_to_validate[self.field_to_match])
+            LogMaster.ultra_debug('Field Matched: \"%s\"', email_to_validate[self.field_to_match])
         else:
-            LogMaster.insane_debug('Field Not Matched: \"%s\"', email_to_validate[self.field_to_match])
+            LogMaster.ultra_debug('Field Not Matched: \"%s\"', email_to_validate[self.field_to_match])
 
         return matched_yn
 
@@ -510,7 +521,7 @@ class MatchSize(Match):
             size_to_match = int(self.value_to_match)
             value = int(value)
         except ValueError as e:
-            LogMaster.insane_debug('ValueError raised during int conversion. Error: %s' % str(e))
+            LogMaster.ultra_debug('ValueError raised during int conversion. Error: %s' % str(e))
         else:
             if value >= size_to_match:
                 if self.match_type == 'greater_than':
@@ -526,15 +537,14 @@ class MatchSize(Match):
         return matched_yn
 
     def test_match_email(self, email_to_validate):
-        LogMaster.insane_debug('Now matching a date value to an email size. Email UID: %s', email_to_validate.uid_str)
+        LogMaster.ultra_debug('Now matching a size value to an email size. Email UID: %s', email_to_validate.uid_str)
         matched_yn = False
         try:
             size_to_check = email_to_validate.size
         except AttributeError:
             size_to_check = None
 
-        LogMaster.insane_debug('Email Size value to be matched is: %s, \
-to see if it is %s testing size of: %s bytes',
+        LogMaster.ultra_debug('Email Size value to be matched is: %s, to see if it is %s the size of: %s bytes',
             size_to_check,
             self.match_type,
             self.value_to_match
@@ -542,9 +552,9 @@ to see if it is %s testing size of: %s bytes',
 
         if (self.test_match_value(size_to_check)):
             matched_yn = True
-            LogMaster.insane_debug('Size Matched.')
+            LogMaster.ultra_debug('Size Matched.')
         else:
-            LogMaster.insane_debug('Size Not Matched.')
+            LogMaster.ultra_debug('Size Not Matched.')
 
         return matched_yn
 
@@ -554,10 +564,212 @@ to see if it is %s testing size of: %s bytes',
                 '" selected, but only valid fields are: ' + str(match_fields))
 
         if self.match_type not in self.match_types:
-            return (False, 'Match type is invalid. Field type "' + self.match_type +
-                '" selected, but only valid fields are: ' + str(match_types))
+            return (False, 'Match type is invalid. Match type "' + self.match_type +
+                '" selected, but only valid matches are: ' + str(match_types))
 
         if self.value_to_match is None:
             return (False, 'Match invalid. Missing field value string. Trying to match field ' +
                 self.field_to_match + '" selected, but no actual value is set for matching')
+
+
+class MatchFolder(Match):
+    match_types = frozenset(['starts_with', 'contains', 'ends_with', 'is'])
+
+    def __init__(self, field_to_match='IMAP_Folder', match_type=None, value_to_match=None, name=None, parent_rule_id=None,
+            case_sensitive=False, include_hierarchy=True):
+        super().__init__(field_to_match, match_type, value_to_match, name, parent_rule_id)
+        self.set_case_sensitive(case_sensitive)
+        self.set_include_hierarchy(include_hierarchy)
+        self._generate_re()
+
+    def set_field_to_match(self, field_to_match):
+        super().set_field_to_match(field_to_match)
+        self._generate_re()
+
+    def set_match_type(self, match_type):
+        super().set_match_type(match_type)
+        self._generate_re()
+
+    def set_value_to_match(self, value_to_match):
+        super().set_value_to_match(value_to_match)
+        self._generate_re()
+
+    def set_case_sensitive(self, bool_flag):
+        self.case_sensitive = bool_flag
+        self._generate_re()
+
+    def set_include_hierarchy(self, bool_flag):
+        self.include_hierarchy = bool_flag
+
+    def _generate_re(self):
+        self.re = re.compile('This is a default value, never to be matched')
+        try:
+            if ((self.match_type in self.match_types) and (self.value_to_match is not None)):
+                match_str = str(self.value_to_match)[:]
+                if self.match_type == 'starts_with':
+                    match_str = match_str + '.*'
+                if self.match_type == 'contains':
+                    match_str = '.*' + match_str + '.*'
+                if self.match_type == 'ends_with':
+                    match_str = '.*' + match_str
+                #match_str = '^' + match_str + '$'  # Do I need this? I don't think so.
+                self.matching_string = match_str
+                flags = re.DOTALL
+                if not self.case_sensitive:
+                    flags = flags | re.IGNORECASE
+                self.re = re.compile(match_str, flags)
+        except AttributeError:
+            pass
+
+    def test_match_value(self, str_value):
+        matched_yn = False
+        if self.re.match(str_value):
+            matched_yn = True
+        return matched_yn
+
+    def test_match_email(self, email_to_validate):
+        LogMaster.ultra_debug('Now matching a value to IMAP Folder Name. Email UID: %s.', email_to_validate.uid_str)
+        matched_yn = False
+        try:
+            str_to_test = email_to_validate.imap_folder
+            if (not self.include_hierarchy) and (str_to_test.find('/') >= 0):
+                str_to_test = email_to_validate.imap_folder.split('/')[-1]
+            LogMaster.ultra_debug('Email IMAP Folder value is: \"%s\", and final match-check-value will be: \"%s\"',
+                email_to_validate.imap_folder, str_to_test)
+            LogMaster.ultra_debug('Email Matching value is: \"%s\", To be matched against regexp: \"%s\"',
+                str_to_test, self.re.pattern)
+            if (self.test_match_value(str_to_test)):
+                matched_yn = True
+                LogMaster.ultra_debug('Folder Matched: \"%s\"', email_to_validate.imap_folder)
+            else:
+                LogMaster.ultra_debug('Folder Not Matched: \"%s\"', email_to_validate.imap_folder)
+        except AttributeError:
+            LogMaster.ultra_debug('Error: AttributeError incurred when testing Email UID: %s against IMAP Folder %s.',
+                email_to_validate.uid_str, email_to_validate.imap_folder)
+
+        return matched_yn
+
+    def validate(self):
+        if self.match_type not in self.match_types:
+            return (False, 'Match type is invalid. Match type "' + self.match_type +
+                '" selected, but only match fields are: ' + str(match_types))
+
+        if self.value_to_match is None:
+            return (False, 'Match invalid. Missing field value string. Trying to match field ' +
+                self.field_to_match + '" selected, but no actual value is set for matching')
+
+        if not insinstance(self.case_sensitive, bool):
+            return (False, 'Match invalid. Case sensitivity should be boolean, but isnt. Trying to match: ' +
+                self.action_type + '" selected, but delete_permanently flag not boolean: set to ' +
+                str(self.delete_permanently))
+
+    def __repr__(self):
+        retval = OrderedDict()
+        retval['id'] = self.id
+        retval['name'] = self.name
+        retval['field_to_match'] = self.field_to_match
+        retval['match_type'] = self.match_type
+        retval['value_to_match'] = self.value_to_match
+        retval['case_sensitive'] = self.case_sensitive
+        retval['include_hierarchy'] = self.include_hierarchy
+        retval['parent_rule_id'] = self.parent_rule_id
+        repr = '%s:(%s)' % (self.__class__.__name__, str(retval))
+        return repr
+
+
+class MatchFlag(Match):
+    def __init__(self, field_to_match='IMAP_Flags', match_type=None, value_to_match=None, name=None, parent_rule_id=None):
+        super().__init__(field_to_match, match_type, value_to_match, name, parent_rule_id)
+
+    def set_value_to_match(self, value_to_match):
+        if (str(value_to_match)[0] != '\\'):
+            value_to_match = '\\' + str(value_to_match)
+        super().set_value_to_match(value_to_match)
+        self._generate_re()
+
+    def test_match_value(self, imap_flags):
+        matched_yn = False
+        if self.value_to_match in imap_flags:
+            matched_yn = True
+        return matched_yn
+
+    def test_match_email(self, email_to_validate):
+        LogMaster.ultra_debug('Now matching on an IMAP Flag. Email UID: %s.', email_to_validate.uid_str)
+        matched_yn = False
+        try:
+            LogMaster.ultra_debug('Email IMAP Flags are: \"%s\", To be matched against flag: \"%s\"',
+                email_to_validate.imap_flags, self.value_to_match)
+            if (self.test_match_value(email_to_validate.imap_flags)):
+                matched_yn = True
+                LogMaster.ultra_debug('Flag Matched: \"%s\"', self.value_to_match)
+            else:
+                LogMaster.ultra_debug('Flag Not Matched: \"%s\"', self.value_to_match)
+        except AttributeError:
+            LogMaster.ultra_debug('Error: AttributeError incurred when testing Email UID: %s against IMAP Flags %s.',
+                email_to_validate.uid_str, email_to_validate.imap_flags)
+
+        return matched_yn
+
+    def validate(self):
+        if self.value_to_match is None:
+            return (False, 'Match invalid. Missing field value string. Trying to match field ' +
+                self.field_to_match + '" selected, but no actual value is set for matching')
+
+    def __repr__(self):
+        retval = OrderedDict()
+        retval['id'] = self.id
+        retval['name'] = self.name
+        retval['field_to_match'] = self.field_to_match
+        retval['match_type'] = self.match_type
+        retval['value_to_match'] = self.value_to_match
+        retval['parent_rule_id'] = self.parent_rule_id
+        repr = '%s:(%s)' % (self.__class__.__name__, str(retval))
+        return repr
+
+
+class MatchIsUnread(Match):
+    def __init__(self, field_to_match='IMAP_Flag_Unread', match_type='is', value_to_match='unread', name=None, parent_rule_id=None):
+        super().__init__(field_to_match, match_type, value_to_match, name, parent_rule_id)
+
+    def test_match_value(self, is_read_flag):
+        return (not is_read_flag)
+
+    def test_match_email(self, email_to_validate):
+        LogMaster.ultra_debug('Now matching on an IMAP Unread flag. Email UID: %s.', email_to_validate.uid_str)
+        matched_yn = False
+        try:
+            LogMaster.ultra_debug('Email \'Read\' flag is set to : \"%s\"',
+                email_to_validate.is_read)
+            if (self.test_match_value(email_to_validate.is_read)):
+                matched_yn = True
+                LogMaster.ultra_debug('Unread Matched')
+            else:
+                LogMaster.ultra_debug('Unread Not Matched (ie read!).')
+        except AttributeError:
+            LogMaster.ultra_debug('Error: AttributeError incurred when testing Email UID: %s against Read Flag %s.',
+                email_to_validate.uid_str, email_to_validate.is_read)
+
+        return matched_yn
+
+    def validate(self):
+        return True
+
+    def __repr__(self):
+        retval = OrderedDict()
+        retval['id'] = self.id
+        retval['name'] = self.name
+        retval['field_to_match'] = self.field_to_match
+        retval['match_type'] = self.match_type
+        retval['value_to_match'] = self.value_to_match
+        retval['parent_rule_id'] = self.parent_rule_id
+        repr = '%s:(%s)' % (self.__class__.__name__, str(retval))
+        return repr
+
+
+class MatchIsRead(MatchIsUnread):
+    def __init__(self, field_to_match='IMAP_Flag_Read', match_type='is', value_to_match='read', name=None, parent_rule_id=None):
+        super().__init__(field_to_match, match_type, value_to_match, name, parent_rule_id)
+
+    def test_match_value(self, is_read_flag):
+        return (is_read_flag)
 
