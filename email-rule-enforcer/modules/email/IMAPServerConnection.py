@@ -109,11 +109,15 @@ class IMAPServerConnection():
         return self.connect_to_folder(self.initial_folder)
 
     def connect_to_folder(self, folder_name):
-        result = self.imap_connection.select(folder_name)
-        msg_count = convert_bytes_to_utf8(result[1][0])
-        self.currfolder_name = strip_quotes(folder_name)
-        LogMaster.log(20, 'Successfully connected to IMAP Folder: \"%s\". Message Count: %s', folder_name, msg_count)
-        return msg_count
+        try:
+            result = self.imap_connection.select(folder_name)
+            msg_count = convert_bytes_to_utf8(result[1][0])
+            self.currfolder_name = strip_quotes(folder_name)
+            LogMaster.log(20, 'Successfully connected to IMAP Folder: \"%s\". Message Count: %s', folder_name, msg_count)
+            return msg_count
+        except imaplib.IMAP4.error:
+            LogMaster.log(20, 'Failed to connect IMAP Folder: \"%s\". Returning -1 as msg_count.', folder_name)
+            return -1
 
     def disconnect(self):
         try:
