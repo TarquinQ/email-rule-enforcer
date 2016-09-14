@@ -6,7 +6,8 @@ from modules.supportingfunctions import text_to_bool, text_to_int, die_with_erro
 from modules.settings.models.EmailNotificationSettings import EmailNotificationSettings
 from modules.settings.models.LogfileSettings import LogfileSettings
 from modules.models.Config import Config
-from modules.models.RulesAndMatches import Rules, Rule, RuleAction, Match, MatchField, MatchDate, MatchSize
+from modules.models.RulesAndMatches import Rules, Rule, RuleAction
+from modules.models.RulesAndMatches import Match, MatchField, MatchDate, MatchSize, MatchFolder, MatchIsUnread, MatchIsRead
 from modules.settings.default_settings import set_defaults
 from modules.settings.set_dependent_config import set_dependent_config, set_headersonly_mode
 from modules.settings.supportingfunctions_xml import set_value_if_xmlnode_exists, get_value_if_xmlnode_exists, get_attributes_if_xmlnode_exists
@@ -212,17 +213,7 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
             )
             return match_to_add
 
-        def parse_generic_unread_match(Node):
-            match_field = 'IMAP_Flag_Unread'
-            match_name = get_attribvalue_if_exists_in_xmlNode(Node, 'name')
-            match_to_add = MatchIsUnread(
-                field_to_match=match_field,
-                name=match_name
-            )
-            return match_to_add
-
         def parse_generic_isunread_match(Node):
-            match_field = 'IMAP_Flag_Unread'
             match_name = get_attribvalue_if_exists_in_xmlNode(Node, 'name')
             match_to_add = MatchIsUnread(
                 name=match_name
@@ -230,7 +221,6 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
             return match_to_add
 
         def parse_generic_isread_match(Node):
-            match_field = 'IMAP_Flag_Unread'
             match_name = get_attribvalue_if_exists_in_xmlNode(Node, 'name')
             match_to_add = MatchIsUnread(
                 name=match_name
@@ -292,9 +282,9 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
                 for node in xpath_findall(Node, './match_is_read'):
                     rule.add_match(parse_generic_isread_match(node))
 
-                for node in xpath_findall(Node, './match_or'):
+                for subnode in xpath_findall(Node, './match_or'):
                     rule.start_match_or()
-                    parse_rule_matches(Node, rule)
+                    parse_rule_matches(subnode, rule)
                     rule.stop_match_or()
 
             def parse_rule_match_exceptions(Node, rule):
@@ -311,9 +301,9 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
                 for node in xpath_findall(Node, './match_is_read'):
                     rule.add_match_exception(parse_generic_isread_match(node))
 
-                for node in xpath_findall(Node, './match_or'):
+                for subnode in xpath_findall(Node, './match_or'):
                     rule.start_exception_or()
-                    parse_rule_match_exceptions(Node, rule)
+                    parse_rule_match_exceptions(subnode, rule)
                     rule.stop_exception_or()
 
             new_name = get_value_if_xmlnode_exists(Node, './rule_name')
