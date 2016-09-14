@@ -28,9 +28,28 @@
 		</rule>
 		<rule>
 			<rule_name>Move Undeliverable Emails to Trash folder</rule_name>
-			<rule_matches> <!-- all matches are required to match at the same time, unless added as an "match_or" -->
+			<rule_matches>  <!-- all matches are required to match at the same time, unless added as an "match_or" -->
 				<match_field field="subject" type="starts_with" case_sensitive="no">Undeliverable: </match_field>
 			</rule_matches>
+			<rule_actions>
+				<forward>
+					<forward_to>forwardingaddr1@somewhere.com</forward_to>
+					<forward_to>forwardingaddr2@somewhereelse.com</forward_to>
+				</forward>
+				<delete permanently="no" />  <!-- This Action moves the email into the Deleted Items/Trash folder as specified in config-serverinfo -->
+				<!-- permanently=no is default -->
+			</rule_actions>
+		</rule>
+		<rule>
+			<rule_name>Other Match Types</rule_name>
+			<rule_matches>
+				<match_size type="greater_than">1000000</match_size>  <!-- Size in Bytes -->
+				<match_is_read />  <!-- value is ignored, just the tag needed -->
+				<match_is_unread />  <!-- value is ignored, just the tag needed -->
+			</rule_matches>
+			<rule_match_exceptions>
+				<match_folder type="starts_with" case_sensitive="no">Calendar</match_folder>
+			</rule_match_exceptions>
 			<rule_actions>
 				<forward>
 					<forward_to>forwardingaddr1@somewhere.com</forward_to>
