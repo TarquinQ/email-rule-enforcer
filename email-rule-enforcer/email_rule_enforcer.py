@@ -51,15 +51,13 @@ def main():
     # Now we try to perform IMAP actions
     try:
         # Parse IMAP Emails
-        if config['assess_mainfolder_rules']:
-            global_timers.start('mainfolder')
-            match_emails.iterate_rules_over_mainfolder(imap_connection, config, rules_mainfolder, rule_counters_mainfolder)
-            global_timers.stop('mainfolder')
+        global_timers.start('mainfolder')
+        match_emails.iterate_rules_over_mainfolder(imap_connection, config, rules_mainfolder, rule_counters_mainfolder)
+        global_timers.stop('mainfolder')
 
-        if config['assess_allfolders_rules']:
-            global_timers.start('allfolders')
-            match_emails.iterate_rules_over_allfolders(imap_connection, config, rules_allfolders, rule_counters_allfolders)
-            global_timers.stop('allfolders')
+        global_timers.start('allfolders')
+        match_emails.iterate_rules_over_allfolders(imap_connection, config, rules_allfolders, rule_counters_allfolders)
+        global_timers.stop('allfolders')
 
         imap_connection.disconnect()
     except KeyboardInterrupt as KI:
@@ -78,7 +76,7 @@ def main():
         # Something went wrong with the IMAP socket. Safely Disconnect just in case.
         LogMaster.critical('There has been an error with the email processing, and unhandled error occurred.')
         LogMaster.critical('We will now disconnect from IMAP and exit.')
-        LogMaster.critical('Error was: %s', repr(e))
+        LogMaster.exception('Error was: ')
         imap_connection.disconnect()
 
     global_timers.stop('overall')

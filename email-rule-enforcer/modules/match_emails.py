@@ -128,7 +128,7 @@ def perform_actions(imap_connection, config, rule, email_to_validate, counters):
         LogMaster.insane_debug('2nd Run through Actions: Rule Action for Rule ID %s is type %s', rule.id, action_type)
 
         if action_type == "move_to_folder":
-            LogMaster.info('Now Moving Email UID %s to folder', email_to_validate.uid_str, action_to_perform.dest_folder)
+            LogMaster.info('Now Moving Email UID %s to folder %s', email_to_validate.uid_str, action_to_perform.dest_folder)
             if config['actually_perform_actions']:
                 imap_connection.move_email(
                     uid=email_to_validate.uid,
@@ -155,8 +155,9 @@ def check_email_against_rules_and_perform_actions(imap_connection, config, rules
         if len(rule.get_matches()) == 0:
             LogMaster.ultra_debug('Zero matches required for Rule %s - rule invalid, not attempting.', rule.id)
             continue
+
         if len(rule.get_actions()) == 0:
-            LogMaster.info('Zero matches actions for this rule - rule invalid, not attempting actions.')
+            LogMaster.ultra_debug('Zero matches actions for Rule %s - rule invalid, not attempting.', rule.id)
             continue
 
         email_matched = check_email_against_rule(rule, email_to_validate)
@@ -199,6 +200,10 @@ def iterate_rules_over_mailfolder(imap_connection, config, rules, counters, head
 def iterate_rules_over_mainfolder(imap_connection, config, rules, counters):
     LogMaster.log(40, 'Now commencing iteration of Rules over all emails in Main folder')
 
+    if (not config['assess_rules_againt_mainfolder']):
+        LogMaster.info('Main Folder Rules Not Processed: this processing has been disabled in the program config files.')
+        return None
+
     if (imap_connection.is_connected() is False):
         LogMaster.log(40, 'Aborting: IMAP server is not connected')
         return None
@@ -211,6 +216,10 @@ def iterate_rules_over_mainfolder(imap_connection, config, rules, counters):
 
 
 def iterate_rules_over_allfolders(imap_connection, config, rules, counters):
+
+    if (not config['assess_rules_againt_allfolders']):
+        LogMaster.info('All Folders Rules Not Processed: this processing has been disabled in the program config files.')
+        return None
 
     if (imap_connection.is_connected is False):
         LogMaster.log(40, 'Aborting: IMAP server is not connected')

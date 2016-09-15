@@ -17,7 +17,6 @@ def set_defaults(config):
     config['imap_deletions_folder'] = 'Trash'
     config['imap_imaplib_debuglevel'] = 0
     config['imap_headers_only'] = True
-    config['imap_force_headersonly'] = False
     config['imap_folders_to_exclude'] = set()
 
     # SMTP Defaults
@@ -40,11 +39,15 @@ def set_defaults(config):
     # Exchange Defaults
     config['Exchange_shared_mailbox_alias'] = None
 
-    # Testing Settings
+    # Behaviour Settings
     config['parse_config_and_stop'] = False
-    config['assess_mainfolder_rules'] = True
-    config['assess_allfolders_rules'] = True
+    config['assess_rules_againt_mainfolder'] = True
+    config['assess_rules_againt_allfolders'] = True
     config['actually_perform_actions'] = True
+    config['allow_body_match_for_all_folders'] = False
+    config['allow_body_match_for_main_folder'] = True
+    config['imap_headers_only_for_all_folders'] = True
+    config['imap_headers_only_for_main_folder'] = True
 
     # Finalise
     config['defaults_are_set'] = True

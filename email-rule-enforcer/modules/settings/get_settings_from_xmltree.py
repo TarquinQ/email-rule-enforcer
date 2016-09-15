@@ -3,8 +3,8 @@ import xml.etree.ElementTree as ET
 import modules.supportingfunctions
 from collections import OrderedDict
 from modules.supportingfunctions import text_to_bool, text_to_int, die_with_errormsg, strip_quotes
-from modules.settings.models.EmailNotificationSettings import EmailNotificationSettings
-from modules.settings.models.LogfileSettings import LogfileSettings
+from modules.models.EmailNotificationSettings import EmailNotificationSettings
+from modules.models.LogfileSettings import LogfileSettings
 from modules.models.Config import Config
 from modules.models.RulesAndMatches import Rules, Rule, RuleAction
 from modules.models.RulesAndMatches import Match, MatchField, MatchDate, MatchSize, MatchFolder, MatchIsUnread, MatchIsRead
@@ -78,10 +78,11 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
 
         # Testing / Behaviour Settings
         set_boolean_if_xmlnode_exists(config, 'parse_config_and_stop', Node, './/parse_config_and_stop')
-        set_invertedboolean_if_xmlnode_exists(config, 'assess_mainfolder_rules', Node, './/dont_assess_rules_againt_inbox')
-        set_invertedboolean_if_xmlnode_exists(config, 'assess_allfolders_rules', Node, './/dont_assess_allfolders')
-        set_invertedboolean_if_xmlnode_exists(config, 'actually_perform_actions', Node, './/dont_perform_actions')
-        set_boolean_if_xmlnode_exists(config, 'imap_force_headersonly', Node, './/force_imap_headers_only')
+        set_boolean_if_xmlnode_exists(config, 'assess_rules_againt_mainfolder', Node, './/assess_rules_againt_mainfolder')
+        set_boolean_if_xmlnode_exists(config, 'assess_rules_againt_allfolders', Node, './/assess_rules_againt_allfolders')
+        set_boolean_if_xmlnode_exists(config, 'actually_perform_actions', Node, './/actually_perform_actions')
+        set_boolean_if_xmlnode_exists(config, 'allow_body_match_for_all_folders', Node, './/allow_body_match_for_all_folders')
+        set_boolean_if_xmlnode_exists(config, 'allow_body_match_for_main_folder', Node, './/allow_body_match_for_main_folder')
 
         parse_email_notification_settings(config, Node.find('./logging/notification_email_on_completion'))
         parse_logfile_settings(config, 'logfile', Node.find('./logging/logfile'))
@@ -365,6 +366,9 @@ def get_settings_from_configtree(xml_config_tree):
     set_defaults(config)
     parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders)
     set_dependent_config(config)
-    set_headersonly_mode(config, rules_main)
+    set_headersonly_mode(config, rules_main,
+        'allow_body_match_for_main_folder', 'imap_headers_only_for_main_folder')
+    set_headersonly_mode(config, rules_allfolders,
+        'allow_body_match_for_all_folders', 'imap_headers_only_for_all_folders')
     return (config, rules_main, rules_allfolders)
 

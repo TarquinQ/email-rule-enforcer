@@ -36,25 +36,27 @@ def set_dependent_config(config):
         config['imap_username'] = config['imap_username'] + '\\' + config['Exchange_shared_mailbox_alias']
 
 
-def set_headersonly_mode(config, rules):
-    if not config['imap_force_headersonly']:
-        turn_headers_on = False
-        for rule in rules:
-            for match in rule.matches:
-                if isinstance(match, list):  # Then we know this is an 'OR' clause
-                    for match_or in match:
-                        if isinstance(match_or, Match):
-                            if match_or.field_to_match.lower() == 'body':
-                                turn_headers_on = True
-                                break
-                elif isinstance(match, Match):
-                    if match.field_to_match.lower() == 'body':
-                        turn_headers_on = True
-                        break
-        if turn_headers_on:
-            config['imap_headers_only'] = True
-        else:
-            config['imap_headers_only'] = True
+def set_headersonly_mode(config, rules, conf_check, conf_setting):
+    def check_for_body_rule(match_list):
+        for match in match_list:
+            if isinstance(match, Match):
+                if match.field_to_match.lower() == 'body':
+                    turn_bodymatch_on = True
+                    return turn_bodymatch_on
+            elif isinstance(match, list):  # Then we know this is an 'OR' clause
+                for match_or in match:
+                    if isinstance(match_or, Match):
+                        if match_or.field_to_match.lower() == 'body':
+                            turn_bodymatch_on = True
+                            return turn_bodymatch_on
+        return False
 
-    else:
-        config['imap_headers_only'] = True
+    if config[conf_check]:  # This checks to see if this is even allowed in the first place
+        turn_bodymatch_on = False
+        for rule in rules:
+            turn_bodymatch_on = (check_for_body_rule(rule.matches) |
+                 check_for_body_rule(rule.match_exceptions))
+            if turn_bodymatch_on:
+                break
+        if turn_bodymatch_on:
+            config[conf_setting] = False

@@ -11,8 +11,8 @@
 		<logging>
 			<!-- Log Levels run from 1-5, verbose-quiet: these correspond to DEBUG, INFO, WARNING, ERROR, CRITICAL -->
 			<console_level>2</console_level>  <!-- Console Log; Optional; default: 2 -->
-			<console_ultra_debug>on</console_ultra_debug>  <!-- Pours out a large amount of debug info to the console -->
-			<console_insane_debug>on</console_insane_debug>  <!-- Pours out an enourmous amount of debug info to the console -->
+			<console_ultra_debug>off</console_ultra_debug>  <!-- Pours out a large amount of debug info to the console -->
+			<console_insane_debug>off</console_insane_debug>  <!-- Pours out an enourmous amount of debug info to the console -->
 			<logfile>  <!-- Optional Section -->
 				<log_folder>../logs/</log_folder>  <!-- trailing slash can be omitted -->
 				<log_filename>log-sample</log_filename>  <!-- First bit of log filename -->
@@ -31,12 +31,13 @@
 			</logfile_debug>
 		</logging>
 		<general_behaviour>  <!-- Optional section -->
-			<dont_perform_actions>false</dont_perform_actions>  <!-- Optional; Emails are assessed against ruleset, but no actions carried out. -->
-			<dont_assess_rules_againt_inbox>false</dont_assess_rules_againt_inbox>  <!-- Optional; IMAP connects, but emails not assessed against ruleset. -->
-			<dont_assess_allfolders>false</dont_assess_allfolders>  <!-- Optional; IMAP connects, but all_folders_rules not assessed against malbox. -->
-			<parse_config_and_stop>false</parse_config_and_stop>  <!-- Optional; Program will parse all config but cease prior to IMAP -->
-			<force_imap_headers_only>false</force_imap_headers_only>  <!-- Optional; IMAP will only download email headers when assessing rules -->
-			<!-- Note on HeadersOnly: This speeds up the connection and significantly reduces bandwidth, but will cause rules that match on "body" to fail to match correctly. This should not generally be set: if there are no "body" matching rules in the main ruleset, then Enforcer only downloads headers-only anyway. Full body is still downloaded for SMTP-Forwarding Action. -->
+			<actually_perform_actions>false</actually_perform_actions>  <!-- Optional, Default True;  Full processing and matching of emails are assessed against ruleset, but no actions are actually carried out. Useful for testing effect of ruleset changes. -->
+			<assess_rules_againt_mainfolder>false</assess_rules_againt_mainfolder>  <!-- Optional, Default True; IMAP connection is established, but emails in the main/inbox folder are not assessed against the main folder ruleset. -->
+			<assess_rules_againt_allfolders>false</assess_rules_againt_allfolders>  <!-- Optional, Default True; IMAP connection is established, but emails in the all folders are not assessed against the all folders ruleset. -->
+			<parse_config_and_stop>true</parse_config_and_stop>  <!-- Optional, Default False; Program will parse all config but cease prior to IMAP -->
+			<!-- Note on "Body" matching: By default EE will download a full email _if_ a "body" match is present in the ruleset, or headers-only otherwise. Headers-only mode significantly speeds up the connection and reduces bandwidth, but will clearly cause rules that match on "body" to fail to match correctly. The options below allow this behaviour to be overrruled. For any fully-matched email, the full body is still downloaded for SMTP-Forwarding Action (ie if only headers used for matching, an IMAP-downlaod ofthe email will occur in order to Forward it.). -->
+			<allow_body_match_for_all_folders>false</allow_body_match_for_all_folders>  <!-- Optional, default False; This allows the download of the full email message, including body and attachment, when processing AllFolders ruleset (EE will normally only download email headers when assessing All-Folders rules) -->
+			<allow_body_match_for_main_folder>false</allow_body_match_for_main_folder>  <!-- Optional, default True; This allows the download of the full email message, including body and attachment, when processing Main Folder ruleset (EE will normally only download email headers when assessing Main-Folder rules, except if a "body" match is found, in which case it is set to download) -->
 		</general_behaviour>
 		<mailhandling_behaviour>
 			<empty_trash_on_exit>no</empty_trash_on_exit> <!-- default: no -->

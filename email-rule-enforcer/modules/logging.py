@@ -1,7 +1,7 @@
 import logging
 import sys
 import datetime
-from modules.settings.models.LogfileSettings import LogfileSettings
+from modules.models.LogfileSettings import LogfileSettings
 from modules.supportingfunctions import die_with_errormsg
 from modules.models.Singleton import Singleton
 from modules.ui.logfile_headers import get_logfile_headers
