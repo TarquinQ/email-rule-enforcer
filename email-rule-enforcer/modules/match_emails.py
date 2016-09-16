@@ -212,6 +212,7 @@ def iterate_rules_over_mainfolder(imap_connection, config, rules, counters):
         LogMaster.log(40, 'Aborting: IMAP server is connected, but not attached to a Folder')
         return None
 
+    counters.incr('folders_processed')
     return iterate_rules_over_mailfolder(imap_connection, config, rules, counters, headers_only=config['imap_headers_only'])
 
 
@@ -245,6 +246,7 @@ def iterate_rules_over_allfolders(imap_connection, config, rules, counters):
         else:
             LogMaster.info('Now connecting to folder \"%s\".', folder_name_noquotes)
             imap_connection.connect_to_folder(folder_name)
+            counters.incr('folders_processed')
             iterate_rules_over_mailfolder(imap_connection, config, rules, counters, headers_only=config['imap_headers_only'])
 
     LogMaster.info('Now resetting IMAP connection back to default folder.')

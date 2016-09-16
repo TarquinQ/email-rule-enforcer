@@ -4,6 +4,7 @@ from modules.models.GlobalTimeRecorders import GlobalTimeRecorders
 
 def create_default_rule_counters():
     ret_counters = GlobalCounters()
+    ret_counters.new_counter('folders_processed')
     ret_counters.new_counter('emails_seen')
     ret_counters.new_counter('emails_matched')
     ret_counters.new_counter('rules_in_set')

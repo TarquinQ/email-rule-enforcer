@@ -6,6 +6,7 @@ from modules.settings.get_config import get_config
 from modules.settings.default_counters_and_timers import create_default_timers, create_default_rule_counters
 from modules.settings.get_config import get_config
 from modules.email.IMAPServerConnection import IMAPServerConnection
+from modules.email.smtp_send_completion_email import smtp_send_completion_email
 from modules.logging import LogMaster, add_log_files_from_config
 from modules.supportingfunctions import die_with_errormsg
 from modules.ui.display_headers import get_header_preconfig, get_header_postconfig
@@ -81,10 +82,11 @@ def main():
 
     global_timers.stop('overall')
     # Print the Footers
-    LogMaster.critical(get_completion_footer(config, global_timers, rule_counters_mainfolder, rule_counters_allfolders))
+    final_output = get_completion_footer(config, global_timers, rule_counters_mainfolder, rule_counters_allfolders)
+    LogMaster.critical(final_output)
 
     # Send Completion Email
-    # send_smtp_completion_email()
+    smtp_send_completion_email(config, final_output)
 
 
 if __name__ == "__main__":
