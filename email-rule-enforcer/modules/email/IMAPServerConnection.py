@@ -296,7 +296,7 @@ class IMAPServerConnection():
 
     def del_email(self, uid, perm_delete=False):
         if perm_delete:
-            result, data = self.set_flag_byuid('(\\Deleted)')
+            result, data = self.set_flag_byuid(uid, '(\\Deleted)')
             self.expunge()
             LogMaster.log(20, 'Deleted email (permanently). UID: %s', uid)
         else:
@@ -342,6 +342,11 @@ class IMAPServerConnection():
         try:
             result, data = self.imap_connection.uid(*args, **kwargs)
         except imaplib.IMAP4.error as imap_error:
+            LogMaster.debug('ERROR: IMAP error occured during IMAP UID operation.', )
+            LogMaster.debug('ERROR: IMAP Command args: %s', str(args))
+            LogMaster.debug('ERROR: IMAP Command kwargs: %s', str(kwargs))
+            LogMaster.debug('ERROR: IMAP error result was: %s', str(imap_error))
+            LogMaster.exception('ERROR: Full trace')
             result = 'NO'
             data = [None]  # I didn't make up this value: [None] can also emanate from imaplib responses.
         return (result, data)

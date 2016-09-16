@@ -137,7 +137,7 @@ def perform_actions(imap_connection, config, rule, email_to_validate, counters):
                 )
             break  # Email gone now, no more actions
 
-        if action_type == "Delete":
+        if action_type == "delete":
             perm_delete = action_to_perform.delete_permanently
             LogMaster.info('Now Deleting Email UID %s, permanently=%s', email_to_validate.uid_str, perm_delete)
             if config['actually_perform_actions']:
