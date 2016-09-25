@@ -35,7 +35,7 @@ def get_email_datetime(email_message):
     return parsed_datetime
 
 
-def get_email_fromaddr(email_message):
+def get_email_addrfield_from(email_message):
     parsed_from = 'Unknown_Email'
     try:
         from_addr = email_message["From"]
@@ -43,6 +43,23 @@ def get_email_fromaddr(email_message):
     except ValueError:
         pass
     return parsed_from
+
+
+def get_email_addrfield_to(email_message):
+    return parse_list_email_addrs(email_message, 'to')
+
+
+def get_email_addrfield_cc(email_message):
+    return parse_list_email_addrs(email_message, 'cc')
+
+
+def parse_list_email_addrs(email_message, header_field):
+    parsed_addrs = []
+    raw_addrs = email_message.get_all(header_field, [])
+    addr_tuples = email.utils.getaddresses(raw_addrs)
+    for addr_tuples:
+        parsed_addrs += addr_tuples[1]
+    return parsed_addrs
 
 
 def get_extended_email_headers_for_logging(email_message):

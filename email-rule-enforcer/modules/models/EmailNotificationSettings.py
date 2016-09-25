@@ -1,5 +1,6 @@
 import re
 
+
 class EmailNotificationSettings():
     def __init__(self, recipient=None, recipients=None, subject=None, body_prefix=None, attach_log=True):
         self.recipients = []

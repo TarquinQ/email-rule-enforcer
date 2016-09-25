@@ -6,7 +6,8 @@ import traceback
 from modules.logging import LogMaster
 from modules.supportingfunctions import strip_quotes
 from modules.email.supportingfunctions_email import convert_bytes_to_utf8
-from modules.email.supportingfunctions_email import get_email_body, get_email_datetime, get_email_fromaddr
+from modules.email.supportingfunctions_email import get_email_body, get_email_datetime
+from modules.email.supportingfunctions_email import get_email_addrfield_from, get_email_addrfield_to, get_email_addrfield_cc
 
 
 class RawEmailResponse():
@@ -242,7 +243,9 @@ class IMAPServerConnection():
                 parsed_email.uid_str = convert_bytes_to_utf8(uid)
                 parsed_email.imap_folder = self.currfolder_name
                 parsed_email.date_datetime = get_email_datetime(parsed_email)
-                parsed_email.from_addr = get_email_fromaddr(parsed_email)
+                parsed_email.addr_from = get_email_addrfield_from(parsed_email)
+                parsed_email.addr_to = get_email_addrfield_to(parsed_email)
+                parsed_email.addr_cc = get_email_addrfield_cc(parsed_email)
                 parsed_email.imap_flags = raw_email.flags
                 parsed_email.is_read = self.is_email_currently_read_fromflags(parsed_email.imap_flags)
                 parsed_email["body"] = get_email_body(parsed_email)

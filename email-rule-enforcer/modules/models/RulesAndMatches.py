@@ -334,6 +334,8 @@ class MatchField(Match):
                     match_str = '.*' + match_str + '.*'
                 if self.match_type == 'ends_with':
                     match_str = '.*' + match_str
+                if self.match_type == 'regex':
+                    match_str = match_str
                 #match_str = '^' + match_str + '$'  # Do I need this? I don't think so.
                 self.matching_string = match_str
                 flags = re.DOTALL
