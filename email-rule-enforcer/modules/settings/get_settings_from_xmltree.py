@@ -136,6 +136,21 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
             )
             return match_to_add
 
+        def parse_match_body(Node):
+            match_field = 'body'
+            match_type = get_attribvalue_if_exists_in_xmlNode(Node, 'type')
+            match_name = get_attribvalue_if_exists_in_xmlNode(Node, 'name')
+            case_sensitive = text_to_bool(get_attribvalue_if_exists_in_xmlNode(Node, 'case_sensitive'), False)
+            match_val = strip_xml_whitespace(Node.text)
+            match_to_add = MatchHeader(
+                field_to_match=match_field,
+                match_type=match_type,
+                value_to_match=match_val,
+                case_sensitive=case_sensitive,
+                name=match_name
+            )
+            return match_to_add
+
         def parse_match_size(Node):
             match_field = 'size'
             match_type = get_attribvalue_if_exists_in_xmlNode(Node, 'type')
@@ -273,6 +288,8 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
             def parse_rule_matches(Node, rule):
                 for node in xpath_findall(Node, './match_header'):
                     rule.add_match(parse_match_header(node))
+                for node in xpath_findall(Node, './match_body'):
+                    rule.add_match(parse_match_body(node))
                 for node in xpath_findall(Node, './match_date'):
                     rule.add_match(parse_match_date(node))
                 for node in xpath_findall(Node, './match_size'):

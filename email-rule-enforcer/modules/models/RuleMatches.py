@@ -91,7 +91,7 @@ class Match():
 
 
 class MatchHeader(Match):
-    match_types = frozenset(['starts_with', 'contains', 'ends_with', 'is'])
+    match_types = frozenset(['starts_with', 'contains', 'ends_with', 'is', 'regex'])
 
     def __init__(self, field_to_match=None, match_type=None, value_to_match=None, name=None, parent_rule_id=None, case_sensitive=False):
         super().__init__(field_to_match, match_type, value_to_match, name, parent_rule_id)
@@ -121,19 +121,18 @@ class MatchHeader(Match):
                 match_str = str(self.value_to_match)[:]
                 if self.match_type == 'starts_with':
                     match_str = match_str + '.*'
-                if self.match_type == 'contains':
+                elif self.match_type == 'contains':
                     match_str = '.*' + match_str + '.*'
-                if self.match_type == 'ends_with':
+                elif self.match_type == 'ends_with':
                     match_str = '.*' + match_str
-                if self.match_type == 'regex':
+                elif self.match_type == 'regex':
                     match_str = match_str
-                #match_str = '^' + match_str + '$'  # Do I need this? I don't think so.
                 self.matching_string = match_str
                 flags = re.DOTALL
                 if not self.case_sensitive:
                     flags = flags | re.IGNORECASE
                 self.re = re.compile(match_str, flags)
-        except AttributeError:
+        except AttributeError, TypeError:
             pass
 
     def test_match_value(self, str_value):
@@ -143,41 +142,32 @@ class MatchHeader(Match):
         return matched_yn
 
     def test_match_email(self, email_to_validate):
-        LogMaster.ultra_debug('Now matching a value to an email field. Email UID: %s, field name \"%s\".',
+        LogMaster.ultra_debug('Now matching a value to an email header. Email UID: %s, Header name \"%s\".',
             email_to_validate.uid_str, self.field_to_match)
         matched_yn = False
         try:
-            LogMaster.ultra_debug('Email Matching value is: \"%s\", To be matched against regexp: \"%s\"',
+            LogMaster.ultra_debug('Email Matching value is: \"%s\", to be matched against regexp: \"%s\"',
                 email_to_validate[self.field_to_match], self.re.pattern)
             str_to_test = email_to_validate[self.field_to_match]
             if (self.test_match_value(str_to_test)):
                 matched_yn = True
-                LogMaster.ultra_debug('Field Matched: \"%s\"', email_to_validate[self.field_to_match])
+                LogMaster.ultra_debug('Header Matched: \"%s\"', email_to_validate[self.field_to_match])
             else:
-                LogMaster.ultra_debug('Field Not Matched: \"%s\"', email_to_validate[self.field_to_match])
+                LogMaster.ultra_debug('Header Not Matched: \"%s\"', email_to_validate[self.field_to_match])
         except AttributeError:
-            LogMaster.ultra_debug('Error: AttributeError incurred when testing Email UID: %s against field name %s.',
+            LogMaster.ultra_debug('Error: AttributeError incurred when testing Email UID: %s against Header %s.',
                 email_to_validate.uid_str, self.field_to_match)
 
         return matched_yn
 
     def validate(self):
-        if self.field_to_match not in self.match_fields:
-            return (False, 'Field to match is invalid. Field type "' + self.field_to_match +
-                '" selected, but only valid fields are: ' + str(match_fields))
-
-        if self.match_type not in self.match_types:
-            return (False, 'Match type is invalid. Field type "' + self.match_type +
-                '" selected, but only valid fields are: ' + str(match_types))
-
         if self.value_to_match is None:
-            return (False, 'Match invalid. Missing field value string. Trying to match field ' +
+            return (False, 'Match invalid. Missing Header value string. Trying to match value against Header ' +
                 self.field_to_match + '" selected, but no actual value is set for matching')
 
         if not insinstance(self.case_sensitive, bool):
-            return (False, 'Match invalid. Case sensitivity should be boolean, but isnt. Trying to match: ' +
-                self.action_type + '" selected, but delete_permanently flag not boolean: set to ' +
-                str(self.delete_permanently))
+            return (False, 'Match invalid. Case sensitivity should be boolean, but isn\'t. Is set to %s',
+                str(self.case_sensitive))
 
     def __repr__(self):
         retval = OrderedDict()
@@ -190,6 +180,35 @@ class MatchHeader(Match):
         retval['parent_rule_id'] = self.parent_rule_id
         repr = '%s:(%s)' % (self.__class__.__name__, str(retval))
         return repr
+
+
+class MatchBody(MatchHeader):
+    def __init__(self, field_to_match='body', match_type=None, value_to_match=None, name=None, parent_rule_id=None, case_sensitive=False):
+        super().__init__(field_to_match, match_type, value_to_match, name, parent_rule_id, case_sensitive)
+
+    def test_match_email(self, email_to_validate):
+        LogMaster.ultra_debug('Now matching a value to contents of an email body. Email UID: %s', email_to_validate.uid_str)
+        matched_yn = False
+        try:
+            LogMaster.ultra_debug('Email Matching value is: \"%s\", To be matched against regexp: \"%s\"',
+                email_to_validate.body, self.re.pattern)
+            str_to_test = email_to_validate.body
+            if (self.test_match_value(str_to_test)):
+                matched_yn = True
+                LogMaster.ultra_debug('Body Matched: \"%s\"', email_to_validate[self.field_to_match])
+            else:
+                LogMaster.ultra_debug('Body Not Matched: \"%s\"', email_to_validate[self.field_to_match])
+        except AttributeError:
+            LogMaster.ultra_debug('Error: AttributeError incurred when testing Email UID: %s against contents of Body.',
+                email_to_validate.uid_str)
+        return matched_yn
+
+    def validate(self):
+        if self.value_to_match is None:
+            return (False, 'Match invalid. Missing value string. Trying to match Body, but no actual value is set for matching')
+
+        if not insinstance(self.case_sensitive, bool):
+            return (False, 'Match invalid. Case sensitivity should be boolean, but isnt. Set to %s', self.case_sensitive)
 
 
 class MatchDate(Match):

@@ -248,7 +248,7 @@ class IMAPServerConnection():
                 parsed_email.addr_cc = get_email_addrfield_cc(parsed_email)
                 parsed_email.imap_flags = raw_email.flags
                 parsed_email.is_read = self.is_email_currently_read_fromflags(parsed_email.imap_flags)
-                parsed_email["body"] = get_email_body(parsed_email)
+                parsed_email.body = get_email_body(parsed_email)
         else:
             parsed_email = None
         return parsed_email
