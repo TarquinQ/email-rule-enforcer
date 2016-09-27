@@ -6,8 +6,9 @@ from modules.supportingfunctions import text_to_bool, text_to_int, die_with_erro
 from modules.models.EmailNotificationSettings import EmailNotificationSettings
 from modules.models.LogfileSettings import LogfileSettings
 from modules.models.Config import Config
-from modules.models.RulesAndMatches import Rules, Rule, RuleAction
-from modules.models.RulesAndMatches import Match, MatchField, MatchDate, MatchSize, MatchFolder, MatchIsUnread, MatchIsRead
+from modules.models.Rules import Rules, Rule, RuleAction
+from modules.models.RuleMatches import Match, MatchField, MatchDate, MatchSize, MatchFolder, MatchFlag, MatchIsUnread, MatchIsRead
+from modules.models.RuleActions import RuleAction
 from modules.settings.default_settings import set_defaults
 from modules.settings.set_dependent_config import set_dependent_config, set_headersonly_mode
 from modules.settings.supportingfunctions_xml import set_value_if_xmlnode_exists, get_value_if_xmlnode_exists, get_attributes_if_xmlnode_exists

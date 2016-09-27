@@ -1,5 +1,7 @@
 from modules.logging import LogMaster
-from modules.models.RulesAndMatches import Rule, RuleAction, Match
+from modules.models.Rules import Rule
+from modules.models.RuleMatches import Match
+from modules.models.RuleActions import RuleAction
 from modules.email.smtp_send import send_email_from_config
 from modules.email.supportingfunctions_email import convert_bytes_to_utf8
 from modules.email.supportingfunctions_email import get_extended_email_headers_for_logging, get_basic_email_headers_for_logging
@@ -183,7 +185,7 @@ def iterate_rules_over_mailfolder(imap_connection, config, rules, counters, head
             email_to_validate.uid_str,
             imap_connection.get_currfolder(),
             email_to_validate.date_datetime,
-            email_to_validate.from_addr
+            email_to_validate.addr_from
         )
 
         LogMaster.debug('Now assessing this email against all rules.')

@@ -1,4 +1,4 @@
-from modules.models.RulesAndMatches import Match
+from modules.models.RuleMatches import Match
 
 
 def set_dependent_config(config):
@@ -34,6 +34,9 @@ def set_dependent_config(config):
 
     if config['Exchange_shared_mailbox_alias'] is not None:
         config['imap_username'] = config['imap_username'] + '\\' + config['Exchange_shared_mailbox_alias']
+
+    if config['parse_config_and_stop']:
+        config['send_notification_email_on_completion'] = False
 
 
 def set_headersonly_mode(config, rules, conf_check, conf_setting):

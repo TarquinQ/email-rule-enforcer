@@ -57,8 +57,8 @@ def parse_list_email_addrs(email_message, header_field):
     parsed_addrs = []
     raw_addrs = email_message.get_all(header_field, [])
     addr_tuples = email.utils.getaddresses(raw_addrs)
-    for addr_tuples:
-        parsed_addrs += addr_tuples[1]
+    for addr in addr_tuples:
+        parsed_addrs += addr[1]
     return parsed_addrs
 
 
