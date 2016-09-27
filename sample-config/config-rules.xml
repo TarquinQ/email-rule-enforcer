@@ -4,18 +4,18 @@
 		<rule>
 			<rule_name>Name of this rule</rule_name>
 			<rule_matches> <!-- all matches are required to match at the same time, unless added as an "match_or" -->
-				<match_field field="to" type="contains">recipient@domain2</match_field>
+				<match_header header="to" type="contains">recipient@domain2</match_header>
 				<match_or>
 					<!-- "name" attribute will show up in logs -->
-					<match_field field="from" type="contains" name="match_PhillPott_from_SwiggottPartners">sender@domain1</match_field>
-					<match_field field="body" type="ends_with">Undeliverable: </match_field>
+					<match_header header="from" type="contains" name="match_PhillPott_from_SwiggottPartners">sender@domain1</match_header>
+					<match_header header="body" type="ends_with">Undeliverable: </match_header>
 				</match_or>
 			</rule_matches>
 			<rule_match_exceptions> <!-- Same matching format as rule_matches -->
 				<match_or>
-					<match_field field="subject" type="starts_with" case_sensitive="no">Undeliverable: </match_field>
-					<match_field field="body" type="starts_with" case_sensitive="no">Undeliverable: </match_field>
-					<match_field field="from" type="equals">mailerdaemon@spammydomain.com</match_field>
+					<match_header header="subject" type="starts_with" case_sensitive="no">Undeliverable: </match_header>
+					<match_header header="body" type="starts_with" case_sensitive="no">Undeliverable: </match_header>
+					<match_header header="from" type="equals">mailerdaemon@spammydomain.com</match_header>
 				</match_or>
 			</rule_match_exceptions>
 			<rule_actions>
@@ -29,7 +29,7 @@
 		<rule>
 			<rule_name>Move Undeliverable Emails to Trash folder</rule_name>
 			<rule_matches>  <!-- all matches are required to match at the same time, unless added as an "match_or" -->
-				<match_field field="subject" type="starts_with" case_sensitive="no">Undeliverable: </match_field>
+				<match_header header="subject" type="starts_with" case_sensitive="no">Undeliverable: </match_header>
 			</rule_matches>
 			<rule_actions>
 				<forward>
