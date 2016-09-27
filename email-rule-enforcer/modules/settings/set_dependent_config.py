@@ -1,4 +1,4 @@
-from modules.models.RuleMatches import Match
+from modules.models.RuleMatches import Match, MatchBody
 
 
 def set_dependent_config(config):
@@ -42,16 +42,14 @@ def set_dependent_config(config):
 def set_headersonly_mode(config, rules, conf_check, conf_setting):
     def check_for_body_rule(match_list):
         for match in match_list:
-            if isinstance(match, Match):
-                if match.field_to_match.lower() == 'body':
-                    turn_bodymatch_on = True
-                    return turn_bodymatch_on
+            if isinstance(match, MatchBody):
+                turn_bodymatch_on = True
+                return turn_bodymatch_on
             elif isinstance(match, list):  # Then we know this is an 'OR' clause
                 for match_or in match:
-                    if isinstance(match_or, Match):
-                        if match_or.field_to_match.lower() == 'body':
-                            turn_bodymatch_on = True
-                            return turn_bodymatch_on
+                    if isinstance(match_or, MatchBody):
+                        turn_bodymatch_on = True
+                        return turn_bodymatch_on
         return False
 
     if config[conf_check]:  # This checks to see if this is even allowed in the first place
