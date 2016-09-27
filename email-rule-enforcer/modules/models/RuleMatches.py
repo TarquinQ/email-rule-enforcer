@@ -132,7 +132,7 @@ class MatchHeader(Match):
                 if not self.case_sensitive:
                     flags = flags | re.IGNORECASE
                 self.re = re.compile(match_str, flags)
-        except AttributeError, TypeError:
+        except (AttributeError, TypeError):
             pass
 
     def test_match_value(self, str_value):
