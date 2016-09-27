@@ -90,7 +90,7 @@ class Match():
         return repr
 
 
-class MatchField(Match):
+class MatchHeader(Match):
     match_types = frozenset(['starts_with', 'contains', 'ends_with', 'is'])
 
     def __init__(self, field_to_match=None, match_type=None, value_to_match=None, name=None, parent_rule_id=None, case_sensitive=False):

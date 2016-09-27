@@ -3,7 +3,6 @@ from collections import OrderedDict
 from modules.logging import LogMaster
 from modules.models.Counter import Counter
 from modules.models.RuleMatches import Match, MatchOr
-from modules.models.RuleMatches import MatchField, MatchDate, MatchSize, MatchFolder, MatchFlag, MatchIsUnread, MatchIsRead
 from modules.models.RuleActions import RuleAction
 import modules.models.tzinfo_UTC as tzinfo_UTC
 

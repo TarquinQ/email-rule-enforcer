@@ -7,7 +7,7 @@ from modules.models.EmailNotificationSettings import EmailNotificationSettings
 from modules.models.LogfileSettings import LogfileSettings
 from modules.models.Config import Config
 from modules.models.Rules import Rules, Rule, RuleAction
-from modules.models.RuleMatches import Match, MatchField, MatchDate, MatchSize, MatchFolder, MatchFlag, MatchIsUnread, MatchIsRead
+from modules.models.RuleMatches import Match, MatchHeader, MatchDate, MatchSize, MatchFolder, MatchFlag, MatchIsUnread, MatchIsRead
 from modules.models.RuleActions import RuleAction
 from modules.settings.default_settings import set_defaults
 from modules.settings.set_dependent_config import set_dependent_config, set_headersonly_mode
@@ -121,13 +121,13 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
         if Node is None:
             return None
 
-        def parse_generic_field_match(Node):
-            match_field = get_attribvalue_if_exists_in_xmlNode(Node, 'field')
+        def parse_match_header(Node):
+            match_field = get_attribvalue_if_exists_in_xmlNode(Node, 'header')
             match_type = get_attribvalue_if_exists_in_xmlNode(Node, 'type')
             match_name = get_attribvalue_if_exists_in_xmlNode(Node, 'name')
             case_sensitive = text_to_bool(get_attribvalue_if_exists_in_xmlNode(Node, 'case_sensitive'), False)
             match_val = strip_xml_whitespace(Node.text)
-            match_to_add = MatchField(
+            match_to_add = MatchHeader(
                 field_to_match=match_field,
                 match_type=match_type,
                 value_to_match=match_val,
@@ -136,7 +136,7 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
             )
             return match_to_add
 
-        def parse_generic_size_match(Node):
+        def parse_match_size(Node):
             match_field = 'size'
             match_type = get_attribvalue_if_exists_in_xmlNode(Node, 'type')
             match_name = get_attribvalue_if_exists_in_xmlNode(Node, 'name')
@@ -149,7 +149,7 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
             )
             return match_to_add
 
-        def parse_generic_date_match(Node):
+        def parse_match_date(Node):
             match_val = None
             match_field = get_attribvalue_if_exists_in_xmlNode(Node, 'field')
             match_type = get_attribvalue_if_exists_in_xmlNode(Node, 'type')
@@ -198,7 +198,7 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
             )
             return match_to_add
 
-        def parse_generic_folder_match(Node):
+        def parse_match_folder(Node):
             match_field = 'IMAP_Folder'
             match_type = get_attribvalue_if_exists_in_xmlNode(Node, 'type')
             match_name = get_attribvalue_if_exists_in_xmlNode(Node, 'name')
@@ -215,14 +215,14 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
             )
             return match_to_add
 
-        def parse_generic_isunread_match(Node):
+        def parse_match_isunread(Node):
             match_name = get_attribvalue_if_exists_in_xmlNode(Node, 'name')
             match_to_add = MatchIsUnread(
                 name=match_name
             )
             return match_to_add
 
-        def parse_generic_isread_match(Node):
+        def parse_match_isread(Node):
             match_name = get_attribvalue_if_exists_in_xmlNode(Node, 'name')
             match_to_add = MatchIsUnread(
                 name=match_name
@@ -271,18 +271,18 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
                     rule.add_action(action_to_add)
 
             def parse_rule_matches(Node, rule):
-                for node in xpath_findall(Node, './match_field'):
-                    rule.add_match(parse_generic_field_match(node))
+                for node in xpath_findall(Node, './match_header'):
+                    rule.add_match(parse_match_header(node))
                 for node in xpath_findall(Node, './match_date'):
-                    rule.add_match(parse_generic_date_match(node))
+                    rule.add_match(parse_match_date(node))
                 for node in xpath_findall(Node, './match_size'):
-                    rule.add_match(parse_generic_size_match(node))
+                    rule.add_match(parse_match_size(node))
                 for node in xpath_findall(Node, './match_folder'):
-                    rule.add_match(parse_generic_folder_match(node))
+                    rule.add_match(parse_match_folder(node))
                 for node in xpath_findall(Node, './match_is_unread'):
-                    rule.add_match(parse_generic_isunread_match(node))
+                    rule.add_match(parse_match_isunread(node))
                 for node in xpath_findall(Node, './match_is_read'):
-                    rule.add_match(parse_generic_isread_match(node))
+                    rule.add_match(parse_match_isread(node))
 
                 for subnode in xpath_findall(Node, './match_or'):
                     rule.start_match_or()
@@ -290,18 +290,18 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
                     rule.stop_match_or()
 
             def parse_rule_match_exceptions(Node, rule):
-                for node in xpath_findall(Node, './match_field'):
-                    rule.add_match_exception(parse_generic_field_match(node))
+                for node in xpath_findall(Node, './match_header'):
+                    rule.add_match_exception(parse_match_header(node))
                 for node in xpath_findall(Node, './match_date'):
-                    rule.add_match_exception(parse_generic_date_match(node))
+                    rule.add_match_exception(parse_match_date(node))
                 for node in xpath_findall(Node, './match_size'):
-                    rule.add_match_exception(parse_generic_size_match(node))
+                    rule.add_match_exception(parse_match_size(node))
                 for node in xpath_findall(Node, './match_folder'):
-                    rule.add_match_exception(parse_generic_folder_match(node))
+                    rule.add_match_exception(parse_match_folder(node))
                 for node in xpath_findall(Node, './match_is_unread'):
-                    rule.add_match_exception(parse_generic_isunread_match(node))
+                    rule.add_match_exception(parse_match_isunread(node))
                 for node in xpath_findall(Node, './match_is_read'):
-                    rule.add_match_exception(parse_generic_isread_match(node))
+                    rule.add_match_exception(parse_match_isread(node))
 
                 for subnode in xpath_findall(Node, './match_or'):
                     rule.start_exception_or()
