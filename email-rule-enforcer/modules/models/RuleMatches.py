@@ -240,6 +240,44 @@ class MatchFrom(MatchHeader):
             return (False, 'Match invalid. Case sensitivity should be boolean, but isnt. Set to %s', self.case_sensitive)
 
 
+class MatchTo(MatchHeader):
+    def __init__(self, field_to_match='to', match_type=None, value_to_match=None, name=None, parent_rule_id=None, case_sensitive=False,
+            this_recipient_only=False):
+        super().__init__(field_to_match, match_type, value_to_match, name, parent_rule_id, case_sensitive)
+        self.this_recipient_only = this_recipient_only
+
+    def test_match_email(self, email_to_validate):
+        LogMaster.ultra_debug('Now matching a value to To Address of an email body. Email UID: %s', email_to_validate.uid_str)
+        matched_yn = False
+        if this_recipient_only:
+            if len(email_to_validate.addr_to) != 1:
+                LogMaster.ultra_debug('Only 1 address allowed in To address match, and more than 1 found on email.')
+                return False
+
+        for addr in email_to_validate.addr_to:
+            try:
+                str_to_test = addr
+                LogMaster.ultra_debug('Email matching value is: \"%s\", To be matched against regexp: \"%s\"',
+                    str_to_test, self.re.pattern)
+                if (self.test_match_value(str_to_test)):
+                    matched_yn = True
+                    LogMaster.ultra_debug('To Address Matched: \"%s\"', str_to_test)
+                    break
+                else:
+                    LogMaster.ultra_debug('To Address Not Matched: \"%s\"', str_to_test)
+            except AttributeError:
+                LogMaster.ultra_debug('Error: AttributeError incurred when testing Email UID: %s against contents of To Address.',
+                    email_to_validate.uid_str)
+        return matched_yn
+
+    def validate(self):
+        if self.value_to_match is None:
+            return (False, 'Match invalid. Missing value string. Trying to match Body, but no actual value is set for matching')
+
+        if not insinstance(self.case_sensitive, bool):
+            return (False, 'Match invalid. Case sensitivity should be boolean, but isnt. Set to %s', self.case_sensitive)
+
+
 class MatchDate(Match):
     match_types = frozenset(['older_than', 'newer_than'])
 
