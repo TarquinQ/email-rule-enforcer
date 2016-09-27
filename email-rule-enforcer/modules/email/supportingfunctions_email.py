@@ -1,6 +1,7 @@
 import time
 import datetime
 import email.utils
+import hashlib
 
 
 def convert_emaildate_to_datetime(email_date_rfc2822):
@@ -23,6 +24,20 @@ def convert_bytes_to_utf8(byte_thing):
         return byte_thing.decode('utf-8', 'replace')
     else:
         return byte_thing
+
+
+def get_email_uniqueid(parsed_message, raw_message):
+    uniqueid = None
+    try:
+        uniqueid = parsed_message["Message-ID"]
+    except ValueError:
+        pass
+    if uniqueid is None:
+        try:
+            uniqueid = hashlib.sha1(raw_message).hexdigest()
+        except:
+            pass
+    return uniqueid
 
 
 def get_email_datetime(email_message):

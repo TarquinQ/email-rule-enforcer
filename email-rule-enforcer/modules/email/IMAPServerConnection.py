@@ -6,7 +6,7 @@ import traceback
 from modules.logging import LogMaster
 from modules.supportingfunctions import strip_quotes
 from modules.email.supportingfunctions_email import convert_bytes_to_utf8
-from modules.email.supportingfunctions_email import get_email_body, get_email_datetime
+from modules.email.supportingfunctions_email import get_email_body, get_email_datetime, get_email_uniqueid
 from modules.email.supportingfunctions_email import get_email_addrfield_from, get_email_addrfield_to, get_email_addrfield_cc
 
 
@@ -249,6 +249,7 @@ class IMAPServerConnection():
                 parsed_email.imap_flags = raw_email.flags
                 parsed_email.is_read = self.is_email_currently_read_fromflags(parsed_email.imap_flags)
                 parsed_email.body = get_email_body(parsed_email)
+                parsed_email.unique_id = get_email_uniqueid(parsed_email, parsed_email.original_raw_email)
         else:
             parsed_email = None
         return parsed_email
