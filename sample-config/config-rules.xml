@@ -8,13 +8,13 @@
 				<match_or>
 					<!-- "name" attribute will show up in logs -->
 					<match_header header="from" type="contains" name="match_PhillPott_from_SwiggottPartners">sender@domain1</match_header>
-					<match_body type="ends_with">Undeliverable: </match_header>
+					<match_body type="ends_with">Undeliverable: </match_body>
 				</match_or>
 			</rule_matches>
 			<rule_match_exceptions> <!-- Same matching format as rule_matches -->
 				<match_or>
 					<match_header header="subject" type="starts_with" case_sensitive="no">Undeliverable: </match_header>
-					<match_body type="starts_with" case_sensitive="no">Undeliverable: </match_header>
+					<match_body type="starts_with" case_sensitive="no">Undeliverable: </match_body>
 					<match_header header="from" type="equals">mailerdaemon@spammydomain.com</match_header>
 				</match_or>
 			</rule_match_exceptions>
