@@ -40,7 +40,7 @@ def set_dependent_config(config):
 
 
 def set_headersonly_mode(config, rules, conf_check, conf_setting):
-    def check_for_body_rule(match_list):
+    def check_for_body_rule_in_matches(match_list):
         for match in match_list:
             if isinstance(match, MatchBody):
                 turn_bodymatch_on = True
@@ -55,8 +55,8 @@ def set_headersonly_mode(config, rules, conf_check, conf_setting):
     if config[conf_check]:  # This checks to see if this is even allowed in the first place
         turn_bodymatch_on = False
         for rule in rules:
-            turn_bodymatch_on = (check_for_body_rule(rule.matches) |
-                 check_for_body_rule(rule.match_exceptions))
+            turn_bodymatch_on = (check_for_body_rule_in_matches(rule.matches) |
+                 check_for_body_rule_in_matches(rule.match_exceptions))
             if turn_bodymatch_on:
                 break
         if turn_bodymatch_on:

@@ -16,8 +16,9 @@ def set_defaults(config):
     config['imap_initial_folder'] = 'INBOX'
     config['imap_deletions_folder'] = 'Trash'
     config['imap_imaplib_debuglevel'] = 0
-    config['imap_headers_only'] = True
     config['imap_folders_to_exclude'] = set()
+    config['imap_headers_only_for_all_folders'] = True
+    config['imap_headers_only_for_main_folder'] = False
 
     # SMTP Defaults
     config['smtp_server_name'] = None
@@ -46,8 +47,6 @@ def set_defaults(config):
     config['actually_perform_actions'] = True
     config['allow_body_match_for_all_folders'] = False
     config['allow_body_match_for_main_folder'] = True
-    config['imap_headers_only_for_all_folders'] = True
-    config['imap_headers_only_for_main_folder'] = True
 
     # Finalise
     config['defaults_are_set'] = True

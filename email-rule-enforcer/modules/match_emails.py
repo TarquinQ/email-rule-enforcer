@@ -215,7 +215,7 @@ def iterate_rules_over_mainfolder(imap_connection, config, rules, counters):
         return None
 
     counters.incr('folders_processed')
-    return iterate_rules_over_mailfolder(imap_connection, config, rules, counters, headers_only=config['imap_headers_only'])
+    return iterate_rules_over_mailfolder(imap_connection, config, rules, counters, headers_only=config['imap_headers_only_for_main_folder'])
 
 
 def iterate_rules_over_allfolders(imap_connection, config, rules, counters):
@@ -249,7 +249,7 @@ def iterate_rules_over_allfolders(imap_connection, config, rules, counters):
             LogMaster.info('Now connecting to folder \"%s\".', folder_name_noquotes)
             imap_connection.connect_to_folder(folder_name)
             counters.incr('folders_processed')
-            iterate_rules_over_mailfolder(imap_connection, config, rules, counters, headers_only=config['imap_headers_only'])
+            iterate_rules_over_mailfolder(imap_connection, config, rules, counters, headers_only=config['imap_headers_only_for_all_folders'])
 
     LogMaster.info('Now resetting IMAP connection back to default folder.')
     imap_connection.connect_to_default_folder()
