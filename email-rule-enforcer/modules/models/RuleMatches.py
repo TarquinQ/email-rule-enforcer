@@ -146,14 +146,14 @@ class MatchHeader(Match):
             email_to_validate.uid_str, self.field_to_match)
         matched_yn = False
         try:
-            LogMaster.ultra_debug('Email Matching value is: \"%s\", to be matched against regexp: \"%s\"',
-                email_to_validate[self.field_to_match], self.re.pattern)
             str_to_test = email_to_validate[self.field_to_match]
+            LogMaster.ultra_debug('Email Matching value is: \"%s\", to be matched against regexp: \"%s\"',
+                str_to_test, self.re.pattern)
             if (self.test_match_value(str_to_test)):
                 matched_yn = True
-                LogMaster.ultra_debug('Header Matched: \"%s\"', email_to_validate[self.field_to_match])
+                LogMaster.ultra_debug('Header Matched: \"%s\"', str_to_test)
             else:
-                LogMaster.ultra_debug('Header Not Matched: \"%s\"', email_to_validate[self.field_to_match])
+                LogMaster.ultra_debug('Header Not Matched: \"%s\"', str_to_test)
         except AttributeError:
             LogMaster.ultra_debug('Error: AttributeError incurred when testing Email UID: %s against Header %s.',
                 email_to_validate.uid_str, self.field_to_match)
@@ -190,16 +190,45 @@ class MatchBody(MatchHeader):
         LogMaster.ultra_debug('Now matching a value to contents of an email body. Email UID: %s', email_to_validate.uid_str)
         matched_yn = False
         try:
-            LogMaster.ultra_debug('Email Matching value is: \"%s\", To be matched against regexp: \"%s\"',
-                email_to_validate.body, self.re.pattern)
             str_to_test = email_to_validate.body
+            LogMaster.ultra_debug('Email Matching value is: \"%s\", To be matched against regexp: \"%s\"',
+                str_to_test, self.re.pattern)
             if (self.test_match_value(str_to_test)):
                 matched_yn = True
-                LogMaster.ultra_debug('Body Matched: \"%s\"', email_to_validate[self.field_to_match])
+                LogMaster.ultra_debug('Body Matched: \"%s\"', str_to_test)
             else:
-                LogMaster.ultra_debug('Body Not Matched: \"%s\"', email_to_validate[self.field_to_match])
+                LogMaster.ultra_debug('Body Not Matched: \"%s\"', str_to_test)
         except AttributeError:
             LogMaster.ultra_debug('Error: AttributeError incurred when testing Email UID: %s against contents of Body.',
+                email_to_validate.uid_str)
+        return matched_yn
+
+    def validate(self):
+        if self.value_to_match is None:
+            return (False, 'Match invalid. Missing value string. Trying to match Body, but no actual value is set for matching')
+
+        if not insinstance(self.case_sensitive, bool):
+            return (False, 'Match invalid. Case sensitivity should be boolean, but isnt. Set to %s', self.case_sensitive)
+
+
+class MatchFrom(MatchHeader):
+    def __init__(self, field_to_match='from', match_type=None, value_to_match=None, name=None, parent_rule_id=None, case_sensitive=False):
+        super().__init__(field_to_match, match_type, value_to_match, name, parent_rule_id, case_sensitive)
+
+    def test_match_email(self, email_to_validate):
+        LogMaster.ultra_debug('Now matching a value to From Address of an email body. Email UID: %s', email_to_validate.uid_str)
+        matched_yn = False
+        try:
+            str_to_test = email_to_validate.addr_from
+            LogMaster.ultra_debug('Email matching value is: \"%s\", To be matched against regexp: \"%s\"',
+                str_to_test, self.re.pattern)
+            if (self.test_match_value(str_to_test)):
+                matched_yn = True
+                LogMaster.ultra_debug('From Address Matched: \"%s\"', str_to_test)
+            else:
+                LogMaster.ultra_debug('From Address Not Matched: \"%s\"', str_to_test)
+        except AttributeError:
+            LogMaster.ultra_debug('Error: AttributeError incurred when testing Email UID: %s against contents of From Address.',
                 email_to_validate.uid_str)
         return matched_yn
 

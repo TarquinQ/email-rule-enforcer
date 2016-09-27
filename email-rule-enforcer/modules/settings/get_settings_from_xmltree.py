@@ -121,7 +121,7 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
         if Node is None:
             return None
 
-        def parse_match_header(Node):
+        def parse_match_genericfield(Node, match_field):
             match_field = get_attribvalue_if_exists_in_xmlNode(Node, 'header')
             match_type = get_attribvalue_if_exists_in_xmlNode(Node, 'type')
             match_name = get_attribvalue_if_exists_in_xmlNode(Node, 'name')
@@ -136,20 +136,17 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
             )
             return match_to_add
 
+        def parse_match_header(Node):
+            match_field = get_attribvalue_if_exists_in_xmlNode(Node, 'header')
+            return parse_match_genericfield(Node, match_field=match_field)
+
         def parse_match_body(Node):
-            match_field = 'body'
-            match_type = get_attribvalue_if_exists_in_xmlNode(Node, 'type')
-            match_name = get_attribvalue_if_exists_in_xmlNode(Node, 'name')
-            case_sensitive = text_to_bool(get_attribvalue_if_exists_in_xmlNode(Node, 'case_sensitive'), False)
-            match_val = strip_xml_whitespace(Node.text)
-            match_to_add = MatchHeader(
-                field_to_match=match_field,
-                match_type=match_type,
-                value_to_match=match_val,
-                case_sensitive=case_sensitive,
-                name=match_name
-            )
-            return match_to_add
+            match_field = get_attribvalue_if_exists_in_xmlNode(Node, 'header')
+            return parse_match_genericfield(Node, match_field='body')
+
+        def parse_match_from(Node):
+            match_field = get_attribvalue_if_exists_in_xmlNode(Node, 'header')
+            return parse_match_genericfield(Node, match_field='from')
 
         def parse_match_size(Node):
             match_field = 'size'
@@ -290,6 +287,8 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
                     rule.add_match(parse_match_header(node))
                 for node in xpath_findall(Node, './match_body'):
                     rule.add_match(parse_match_body(node))
+                for node in xpath_findall(Node, './match_from'):
+                    rule.add_match(parse_match_from(node))
                 for node in xpath_findall(Node, './match_date'):
                     rule.add_match(parse_match_date(node))
                 for node in xpath_findall(Node, './match_size'):
