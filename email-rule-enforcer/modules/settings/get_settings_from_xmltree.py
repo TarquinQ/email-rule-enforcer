@@ -8,7 +8,7 @@ from modules.models.LogfileSettings import LogfileSettings
 from modules.models.Config import Config
 from modules.models.Rules import Rules, Rule, RuleAction
 from modules.models.RuleMatches import Match, MatchHeader, MatchDate, MatchSize, MatchFolder, MatchFlag, MatchIsUnread, MatchIsRead
-from modules.models.RuleMatches import MatchBody, MatchFrom, MatchTo
+from modules.models.RuleMatches import MatchBody, MatchFrom, MatchTo, MatchSubject
 from modules.models.RuleActions import RuleAction
 from modules.settings.default_settings import set_defaults
 from modules.settings.set_dependent_config import set_dependent_config, set_headersonly_mode
@@ -147,6 +147,19 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
             (match_type, match_val, case_sensitive, name) = \
                 parse_match_generictextfield(Node, match_field=match_field)
             match_to_add = MatchBody(
+                field_to_match=match_field,
+                match_type=match_type,
+                value_to_match=match_val,
+                case_sensitive=case_sensitive,
+                name=name
+            )
+            return match_to_add
+
+        def parse_match_subject(Node):
+            match_field = 'subject'
+            (match_type, match_val, case_sensitive, name) = \
+                parse_match_generictextfield(Node, match_field=match_field)
+            match_to_add = MatchFrom(
                 field_to_match=match_field,
                 match_type=match_type,
                 value_to_match=match_val,
@@ -324,6 +337,8 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
                     rule.add_match(parse_match_header(node))
                 for node in xpath_findall(Node, './match_body'):
                     rule.add_match(parse_match_body(node))
+                for node in xpath_findall(Node, './match_subject'):
+                    rule.add_match(parse_match_subject(node))
                 for node in xpath_findall(Node, './match_from'):
                     rule.add_match(parse_match_from(node))
                 for node in xpath_findall(Node, './match_to'):
