@@ -2,8 +2,7 @@ import re
 from collections import OrderedDict
 from modules.logging import LogMaster
 from modules.models.Counter import Counter
-from modules.models.RuleMatches import Match, MatchOr
-from modules.models.RuleActions import RuleAction
+from modules.models.RuleMatches import MatchOr
 import modules.models.tzinfo_UTC as tzinfo_UTC
 
 
@@ -102,9 +101,6 @@ class Rule():
             return (False, 'Rule invalid: No matches for this rule. Rule id:' + str(self.id) + ', Name:' + self.name)
         if len(self.actions) == 0:
             return (False, 'Rule invalid: No actions for this rule. Rule id:' + str(self.id) + ', Name:' + self.name)
-        for rule in self.actions:
-            #if not insinstance(rule, RuleAction):
-            pass
         return (True, 'Rule seems valid')
 
     def __str__(self):

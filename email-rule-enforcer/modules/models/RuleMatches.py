@@ -223,18 +223,19 @@ class MatchTo(MatchTextBase):
     def test_match_email(self, email_to_validate):
         LogMaster.ultra_debug('Now matching a value to To Address of an email body. Email UID: %s', email_to_validate.uid_str)
         matched_yn = False
-        if this_recipient_only:
+        if self.this_recipient_only:
             if len(email_to_validate.addr_to) != 1:
                 LogMaster.ultra_debug('Only 1 address allowed in To address match, and more than 1 found on email.')
                 return False
 
         for addr in email_to_validate.addr_to:
+            str_to_test = addr
             matched_yn = self.test_match_email_text(email_to_validate.uid_str, str_to_test)
             if matched_yn is True:
                 LogMaster.ultra_debug('To Address Matched: \"%s\"', str_to_test)
                 break
         else:
-            LogMaster.ultra_debug('To Address Not Matched: \"%s\"', str_to_test)
+            LogMaster.ultra_debug('To Address Not Matched: \"%s\"', email_to_validate.addr_to)
         return matched_yn
 
 

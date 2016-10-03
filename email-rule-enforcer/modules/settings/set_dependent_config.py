@@ -1,4 +1,5 @@
-from modules.models.RuleMatches import Match, MatchBody
+from modules.models.RuleMatches import MatchBody
+import modules.models.RuleActions as RuleActions
 
 
 def set_dependent_config(config):
@@ -37,6 +38,8 @@ def set_dependent_config(config):
 
     if config['parse_config_and_stop']:
         config['send_notification_email_on_completion'] = False
+
+    RuleActions.Action.set_actually_perform_actions(config['actually_perform_actions'])
 
 
 def set_headersonly_mode(config, rules, conf_check, conf_setting):

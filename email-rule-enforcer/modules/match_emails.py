@@ -1,11 +1,7 @@
 from modules.logging import LogMaster
-from modules.models.Rules import Rule
 from modules.models.RuleMatches import Match
-from modules.models.RuleActions import RuleAction
-from modules.email.smtp_send import send_email_from_config
 from modules.email.supportingfunctions_email import convert_bytes_to_utf8
 from modules.email.supportingfunctions_email import get_extended_email_headers_for_logging, get_basic_email_headers_for_logging
-from modules.email.make_new_emails import new_email_forward
 from modules.supportingfunctions import strip_quotes
 
 
@@ -88,63 +84,34 @@ def check_email_against_rule(rule, email_to_validate):
 
 def perform_actions(imap_connection, config, rule, email_to_validate, counters):
     for action_to_perform in rule.actions:
-        action_type = action_to_perform.action_type
+        if action_to_perform.is_destructive():
+            LogMaster.ultra_debug('Rule ID %s Action %s is \"destructive\", so will skip for now',
+                rule.id, action_to_perform.id)
+            continue
+
+        LogMaster.info('Rule Action for Rule ID %s is ID %s, of type \'%s\'. Relevant information is \"%s\"',
+            rule.id, action_to_perform.id, action_to_perform.action_type, action_to_perform.get_relevant_value())
+
         counters.incr('actions_taken')
-        LogMaster.ultra_debug('Rule Action for Rule ID %s is type %s. Relevant value is \"%s\"',
-            rule.id, action_type, action_to_perform.get_relevant_value())
-
-        if action_type == "forward":
-            LogMaster.info('Rule Action for Rule ID %s is a forward, so now forwarding to %s', rule.id, action_to_perform.email_recipients)
-            LogMaster.insane_debug('Now constructing a new email for Rule ID %s, to be sent From: %s', rule.id, config['smtp_forward_from'])
-
-            if (email_to_validate.headers_only):
-                raw_email = imap_connection.get_raw_email_byuid(email_to_validate.uid)
-            else:
-                raw_email = email_to_validate.original_raw_email
-            email_to_attach = imap_connection.parse_raw_email(raw_email)
-
-            email_to_forward = new_email_forward(
-                email_from=config['smtp_forward_from'],
-                email_to=action_to_perform.email_recipients,
-                subject='FWD: ' + email_to_validate['subject'],
-                bodytext="Forwarded Email Attached",
-                email_to_attach=email_to_attach)
-
-            LogMaster.insane_debug('Constructed email for Rule ID %s:\n%s', rule.id, email_to_forward)
-
-            if config['actually_perform_actions']:
-                send_email_from_config(config, email_to_forward)
-
-        if action_type == "mark_as_read":
-            LogMaster.info('Now Marking Email UID %s as Read', rule.id, email_to_validate.uid_str)
-            if config['actually_perform_actions']:
-                imap_connection.mark_email_as_read_byuid(email_to_validate.uid)
-
-        if action_type == "mark_as_unread":
-            LogMaster.info('Now Marking Email UID %s as Unread', rule.id, email_to_validate.uid_str)
-            if config['actually_perform_actions']:
-                imap_connection.mark_email_as_unread_byuid(email_to_validate.uid)
+        action_to_perform.perform_action(email_to_action=email_to_validate, config=config,
+            imap_connection=imap_connection, LogMaster=LogMaster)
 
     for action_to_perform in rule.actions:
         action_type = action_to_perform.action_type
         LogMaster.insane_debug('2nd Run through Actions: Rule Action for Rule ID %s is type %s', rule.id, action_type)
 
-        if action_type == "move_to_folder":
-            LogMaster.info('Now Moving Email UID %s to folder %s', email_to_validate.uid_str, action_to_perform.dest_folder)
-            if config['actually_perform_actions']:
-                imap_connection.move_email(
-                    uid=email_to_validate.uid,
-                    dest_folder=action_to_perform.dest_folder,
-                    mark_as_read_on_move=action_to_perform.mark_as_unread_on_action
-                )
-            break  # Email gone now, no more actions
+        if not action_to_perform.is_destructive():
+            LogMaster.ultra_debug('Rule ID %s Action %s is not \"destructive\", so has been done already; skipping.',
+                rule.id, action_to_perform.id)
+            continue
 
-        if action_type == "delete":
-            perm_delete = action_to_perform.delete_permanently
-            LogMaster.info('Now Deleting Email UID %s, permanently=%s', email_to_validate.uid_str, perm_delete)
-            if config['actually_perform_actions']:
-                imap_connection.del_email(email_to_validate.uid, perm_delete)
-            break  # Email gone now, no more actions
+        LogMaster.info('Rule Action for Rule ID %s is ID %s, of type \'%s\'. Relevant information is \"%s\"',
+            rule.id, action_to_perform.id, action_to_perform.action_type, action_to_perform.get_relevant_value())
+
+        counters.incr('actions_taken')
+        action_to_perform.perform_action(email_to_action=email_to_validate, config=config,
+            imap_connection=imap_connection, LogMaster=LogMaster)
+        break  # Email gone now, no more actions
 
 
 def check_email_against_rules_and_perform_actions(imap_connection, config, rules, email_to_validate, counters):

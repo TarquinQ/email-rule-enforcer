@@ -6,10 +6,10 @@ from modules.supportingfunctions import text_to_bool, text_to_int, die_with_erro
 from modules.models.EmailNotificationSettings import EmailNotificationSettings
 from modules.models.LogfileSettings import LogfileSettings
 from modules.models.Config import Config
-from modules.models.Rules import Rules, Rule, RuleAction
+from modules.models.Rules import Rules, Rule
 from modules.models.RuleMatches import Match, MatchHeader, MatchDate, MatchSize, MatchFolder, MatchFlag, MatchIsUnread, MatchIsRead
 from modules.models.RuleMatches import MatchBody, MatchFrom, MatchTo, MatchSubject
-from modules.models.RuleActions import RuleAction
+from modules.models.RuleActions import Action, ActionForwardEmail, ActionMarkAsRead, ActionMarkAsUnread, ActionDelete, ActionMoveToNewFolder
 from modules.settings.default_settings import set_defaults
 from modules.settings.set_dependent_config import set_dependent_config, set_headersonly_mode
 from modules.settings.supportingfunctions_xml import set_value_if_xmlnode_exists, get_value_if_xmlnode_exists, get_attributes_if_xmlnode_exists
@@ -295,28 +295,26 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
             def parse_rule_actions(Node, config, rule):
                 """Parses all actions inside a defined rule """
                 if Node.find('./mark_as_read'):
-                    action_to_add = RuleAction('mark_as_read')
-                    action_to_add.set_mark_as_read()
+                    action_to_add = ActionMarkAsRead()
                     rule.add_action(action_to_add)
 
                 if Node.find('./mark_as_unread'):
-                    action_to_add = RuleAction('mark_as_unread')
-                    action_to_add.set_mark_as_unread()
+                    action_to_add = ActionMarkAsUnread()
                     rule.add_action(action_to_add)
 
                 for Subnode in xpath_findall(Node, './move_to_folder'):
-                    action_to_add = RuleAction('move_to_folder')
+                    action_to_add = ActionMoveToNewFolder()
                     dest_folder = '\"' + strip_xml_whitespace(Subnode.text) + '\"'
                     action_to_add.set_dest_folder(dest_folder)
                     mark_as_read_on_move = text_to_bool(
                         get_attribvalue_if_exists_in_xmlNode(Subnode, 'mark_as_read'),
                         config['mark_as_read_on_move']
                     )
-                    action_to_add.set_mark_as_read(mark_as_read_on_move)
+                    action_to_add.set_mark_as_read_on_move(mark_as_read_on_move)
                     rule.add_action(action_to_add)
 
                 for Subnode in xpath_findall(Node, './delete'):
-                    action_to_add = RuleAction('delete')
+                    action_to_add = ActionDelete()
                     delete_permanently = text_to_bool(
                         get_attribvalue_if_exists_in_xmlNode(Subnode, 'permanently'),
                         False
@@ -325,14 +323,17 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
                     rule.add_action(action_to_add)
 
                 for Subnode in xpath_findall(Node, './forward'):
-                    action_to_add = RuleAction('forward')
+                    action_to_add = ActionForwardEmail()
                     for address_node in xpath_findall(Subnode, './forward_to'):
                         action_to_add.add_email_recipient(
                             strip_xml_whitespace(address_node.text)
                         )
                     rule.add_action(action_to_add)
 
-            def parse_rule_matches(Node, rule):
+            def parse_rule_matches(Node, rule, count=2):
+                if count == 0:
+                    return
+
                 for node in xpath_findall(Node, './match_header'):
                     rule.add_match(parse_match_header(node))
                 for node in xpath_findall(Node, './match_body'):
@@ -356,7 +357,7 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
 
                 for subnode in xpath_findall(Node, './match_or'):
                     rule.start_match_or()
-                    parse_rule_matches(subnode, rule)
+                    parse_rule_matches(subnode, rule, count=(count - 1))
                     rule.stop_match_or()
 
             def parse_rule_match_exceptions(Node, rule):
