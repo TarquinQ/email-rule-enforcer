@@ -89,7 +89,6 @@ class LogController():
                 self.handler_file = new_handler
                 self.handler_file.setFormatter(self.formatter_file)
                 self.logger.addHandler(self.handler_file)
-                #print('Added new file as a log handler. Lofile name:', filepath)
         except:
             if die_if_file_fails:
                 print('FATAL: Died when opening log file: %s' % filepath)

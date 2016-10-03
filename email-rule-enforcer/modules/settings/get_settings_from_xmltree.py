@@ -86,7 +86,7 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
         set_boolean_if_xmlnode_exists(config, 'allow_body_match_for_all_folders', Node, './/allow_body_match_for_all_folders')
         set_boolean_if_xmlnode_exists(config, 'allow_body_match_for_main_folder', Node, './/allow_body_match_for_main_folder')
 
-        parse_email_notification_settings(config, Node.find('./logging/notification_email_on_completion'))
+        parse_email_notification_settings(config, Node.find('./notification_email_on_completion'))
         parse_logfile_settings(config, 'logfile', Node.find('./logging/logfile'))
         parse_logfile_settings(config, 'logfile_debug', Node.find('./logging/logfile_debug'))
         # End Parsing of General Section
@@ -330,8 +330,8 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
                         )
                     rule.add_action(action_to_add)
 
-            def parse_rule_matches(Node, rule, count=2):
-                if count == 0:
+            def parse_rule_matches(Node, rule, maxdepth=2):
+                if maxdepth == 0:
                     return
 
                 for node in xpath_findall(Node, './match_header'):
@@ -357,7 +357,7 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
 
                 for subnode in xpath_findall(Node, './match_or'):
                     rule.start_match_or()
-                    parse_rule_matches(subnode, rule, count=(count - 1))
+                    parse_rule_matches(subnode, rule, maxdepth=(maxdepth - 1))
                     rule.stop_match_or()
 
             def parse_rule_match_exceptions(Node, rule):
