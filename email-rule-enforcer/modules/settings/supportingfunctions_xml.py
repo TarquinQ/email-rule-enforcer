@@ -4,14 +4,20 @@ from modules.supportingfunctions import text_to_bool_force
 
 def set_value_if_xmlnode_exists(configdict, key, Node, xpath):
     """Set a config value only if the value is in the xml"""
-    node_found = Node.find(xpath)
+    if isinstance(Node, ET.Element):
+        node_found = Node.find(xpath)
+    else:
+        node_found = None
     if node_found is not None and isinstance(node_found, ET.Element):
         configdict[key] = node_found.text
 
 
 def get_value_if_xmlnode_exists(Node, xpath):
     """Return a config value only if the xml subnode exists"""
-    node_found = Node.find(xpath)
+    if isinstance(Node, ET.Element):
+        node_found = Node.find(xpath)
+    else:
+        node_found = None
     if node_found is not None and isinstance(node_found, ET.Element):
         return node_found.text
     else:
@@ -20,7 +26,10 @@ def get_value_if_xmlnode_exists(Node, xpath):
 
 def get_attributes_if_xmlnode_exists(Node, xpath):
     """Return a set of attributes only if the xml subnode exists"""
-    node_found = Node.find(xpath)
+    if isinstance(Node, ET.Element):
+        node_found = Node.find(xpath)
+    else:
+        node_found = None
     if node_found is not None and isinstance(node_found, ET.Element):
         return node_found.attrib
     else:
@@ -29,15 +38,19 @@ def get_attributes_if_xmlnode_exists(Node, xpath):
 
 def get_attribvalue_if_exists_in_xmlNode(Node, attrib_to_get):
     """Returns an attributes' value only if the value is in the attrib dict"""
-    if attrib_to_get in Node.attrib:
-        return Node.attrib[attrib_to_get]
+    if isinstance(Node, ET.Element):
+        if attrib_to_get in Node.attrib:
+            return Node.attrib[attrib_to_get]
     else:
         return None
 
 
 def set_boolean_if_xmlnode_exists(configdict, key, Node, xpath):
     """Set a config value only if the value is in the xml"""
-    node_found = Node.find(xpath)
+    if isinstance(Node, ET.Element):
+        node_found = Node.find(xpath)
+    else:
+        node_found = None
     if node_found is not None and isinstance(node_found, ET.Element):
         node_val = text_to_bool_force(node_found.text)
         if node_val is not None:
@@ -46,7 +59,10 @@ def set_boolean_if_xmlnode_exists(configdict, key, Node, xpath):
 
 def set_invertedboolean_if_xmlnode_exists(configdict, key, Node, xpath):
     """Set a config value only if the value is in the xml"""
-    node_found = Node.find(xpath)
+    if isinstance(Node, ET.Element):
+        node_found = Node.find(xpath)
+    else:
+        node_found = None
     if node_found is not None and isinstance(node_found, ET.Element):
         node_val = not text_to_bool_force(node_found.text)
         if node_val is not None:

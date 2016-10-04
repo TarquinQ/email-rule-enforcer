@@ -46,7 +46,7 @@ class ConfigFilesXML():
             try:
                 self.config_xmltrees[shortfilename_to_parse] = ET.fromstring(filecontents_to_parse)
             except ET.ParseError as xmlError:
-                LogMaster.critical("\n****\nERROR: XML Config File cannot be read due to malformed XML file.\n")
+                LogMaster.critical("\n****\nERROR: XML Config File cannot be read due to malformed XML file.\n****\n")
                 LogMaster.critical("Error in file:  %s", filename_to_parse)
                 LogMaster.critical("Error returned is xmlerror code " + str(xmlError.code) + ": " + str(xmlError) + "\n\n*****\n")
                 die_with_errormsg("", 3)
@@ -54,6 +54,10 @@ class ConfigFilesXML():
             self.full_config_tree.extend(ET.fromstring(filecontents_to_parse))
 
     def log_config_file_details(self, log_level=10):
+        if self._num_config_files == 0:
+            LogMaster.critical("\n****\nERROR: No XML Config Files specified on command line.\n****\n")
+            die_with_errormsg("Need at least 1 config file to operate", 4)
+
         LogMaster.log(log_level, "Number of config files:  %s", self._num_config_files)
         LogMaster.log(log_level, "List of config files:  %s", self.config_filepath_list)
 
