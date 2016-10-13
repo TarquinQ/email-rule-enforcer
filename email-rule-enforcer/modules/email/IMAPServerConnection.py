@@ -3,8 +3,13 @@ import socket
 import ssl
 import email
 import traceback
+import threading
+import time
+import re
+from collections import deque
+from functools import wraps
 from modules.logging import LogMaster
-from modules.supportingfunctions import strip_quotes
+from modules.supportingfunctions import strip_quotes, dict_from_list, null_func
 from modules.email.supportingfunctions_email import convert_bytes_to_utf8
 from modules.email.supportingfunctions_email import get_email_body, get_email_datetime, get_email_uniqueid
 from modules.email.supportingfunctions_email import get_email_addrfield_from, get_email_addrfield_to, get_email_addrfield_cc
@@ -32,15 +37,39 @@ class RawEmailResponse():
 
 
 class IMAPServerConnection():
+    re_statusresponse = re.compile('.*\((.*)\)')
+
+    class LoginError(imaplib.IMAP4.error):
+        pass
+
+    class ConnectError(imaplib.IMAP4.error):
+        pass
+
     def __init__(self):
         self.imap_connection = None
         self.imapmove_is_supported = False
         self._is_connected = False
-        self.is_auth = False
+        self._is_auth = False
         self.initial_folder = 'INBOX'
         self.deletions_folder = 'Trash'
         self.currfolder_name = ''
+        self.server_io_lock = threading.RLock()
+        self.perm_fail = False
+        self.global_shutdown_evt = threading.Event()  # Placeholder event
+        self._set_timeouts_and_maxfails()
         LogMaster.ultra_debug('New IMAP Server Connection object created')
+
+    def _set_timeouts_and_maxfails(self):
+        self.failed_logins = deque()
+        self.reconnections_from_failure = deque()
+        self.max_loginfails_10min = 2
+        self.max_loginfails_24hrs = 8
+        self.max_reconnectfails_10min = 4
+        self.max_reconnectfails_24hrs = 24
+        self.sleep_between_logins = 10  # seconds
+        self.sleep_between_reconnects = 30  # seconds
+        self.sleep_between_dis_re_connect = 2  # seconds
+        self._sleep_reconnect_next = 0  # seconds
 
     def set_parameters_from_config(self, config):
         self.set_imaplib_Debuglevel(config['imap_imaplib_debuglevel'])
@@ -54,6 +83,21 @@ class IMAPServerConnection():
         self.initial_folder = config["imap_initial_folder"]
         self.deletions_folder = config["imap_deletions_folder"]
 
+    def _handle_imap_errors(func):
+        @wraps(func)
+        def wrapped(inst, *args, **kwargs):
+            try:
+                # this bit returns the _result_ of the instance method 'func', not the func_def itself
+                with self.server_io_lock:
+                    return func(inst, *args, **kwargs)
+            except (imaplib.IMAP4.abort, socket.gaierror, TimeoutError, imaplib.IMAP4.error):
+                return null_func(inst, *args, **kwargs)
+
+        return wrapped
+
+    def set_event_global_shutdown(self, evt):
+        self.global_shutdown_evt = evt
+
     def connect(self):
         return self.connect_to_server()
 
@@ -61,44 +105,123 @@ class IMAPServerConnection():
         return self._is_connected
 
     def connect_to_server(self):
-        LogMaster.info('Now attempting to connect to IMAP Server: %s', self.server_name)
-
         if self._is_connected:
+            LogMaster.info('Already connected to IMAP Server: %s', self.server_name)
             return True
 
         try:
-            try:
-                # Frist we connect to the server. This can throw gaierror or TimeoutError
-                if self.use_ssl:
-                    ssl_context = ssl.create_default_context()
-                    self.imap_connection = imaplib.IMAP4_SSL(self.server_name, self.server_port, ssl_context=ssl_context)
-                else:
-                    self.imap_connection = imaplib.IMAP4(self.server_name, self.server_port)
-                self._is_connected = True
-
-                # Now we're connected, log in. This can throw (or raise) IMAP4.error
-                result = self.imap_connection.login(self.username, self.password)
-                if (result is None) or (not isinstance(result, tuple)) or (not result[0][0] != 'OK'):
-                    raise imaplib.IMAP4.error('IMAP Server Login Failed, exiting')
-                self.is_auth = True
-
-                LogMaster.critical('Successfully connected to IMAP Server: %s', self.server_name)
-
-            except socket.gaierror as sock_err:
-                raise imaplib.IMAP4.error('Connection Error: Invalid IMAP Server Hostname \"%s\"' % self.server_name)
-            except TimeoutError as timeout:
-                raise imaplib.IMAP4.error('Connection Error: Timeout when trying to connect to IMAP Server \"%s:%s\"' % (self.server_name, self.server_port))
-        except imaplib.IMAP4.error as e:
-            LogMaster.critical('IMAP Server Connect Failed. Exiting.')
-            LogMaster.critical('Connect Error is: %s' % repr(e))
-            self.is_auth = False
-            if self._is_connected:
-                self.disconnect()
-            return False
+            if self._connect_to_server():
+                self._reset_sleeptime_failure()
+                return True
+        except self.LoginError:
+            LogMaster.exception('Login Error: Login Failure when trying to connect to IMAP Server \"%s\"', self.server_name)
+            self._register_failure_login()
+        except TimeoutError:
+            LogMaster.exception('Connection Error: Timeout when trying to connect to IMAP Server \"%s:%s\"', self.server_name, self.server_port)
+            self._register_failure_reconnect()
+        except socket.gaierror:
+            LogMaster.exception('Connection Error: Invalid IMAP Server Hostname \"%s\"', self.server_name)
+            self._register_failure_reconnect()
+        except imaplib.IMAP4.error:
+            LogMaster.exception('Connection Error: IMAP Error against Server: \"%s\"', self.server_name)
+            self._register_failure_reconnect()
+        finally:
+            LogMaster.exception('IMAP Server Connect Failed. Trying again or exiting, depending on past failure count.')
+            if self._allow_next_login() and (not self._is_connected):
+                time.sleep(self.sleep_between_logins)
+                self.connect_to_server()
+            else:
+                LogMaster.critical('IMAP Server has had too many login failures. Now exiting.')
+                self.perm_fail = True
 
         self._check_imapmove_supported()
         self._fix_imaplib_maxline()
         return True
+
+    def _connect_to_server(self):
+        LogMaster.info('Now attempting to connect to IMAP Server: %s', self.server_name)
+        with self.server_io_lock:
+            # First we connect to the server. This can throw gaierror or TimeoutError
+            if self.use_ssl:
+                ssl_context = ssl.create_default_context()
+                self.imap_connection = imaplib.IMAP4_SSL(self.server_name, self.server_port, ssl_context=ssl_context)
+            else:
+                self.imap_connection = imaplib.IMAP4(self.server_name, self.server_port)
+            self._is_connected = True
+            self._is_auth = False
+
+            # Now we're connected, log in. This can throw (or raise) IMAP4.error
+            result = self.imap_connection.login(self.username, self.password)
+            if (result is None) or (not isinstance(result, tuple)) or (not result[0][0] != 'OK'):
+                raise self.LoginError('IMAP Server Login Failed, exiting')
+            else:
+                self._is_auth = True
+                LogMaster.critical('Successfully connected to IMAP Server: %s', self.server_name)
+
+    def reconnect(self):
+        self.disconnect()
+        time.sleep(self.sleep_between_dis_re_connect)
+        return self.connect()
+
+    def reconnect_from_failure(self):
+        self._register_failure_reconnect()
+        self.global_shutdown_evt.wait(timeout=self._get_sleeptime_after_fail())
+        if self.global_shutdown_evt.is_set():
+            return False
+        return self.reconnect()
+
+    def _allow_next_login(self):
+        check_10min = self._check_timed_failures(self.failed_logins, self.max_login_fails_10min, 600)
+        check_24hrs = self._check_timed_failures(self.failed_logins, self.max_login_fails_24hrs, 86400)
+        return check_10min and check_24hrs
+
+    def _allow_next_reconnect(self):
+        check_10min = self._check_timed_failures(self.reconnections_from_failure, self.max_reconnectfails_10min, 600)
+        check_24hrs = self._check_timed_failures(self.reconnections_from_failure, self.max_reconnectfails_24hrs, 86400)
+        return check_10min and check_24hrs
+
+    def _register_failure_reconnect(self):
+        max_age = 86400
+        self._clean_timed_deque(self.reconnections_from_failure, max_age)
+        self._add_failure_to_deque(self.reconnections_from_failure)
+
+    def _register_failure_login(self):
+        max_age = 86400
+        self._clean_timed_deque(self.failed_logins, max_age)
+        self._add_failure_to_deque(self.failed_logins)
+
+    def _reset_sleeptime_failure(self):
+        self._sleep_reconnect_next = 0
+
+    def _get_sleeptime_after_fail(self):
+        ret_sleep = self.sleep_reconnect_last
+        self._sleep_reconnect_next = (self._sleep_reconnect_next + self.sleep_between_reconnects) * 3
+        return ret_sleep
+
+    @staticmethod
+    def _clean_timed_deque(q, max_age):
+        ''' Clean old time values out of deque.
+
+        Queue must be values of (epoch-)seconds sorted in reverse chronological order. '''
+        while q[-1] < max_age:
+            q.pop()
+        return q
+
+    @staticmethod
+    def _add_failure_to_deque(q):
+        now_int = int(time.time())
+        q.appendleft(now_int)
+
+    @staticmethod
+    def _check_timed_failures(q, max_failures, max_age):
+        notfailed_yn = True
+        now_int = int(time.time())
+        max_failures = max_failures - 1
+        if max_failures > len(q):
+            max_failures = len(q)
+        if now_int - q[max_failures] > max_age:
+            notfailed_yn = False
+        return notfailed_yn
 
     @staticmethod
     def _fix_imaplib_maxline():
@@ -114,19 +237,20 @@ class IMAPServerConnection():
             result = self.imap_connection.select(folder_name)
             msg_count = convert_bytes_to_utf8(result[1][0])
             self.currfolder_name = strip_quotes(folder_name)
-            LogMaster.log(20, 'Successfully connected to IMAP Folder: \"%s\". Message Count: %s', folder_name, msg_count)
+            LogMaster.info('Successfully connected to IMAP Folder: \"%s\". Message Count: %s', folder_name, msg_count)
             return msg_count
         except imaplib.IMAP4.error:
-            LogMaster.log(20, 'Failed to connect IMAP Folder: \"%s\". Returning -1 as msg_count.', folder_name)
+            LogMaster.info('Failed to connect IMAP Folder: \"%s\". Returning -1 as msg_count.', folder_name)
             return -1
 
     def disconnect(self):
         try:
             self.imap_connection.logout()
         except Exception as e:
-            pass
+            LogMaster.exception('Error occured during IMAP logout, although this won\'t matter.')
         self._is_connected = False
-        LogMaster.log(50, 'Successfully disconnected from IMAP Server')
+        self._is_auth = False
+        LogMaster.critical('Successfully disconnected from IMAP Server')
         return True
 
     def logout(self):
@@ -141,6 +265,20 @@ class IMAPServerConnection():
         else:
             self.imapmove_is_supported = False
         LogMaster.log(10, 'IMAP Command \"MOVE\" support now checked. Server Supports \"MOVE\"?: %s', self.imapmove_is_supported)
+
+    def noop(self):
+        # FIXME: Need to parse return codes and status here
+        self.imap_connection.noop()
+
+    def status(self, foldername=None):
+        ret_data = None
+        if foldername is None:
+            foldername = self.currfolder_name
+        response, data = self.imap_connection.status(foldername, '(MESSAGES RECENT UIDNEXT UIDVALIDITY UNSEEN)')
+        # Response_data looks like ('OK', ['"Archive.2008" (MESSAGES 1 RECENT 0 UIDNEXT 2 UIDVALIDITY 1222003831 UNSEEN 0)'])
+        if response == 'OK':
+            ret_data = dict_to_list(re_statusresponse.match(data[0].split(' ')))
+        return ret_data
 
     def get_currfolder(self):
         return self.currfolder_name
