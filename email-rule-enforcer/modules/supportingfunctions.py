@@ -177,3 +177,17 @@ def get_os_str():
     ret_val = ', '.join(get_os())
     return ret_val
 
+
+def dict_from_list(list_):
+    ret_dict = None
+    try:
+        if len(list_) % 2 == 0:
+            ret_dict = dict(list_[n:n+2] for n in range(0, len(list_), 2))
+    except TypeError, ValueError:
+        pass
+    return ret_dict
+
+
+def null_func(inst, *args, **kwargs):
+    return None
+
