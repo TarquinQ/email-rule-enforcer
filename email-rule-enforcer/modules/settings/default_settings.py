@@ -19,6 +19,14 @@ def set_defaults(config):
     config['imap_folders_to_exclude'] = set()
     config['imap_headers_only_for_all_folders'] = True
     config['imap_headers_only_for_main_folder'] = False
+    config['imap_max_authfail_10min'] = 3
+    config['imap_max_authfail_24hrs'] = 5
+    config['imap_max_connectionfail_10min'] = 3
+    config['imap_max_connectionfail_24hrs'] = 24
+    config['imap_keepalive_mins'] = 29
+
+    # Exchange Defaults
+    config['Exchange_shared_mailbox_alias'] = None
 
     # SMTP Defaults
     config['smtp_server_name'] = None
@@ -37,9 +45,6 @@ def set_defaults(config):
     config['log_settings_logfile'] = None
     config['log_settings_logfile_debug'] = None
 
-    # Exchange Defaults
-    config['Exchange_shared_mailbox_alias'] = None
-
     # Behaviour Settings
     config['parse_config_and_stop'] = False
     config['assess_rules_againt_mainfolder'] = True
@@ -47,6 +52,14 @@ def set_defaults(config):
     config['actually_perform_actions'] = True
     config['allow_body_match_for_all_folders'] = False
     config['allow_body_match_for_main_folder'] = True
+
+    # Daemon-Mode Settings
+    config['daemon_mode_enable'] = True
+    config['daemon_allow_multiple_imapconns'] = True
+    config['daemon_check_inbox_mins'] = 5
+    config['daemon_repeat_mainrules_hours'] = 24
+    config['daemon_repeat_mainrules_at'] = '00:00'
+    config['daemon_check_mainrules_at_startup'] = True
 
     # Finalise
     config['defaults_are_set'] = True
