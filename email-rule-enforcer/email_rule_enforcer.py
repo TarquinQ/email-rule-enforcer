@@ -12,6 +12,9 @@ from modules.supportingfunctions import die_with_errormsg
 from modules.ui.display_headers import get_header_preconfig, get_header_postconfig
 from modules.ui.display_footers import get_completion_footer
 from modules.ui.debug_rules_and_config import debug_rules_and_config
+from modules.models.SignalHandlers import register_sighandlers, Signal_GlobalShutdown, Signal_DumpStats
+from modules.models.GracefulShutdown import graceful_shutdown
+from modules.models.GlobalEvents import GlobalEvents
 
 
 def main():
@@ -21,6 +24,7 @@ def main():
     global_timers = create_default_timers()
     rule_counters_mainfolder = create_default_rule_counters()
     rule_counters_allfolders = create_default_rule_counters()
+    global_events = GlobalEvents()
 
     # Get the configs
     (config, rules_mainfolder, rules_allfolders) = get_config()
@@ -51,6 +55,9 @@ def main():
 
     # Now we try to perform IMAP actions
     try:
+        # Set up signal handling - this will start to throw exceptions
+        register_sighandlers()
+
         # Parse IMAP Emails
         global_timers.start('mainfolder')
         match_emails.iterate_rules_over_mainfolder(imap_connection, config, rules_mainfolder, rule_counters_mainfolder)
@@ -60,25 +67,35 @@ def main():
         match_emails.iterate_rules_over_allfolders(imap_connection, config, rules_allfolders, rule_counters_allfolders)
         global_timers.stop('allfolders')
 
-        imap_connection.disconnect()
+        graceful_shutdown(imap_connection=imap_connection)
+
     except KeyboardInterrupt as KI:
-        # Someone ressed Ctrl-C, so close & cleanup
+        # Someone pressed Ctrl-C, so close & cleanup
         LogMaster.info('\n\nRules processing has been cancelled by user action. \
             Now disconnecting from IMAP and exiting')
-        imap_connection.disconnect()
+        graceful_shutdown(imap_connection=imap_connection)
+
+    except Signal_GlobalShutdown:
+        # Someone killed us!
+        LogMaster.info('\n\nRules processing has been cancelled by user or system request. \
+            Now disconnecting from IMAP and exiting')
+        graceful_shutdown(imap_connection=imap_connection)
+
     except imaplib.IMAP4.abort as socket_err:
         # Something went wrong with the IMAP socket. Safely Disconnect just in case.
         LogMaster.critical('There has been an error with the IMAP Server connection.')
         LogMaster.critical('We will now disconnect from IMAP and exit.')
         LogMaster.critical('Error was: %s', repr(socket_err))
-        imap_connection.disconnect()
+
+        graceful_shutdown(imap_connection=imap_connection)
 
     except (TypeError, AttributeError, KeyError, IndexError, NameError) as e:
         # Something went wrong with the IMAP socket. Safely Disconnect just in case.
         LogMaster.critical('There has been an error with the email processing, and an unhandled error occurred.')
         LogMaster.critical('We will now safely disconnect from IMAP and exit.')
         LogMaster.exception('Error was: ')
-        imap_connection.disconnect()
+
+        graceful_shutdown(imap_connection=imap_connection)
 
     global_timers.stop('overall')
     # Print the Footers
