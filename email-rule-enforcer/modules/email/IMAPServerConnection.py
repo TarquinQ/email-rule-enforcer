@@ -84,15 +84,29 @@ class IMAPServerConnection():
         self.deletions_folder = config["imap_deletions_folder"]
 
     def _handle_imap_errors(func):
+        """This willl handle common IMAP errors, and return None instead.
+
+        This wrapper obviates the need to handle individual IMAP errors each time
+        we access the server. This wrapper simply throws away the error and returns
+        None - this is designed for a common scenario when the result is unimportant
+        (eg FETCH an email) and not when the error should be hanldled in a specific
+        way (such as login errors).
+
+        This wrapper also handle thread-safety, and will ensure that only one thread
+        is using the IMAP connection at once.
+
+        This wrapper function can only handle bound instance-methods, and cannot cope
+        with @classmethod or @instancemethod. This is due to the 'inst' parameter, which
+        is equivalent to 'self' for a bound instance method."""
+
         @wraps(func)
         def wrapped(inst, *args, **kwargs):
             try:
-                # this bit returns the _result_ of the instance method 'func', not the func_def itself
-                with self.server_io_lock:
+                # this bit returns the _result_ of the instance method 'func', not the func itself
+                with inst.server_io_lock:
                     return func(inst, *args, **kwargs)
             except (imaplib.IMAP4.abort, socket.gaierror, TimeoutError, imaplib.IMAP4.error):
-                return null_func(inst, *args, **kwargs)
-
+                return None
         return wrapped
 
     def set_event_global_shutdown(self, evt):
@@ -112,6 +126,8 @@ class IMAPServerConnection():
         try:
             if self._connect_to_server():
                 self._reset_sleeptime_failure()
+                self._check_imapmove_supported()
+                self._fix_imaplib_maxline()
                 return True
         except self.LoginError:
             LogMaster.exception('Login Error: Login Failure when trying to connect to IMAP Server \"%s\"', self.server_name)
@@ -131,12 +147,8 @@ class IMAPServerConnection():
                 time.sleep(self.sleep_between_logins)
                 self.connect_to_server()
             else:
-                LogMaster.critical('IMAP Server has had too many login failures. Now exiting.')
+                LogMaster.critical('IMAP Server has had too many connection failures. Now exiting.')
                 self.perm_fail = True
-
-        self._check_imapmove_supported()
-        self._fix_imaplib_maxline()
-        return True
 
     def _connect_to_server(self):
         LogMaster.info('Now attempting to connect to IMAP Server: %s', self.server_name)
@@ -256,6 +268,7 @@ class IMAPServerConnection():
     def logout(self):
         return self.disconnect()
 
+    @_handle_imap_errors
     def _check_imapmove_supported(self):
         self.imap_connection._get_capabilities()  # Refresh capabilities list
         if 'MOVE' in self.capabilities():
@@ -266,6 +279,7 @@ class IMAPServerConnection():
             self.imapmove_is_supported = False
         LogMaster.log(10, 'IMAP Command \"MOVE\" support now checked. Server Supports \"MOVE\"?: %s', self.imapmove_is_supported)
 
+    @_handle_imap_errors
     def noop(self):
         # FIXME: Need to parse return codes and status here
         self.imap_connection.noop()
@@ -277,22 +291,41 @@ class IMAPServerConnection():
         response, data = self.imap_connection.status(foldername, '(MESSAGES RECENT UIDNEXT UIDVALIDITY UNSEEN)')
         # Response_data looks like ('OK', ['"Archive.2008" (MESSAGES 1 RECENT 0 UIDNEXT 2 UIDVALIDITY 1222003831 UNSEEN 0)'])
         if response == 'OK':
-            ret_data = dict_to_list(re_statusresponse.match(data[0].split(' ')))
+            ret_data = dict_to_list(self.re_statusresponse.match(data[0].split(' ')))
         return ret_data
 
     def get_currfolder(self):
         return self.currfolder_name
 
-    def get_list_alluids_in_currfolder(self):
+    @_handle_imap_errors
+    def get_uids_all_in_currfolder(self):
         """Searches and returns  a list of all uids in folder, byte-format"""
         result, data = self.imap_connection.uid('search', None, "ALL")
         list_allemails = data[0].split()
         LogMaster.log(10, 'List of all UIDs of emails in current folder: %s', convert_bytes_to_utf8(list_allemails))
         return list_allemails
 
-    def get_emails_in_currfolder(self, headers_only=False):
+    @_handle_imap_errors
+    def get_uids_range_in_currfolder(self, start=0, end=None):
+        """Searches and returns  a list of all uids in folder, byte-format"""
+        if end is None:
+            end = '*'
+        result, data = self.imap_connection.uid('search', None, "UID {0}:{1}".format(start, end))
+        list_rangeemails = data[0].split()
+        LogMaster.log(10, 'Range of UIDs of emails in current folder. \
+            Start: {0}, End: {1}, List in range: {2}'.format(
+            start, end, convert_bytes_to_utf8(list_rangeemails))
+        )
+        return list_rangeemails
+
+    def get_emails_all_in_currfolder(self, headers_only=False):
         """Return parsed emails from the curent folder, without marking as read"""
-        for uid in self.get_list_alluids_in_currfolder():
+        for uid in self.get_uids_all_in_currfolder():
+            yield self.get_parsed_email_byuid(uid, headers_only)
+
+    def get_emails_range_in_currfolder(self, headers_only=False, start=0, end=None):
+        """Return parsed emails from the curent folder, without marking as read"""
+        for uid in self.get_uids_range_in_currfolder(start, end):
             yield self.get_parsed_email_byuid(uid, headers_only)
 
     @staticmethod
@@ -304,6 +337,7 @@ class IMAPServerConnection():
             pass
         return flags
 
+    @_handle_imap_errors
     def get_imap_flags_byuid(self, uid):
         """Gets a list of flags in UTF-8 for a given uid"""
         flags = []
@@ -407,6 +441,7 @@ class IMAPServerConnection():
             raise imaplib.IMAP4.error('Error parsing raw email. Email Error was: %s' % e)
         return ret_msg
 
+    @_handle_imap_errors
     def move_email(self, uid, dest_folder, mark_as_read_on_move=False):
         intial_read_status = self.is_email_currently_read_byuid(uid)
         this_func_marked_email_as_read = False
@@ -469,9 +504,11 @@ class IMAPServerConnection():
     def mark_email_as_unread_byuid(self, uid):
         return self.unset_flag_byuid(uid, '(\\Seen)')
 
+    @_handle_imap_errors
     def expunge(self):
         return self.imap_connection.expunge()
 
+    @_handle_imap_errors
     def capabilities(self):
         return self.imap_connection.capabilities
 
