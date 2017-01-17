@@ -52,17 +52,23 @@ class DatabaseHandler():
         return self.db.commit()
 
 
-def sync_folders(db, imap):
+def sync_folders(db, imap_conn):
     db.execute("drop table if exists tb_Temp_FolderList")
     db.execute("create temporary table tb_Temp_FolderList(FolderPath TEXT)")
 
-    imap_folders = imap.get_folder_list()
-    for imap_folder in imap_folders:
+    imap_folders = imap_conn.get_folder_list()
+    for imap_folder_path in imap_folders:
         db.execute("INSERT into tb_Temp_FolderList (FolderPath) values (?)", (imap_folder_path))
 
-        status = imap.status(imap_folder)
-        imap_folder_name = parse_folderName(imap_folder)
+        # Get IMAP STATUS
+        status = imap_conn.status(imap_folder_path)
 
+        if (imap_folder_path.find('/') >= 0):
+            imap_folder_name = imap_folder_path.split('/')[-1]
+        else:
+            imap_folder_name = imap_folder_path
+
+        # This will only add new entries, and  silently ignore existing ones
         db.execute("INSERT OR IGNORE INTO tb_Folders ( \
             FolderPath, FolderName, DateAdded ) values (?,?,?)",
             (imap_folder_path, imap_folder_name, datetime.datetime.now())
@@ -71,7 +77,7 @@ def sync_folders(db, imap):
             UIDNEXT=?, UIDVALIDITY=?, CountMessages=?, CountUnread=?, LastSeen=? \
             ) WHERE FolderPath=?",
             (status.UIDNEXT, status.UIDVALIDITY, status.CountMessages, status.CountUnread, datetime.datetime.now(),
-                imap_folder
+                imap_folder_path
             )
         )
     # And now we remove all folders which no longer exist
@@ -98,21 +104,6 @@ def remove_messages_with_no_folderEntries(db):
 
 
 def insert_message(db, message):
-    pass
-    db.execute("create table if Not Exists tb_Messages( \
-        Header_MessageID  TEXT, \
-        Header_From  TEXT, \
-        Header_Date  Timestamp, \
-        Header_Subject  TEXT, \
-        Header_To  TEXT, \
-        Header_CC  TEXT, \
-        MsgSize  INTEGER, \
-        AllHeaders  TEXT, \
-        Has_Body  INTEGER, \
-        DateAdded  Timestamp, \
-        LastSeen  Timestamp, \
-    )")
-
     db.execute("insert or ignore into tb_Messages( \
         Header_MessageID, \
         Header_From, \
@@ -131,6 +122,7 @@ def insert_message(db, message):
             message.size, message.AllHeaders, datetime.datetime.now(), datetime.datetime.now()
         )
     )
+    return get_tbMessageID_from_MessageID(Header_MessageID)
 
 #                 parsed_email.original_raw_email = raw_email.raw_email_bytes
 #                 parsed_email.size = raw_email.size
@@ -150,6 +142,30 @@ def insert_message(db, message):
 # server.fetch(num, '(BODY[HEADER.FIELDS (MESSAGE-ID)])')
 
 
-def check_if_message_exists(messageID, db):
+def get_tbMessageID_from_MessageID(db, MessageID):
+    """If a message exists, this function returns the ID"""
+    try:
+        row = db.execute("SELECT ID from tb_Messages WHERE Header_MessageID=?", (MessageID,)).fetchone()
+        ID = row[0]
+    except IndexError, TypeError:
+        ID = 0
+    return ID
+
+
+def get_tbFolderID_from_FolderPath(db, FolderPath):
+    """If a message exists, this function returns the ID"""
+    try:
+        row = db.execute("SELECT ID from tb_Folders WHERE FolderPath=?", (FolderPath,)).fetchone()
+        ID = row[0]
+    except IndexError, TypeError:
+        ID = 0
+    return ID
+
+
+def store_message(db, message):
+    pass
+
+
+def store_message_into_folder(db, message):
     pass
 
