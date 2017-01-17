@@ -12,24 +12,28 @@ from modules.supportingfunctions import die_with_errormsg
 from modules.ui.display_headers import get_header_preconfig, get_header_postconfig
 from modules.ui.display_footers import get_completion_footer
 from modules.ui.debug_rules_and_config import debug_rules_and_config
-from modules.models.SignalHandlers import register_sighandlers, Signal_GlobalShutdown, Signal_DumpStats
-from modules.models.GracefulShutdown import graceful_shutdown
-from modules.models.GlobalEvents import GlobalEvents
+from modules.models.SignalHandlers import register_sighandlers, Signal_GlobalShutdown
+from modules.models.GracefulShutdown import graceful_shutdown_imap, graceful_shutdown_db
+from modules.db.DatabaseHandler import DatabaseHandler
+from modules.models.GlobalTimerFlags import GlobalTimerFlags
 
 
 def main():
+    # We set up a whole bunch of things first (configs, counters, database & IMAP)
+    # Then we proceed to loop over the ruleset as requested in the configs.
+
     print(get_header_preconfig())
 
     # Create the Counters and Timers
     global_timers = create_default_timers()
     rule_counters_mainfolder = create_default_rule_counters()
     rule_counters_allfolders = create_default_rule_counters()
-    global_events = GlobalEvents()
 
     # Get the configs
     (config, rules_mainfolder, rules_allfolders) = get_config()
-
     print(get_header_postconfig(config))
+
+    # Set up the rule counters
     rule_counters_mainfolder.new_counter(counter_name='rules_in_set', start_val=len(rules_mainfolder))
     rule_counters_allfolders.new_counter(counter_name='rules_in_set', start_val=len(rules_allfolders))
 
@@ -43,6 +47,12 @@ def main():
     add_log_files_from_config(config)
     debug_rules_and_config(config, rules_mainfolder, rules_allfolders)
 
+    # Set up database
+    db = DatabaseHandler(db_filename=config['database_filename'], auto_open=True)
+    if db.connected is False:
+        global_timers.stop('overall')
+        die_with_errormsg('Database Connection failed before we did anything, so we are now exiting.')
+
     # Connect to IMAP
     imap_connection = IMAPServerConnection()
     imap_connection.set_parameters_from_config(config)
@@ -53,9 +63,16 @@ def main():
         global_timers.stop('overall')
         die_with_errormsg('IMAP Server Connection failed before we did anything, so we are now exiting.')
 
+
+    # Set up Timers to track things which occur at different times
+    global_timer_flags = GlobalTimerFlags()
+    global_timer_flags.set_from_config(config)
+
     # Now we try to perform IMAP actions
     try:
-        # Set up signal handling - this will start to throw exceptions
+        # Set up signal handling to handle shutdown of our long-lived process.
+        # These signal handlers will throw Exceptions any time a kill signal is received, which will drop out of this section
+        # and ensure a clean shutdown occurs
         register_sighandlers()
 
         # Parse IMAP Emails
@@ -67,27 +84,21 @@ def main():
         match_emails.iterate_rules_over_allfolders(imap_connection, config, rules_allfolders, rule_counters_allfolders)
         global_timers.stop('allfolders')
 
-        graceful_shutdown(imap_connection=imap_connection)
-
     except KeyboardInterrupt as KI:
         # Someone pressed Ctrl-C, so close & cleanup
         LogMaster.info('\n\nRules processing has been cancelled by user action. \
             Now disconnecting from IMAP and exiting')
-        graceful_shutdown(imap_connection=imap_connection)
 
     except Signal_GlobalShutdown:
         # Someone killed us!
         LogMaster.info('\n\nRules processing has been cancelled by user or system request. \
             Now disconnecting from IMAP and exiting')
-        graceful_shutdown(imap_connection=imap_connection)
 
-    except imaplib.IMAP4.abort as socket_err:
+    except (imaplib.IMAP4.abort, IMAPServerConnection.PermanentFailure) as socket_err:
         # Something went wrong with the IMAP socket. Safely Disconnect just in case.
         LogMaster.critical('There has been an error with the IMAP Server connection.')
         LogMaster.critical('We will now disconnect from IMAP and exit.')
-        LogMaster.critical('Error was: %s', repr(socket_err))
-
-        graceful_shutdown(imap_connection=imap_connection)
+        LogMaster.exception('Error was: %s', repr(socket_err))
 
     except (TypeError, AttributeError, KeyError, IndexError, NameError) as e:
         # Something went wrong with the IMAP socket. Safely Disconnect just in case.
@@ -95,7 +106,8 @@ def main():
         LogMaster.critical('We will now safely disconnect from IMAP and exit.')
         LogMaster.exception('Error was: ')
 
-        graceful_shutdown(imap_connection=imap_connection)
+    # Disconnect from all data sources
+    graceful_shutdown_imap(imap_connection=imap_connection)
 
     global_timers.stop('overall')
     # Print the Footers
@@ -105,6 +117,8 @@ def main():
     # Send Completion Email
     smtp_send_completion_email(config, final_output)
 
+    # Disconnect from database
+    graceful_shutdown_db(db=db)
 
 if __name__ == "__main__":
     main()
