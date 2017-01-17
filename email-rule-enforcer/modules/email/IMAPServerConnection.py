@@ -6,6 +6,7 @@ import traceback
 import threading
 import time
 import re
+import datetime
 from collections import deque
 from functools import wraps
 from modules.logging import LogMaster
@@ -36,13 +37,20 @@ class RawEmailResponse():
         return self.__str__()
 
 
+class IMAPError():
+    pass
+
+
 class IMAPServerConnection():
     re_statusresponse = re.compile('.*\((.*)\)')
 
-    class LoginError(imaplib.IMAP4.error):
+    class LoginError(IMAPError):
         pass
 
-    class ConnectError(imaplib.IMAP4.error):
+    class ConnectError(IMAPError):
+        pass
+
+    class PermanentFailure(IMAPError):
         pass
 
     def __init__(self):
@@ -55,8 +63,8 @@ class IMAPServerConnection():
         self.currfolder_name = ''
         self.server_io_lock = threading.RLock()
         self.perm_fail = False
-        self.global_shutdown_evt = threading.Event()  # Placeholder event
         self._set_timeouts_and_maxfails()
+        self.set_last_activity()
         LogMaster.ultra_debug('New IMAP Server Connection object created')
 
     def _set_timeouts_and_maxfails(self):
@@ -66,7 +74,7 @@ class IMAPServerConnection():
         self.max_loginfails_24hrs = 8
         self.max_reconnectfails_10min = 4
         self.max_reconnectfails_24hrs = 24
-        self.sleep_between_logins = 10  # seconds
+        self.sleep_between_logins = 20  # seconds
         self.sleep_between_reconnects = 30  # seconds
         self.sleep_between_dis_re_connect = 2  # seconds
         self._sleep_reconnect_next = 0  # seconds
@@ -92,7 +100,7 @@ class IMAPServerConnection():
         (eg FETCH an email) and not when the error should be hanldled in a specific
         way (such as login errors).
 
-        This wrapper also handle thread-safety, and will ensure that only one thread
+        This wrapper also handles thread-safety, and will ensure that only one thread
         is using the IMAP connection at once.
 
         This wrapper function can only handle bound instance-methods, and cannot cope
@@ -105,12 +113,22 @@ class IMAPServerConnection():
                 # this bit returns the _result_ of the instance method 'func', not the func itself
                 with inst.server_io_lock:
                     return func(inst, *args, **kwargs)
-            except (imaplib.IMAP4.abort, socket.gaierror, TimeoutError, imaplib.IMAP4.error):
+            except imaplib.IMAP4.error:
+                LogMaster.exception('IMAP Error occurred, now handling gracefully.')
                 return None
-        return wrapped
-
-    def set_event_global_shutdown(self, evt):
-        self.global_shutdown_evt = evt
+            except (imaplib.IMAP4.abort, socket.gaierror, TimeoutError):
+                LogMaster.exception('IMAP Connection Error occurred, now attempting to reconnect.')
+                inst.disconnect()
+                if (inst.reconnect_from_failure()):
+                    try:
+                        return func(inst, *args, **kwargs)
+                    except (imaplib.IMAP4.abort, socket.gaierror, TimeoutError, imaplib.IMAP4.error):
+                        LogMaster.exception('Permanent IMAP Connection Failure occurred, now closing.')
+                        raise inst.PermanentFailure('Permanent IMAP Connection Failure occurred, now closing.')
+                else:
+                    raise inst.PermanentFailure('Permanent IMAP Connection Failure occurred, now closing.')
+            inst.set_last_activity()
+            return wrapped
 
     def connect(self):
         return self.connect_to_server()
@@ -120,7 +138,7 @@ class IMAPServerConnection():
 
     def connect_to_server(self):
         if self._is_connected:
-            LogMaster.info('Already connected to IMAP Server: %s', self.server_name)
+            LogMaster.info('IMAP Connection requestion, but already connected to IMAP Server: %s', self.server_name)
             return True
 
         try:
@@ -177,36 +195,34 @@ class IMAPServerConnection():
 
     def reconnect_from_failure(self):
         self._register_failure_reconnect()
-        self.global_shutdown_evt.wait(timeout=self._get_sleeptime_after_fail())
-        if self.global_shutdown_evt.is_set():
-            return False
+        time.sleep(timeout=self._get_sleeptime_after_fail())
         return self.reconnect()
 
     def _allow_next_login(self):
-        check_10min = self._check_timed_failures(self.failed_logins, self.max_login_fails_10min, 600)
-        check_24hrs = self._check_timed_failures(self.failed_logins, self.max_login_fails_24hrs, 86400)
-        return check_10min and check_24hrs
+        allow_10min = not self._timed_failures_exceeded(self.failed_logins, self.max_login_fails_10min, 600)
+        allow_24hrs = not self._timed_failures_exceeded(self.failed_logins, self.max_login_fails_24hrs, 86400)
+        return allow_10min and allow_24hrs
 
     def _allow_next_reconnect(self):
-        check_10min = self._check_timed_failures(self.reconnections_from_failure, self.max_reconnectfails_10min, 600)
-        check_24hrs = self._check_timed_failures(self.reconnections_from_failure, self.max_reconnectfails_24hrs, 86400)
-        return check_10min and check_24hrs
+        allow_10min = not self._timed_failures_exceeded(self.reconnections_from_failure, self.max_reconnectfails_10min, 600)
+        allow_24hrs = not self._timed_failures_exceeded(self.reconnections_from_failure, self.max_reconnectfails_24hrs, 86400)
+        return allow_10min and allow_24hrs
 
     def _register_failure_reconnect(self):
         max_age = 86400
         self._clean_timed_deque(self.reconnections_from_failure, max_age)
-        self._add_failure_to_deque(self.reconnections_from_failure)
+        self._add_timestamp_to_deque(self.reconnections_from_failure)
 
     def _register_failure_login(self):
         max_age = 86400
         self._clean_timed_deque(self.failed_logins, max_age)
-        self._add_failure_to_deque(self.failed_logins)
+        self._add_timestamp_to_deque(self.failed_logins)
 
     def _reset_sleeptime_failure(self):
         self._sleep_reconnect_next = 0
 
     def _get_sleeptime_after_fail(self):
-        ret_sleep = self.sleep_reconnect_last
+        ret_sleep = self._sleep_reconnect_next
         self._sleep_reconnect_next = (self._sleep_reconnect_next + self.sleep_between_reconnects) * 3
         return ret_sleep
 
@@ -214,30 +230,31 @@ class IMAPServerConnection():
     def _clean_timed_deque(q, max_age):
         ''' Clean old time values out of deque.
 
-        Queue must be values of (epoch-)seconds sorted in reverse chronological order. '''
-        while q[-1] < max_age:
+        Queue must be values of epoch-seconds sorted in newest-first chronological order. '''
+        now_int = int(time.time())
+        while now_int - q[-1] <= max_age:
             q.pop()
         return q
 
     @staticmethod
-    def _add_failure_to_deque(q):
+    def _add_timestamp_to_deque(q):
         now_int = int(time.time())
         q.appendleft(now_int)
 
     @staticmethod
-    def _check_timed_failures(q, max_failures, max_age):
-        notfailed_yn = True
+    def _timed_failures_exceeded(q, max_failures, max_age):
+        if (max_failures <= 0) or (max_failures > len(q)):
+            return False
+        max_failures = max_failures - 1  # Account for 0-notation list
+        exceeded = False
         now_int = int(time.time())
-        max_failures = max_failures - 1
-        if max_failures > len(q):
-            max_failures = len(q)
-        if now_int - q[max_failures] > max_age:
-            notfailed_yn = False
-        return notfailed_yn
+        if now_int - q[max_failures] <= max_age:
+            exceeded = True
+        return exceeded
 
     @staticmethod
     def _fix_imaplib_maxline():
-        """This method hotfixes a bug in python's imaplib (also fixed in later mainline py3.4 and 3.5 releases)"""
+        """This method hotfixes a "bug" in python's imaplib (also fixed in later mainline py3.4 and 3.5 releases)"""
         if imaplib._MAXLINE < 1000000:
             imaplib._MAXLINE = 10000000
 
@@ -284,6 +301,7 @@ class IMAPServerConnection():
         # FIXME: Need to parse return codes and status here
         self.imap_connection.noop()
 
+    @_handle_imap_errors
     def status(self, foldername=None):
         ret_data = None
         if foldername is None:
@@ -291,7 +309,7 @@ class IMAPServerConnection():
         response, data = self.imap_connection.status(foldername, '(MESSAGES RECENT UIDNEXT UIDVALIDITY UNSEEN)')
         # Response_data looks like ('OK', ['"Archive.2008" (MESSAGES 1 RECENT 0 UIDNEXT 2 UIDVALIDITY 1222003831 UNSEEN 0)'])
         if response == 'OK':
-            ret_data = dict_to_list(self.re_statusresponse.match(data[0].split(' ')))
+            ret_data = dict_from_list(self.re_statusresponse.match(data[0].split(' ')))
         return ret_data
 
     def get_currfolder(self):
@@ -533,3 +551,10 @@ class IMAPServerConnection():
     @classmethod
     def set_imaplib_Debuglevel(cls, debuglevel):
         imaplib.Debug = debuglevel  # Default: 0; Range 0->5 zero->high
+
+    def set_last_activity(self):
+        self.last_activity = datetime.datetime.now()
+
+    def get_last_activity(self):
+        return self.last_activity
+
