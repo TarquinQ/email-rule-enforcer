@@ -78,6 +78,18 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
         set_boolean_if_xmlnode_exists(config, 'console_ultra_debug', Node, './/console_ultra_debug')
         set_boolean_if_xmlnode_exists(config, 'console_insane_debug', Node, './/console_insane_debug')
 
+        # Database Settings
+        set_value_if_xmlnode_exists(config, 'database_filename', Node, './/database_filename')
+
+        # Daemon Settings
+        set_boolean_if_xmlnode_exists(config, 'daemon_mode', Node, './daemon_mode/daemon_mode')
+        set_boolean_if_xmlnode_exists(config, 'daemon_monitor_inbox', Node, './daemon_mode/daemon_monitor_inbox')
+        set_integer_if_xmlnode_exists(config, 'daemon_monitor_inbox_delay', Node, './daemon_mode/daemon_inbox_minutes')
+        set_integer_if_xmlnode_exists(config, 'daemon_keepalive', Node, './daemon_mode/daemon_keepalive')
+        set_value_if_xmlnode_exists(config, 'full_scan_at_startup', Node, './daemon_mode/full_scan_at_startup')
+        set_integer_if_xmlnode_exists(config, 'full_scan_delay', Node, './daemon_mode/full_scan_every_x_hours')
+        set_value_if_xmlnode_exists(config, 'full_scan_align_to_timing_base', Node, './daemon_mode/full_scan_align_to_timing')
+
         # Testing / Behaviour Settings
         set_boolean_if_xmlnode_exists(config, 'parse_config_and_stop', Node, './/parse_config_and_stop')
         set_boolean_if_xmlnode_exists(config, 'assess_rules_againt_mainfolder', Node, './/assess_rules_againt_mainfolder')
@@ -105,7 +117,7 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
             set_value_if_xmlnode_exists(config, conf_prefix + 'forward_from', Node, './forward_from')  # SMTP only
             set_value_if_xmlnode_exists(config, conf_prefix + 'initial_folder', Node, './initial_folder')  # IMAP only
             set_value_if_xmlnode_exists(config, conf_prefix + 'deletions_folder', Node, './deletions_folder')  # IMAP only
-            set_value_if_xmlnode_exists(config, conf_prefix + 'imaplib_debuglevel', Node, './imaplib_debuglevel')  # IMAP only
+            set_integer_if_xmlnode_exists(config, conf_prefix + 'imaplib_debuglevel', Node, './imaplib_debuglevel')  # IMAP only
             set_boolean_if_xmlnode_exists(config, conf_prefix + 'smtplib_debug', Node, './smtplib_debug')  # SMTP only
 
         def parse_email_Exchange_settings(config, Node):
@@ -114,8 +126,6 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
         parse_email_server_settings(config, 'imap_', Node.find('./connection_imap'))
         parse_email_server_settings(config, 'smtp_', Node.find('./sending_email_smtp'))
         parse_email_Exchange_settings(config, Node.find('./exchange_shared_mailbox'))
-
-        config['imap_imaplib_debuglevel'] = text_to_int(config['imap_imaplib_debuglevel'])
         # End Parsing of ServerInfo Section
 
     def parse_rules(Node, config, rules):

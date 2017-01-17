@@ -1,5 +1,5 @@
 import xml.etree.ElementTree as ET
-from modules.supportingfunctions import text_to_bool_force
+from modules.supportingfunctions import text_to_bool_force, text_to_int
 
 
 def set_value_if_xmlnode_exists(configdict, key, Node, xpath):
@@ -43,6 +43,18 @@ def get_attribvalue_if_exists_in_xmlNode(Node, attrib_to_get):
             return Node.attrib[attrib_to_get]
     else:
         return None
+
+
+def set_integer_if_xmlnode_exists(configdict, key, Node, xpath, default=None):
+    """Set a config value only if the value is in the xml"""
+    if isinstance(Node, ET.Element):
+        node_found = Node.find(xpath)
+    else:
+        node_found = None
+    if node_found is not None and isinstance(node_found, ET.Element):
+        node_val = text_to_int(node_found.text, default)
+        if node_val is not None:
+            configdict[key] = node_val
 
 
 def set_boolean_if_xmlnode_exists(configdict, key, Node, xpath):

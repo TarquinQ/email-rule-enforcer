@@ -38,6 +38,19 @@ def set_defaults(config):
     config['smtp_forward_from'] = None
     config['smtp_smtplib_debug'] = False
 
+    # Database Defaults
+    config['database_filename'] = ':memory:'
+
+    # Daemon-Mode Defaults
+    config['daemon_mode'] = False
+    config['daemon_monitor_inbox'] = True
+    config['daemon_monitor_inbox_delay'] = 5
+    config['daemon_keepalive'] = 20
+    config['full_scan_at_startup'] = True
+    config['full_scan_delay'] = 6
+    config['full_scan_align_to_timing'] = False
+    config['full_scan_align_to_timing_base'] = '25:00'
+
     # Logging Defaults
     config['console_loglevel'] = 2
     config['console_ultra_debug'] = False

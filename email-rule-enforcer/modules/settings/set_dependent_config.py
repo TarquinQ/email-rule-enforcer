@@ -1,3 +1,4 @@
+import re
 from modules.models.RuleMatches import MatchBody
 import modules.models.RuleActions as RuleActions
 
@@ -27,17 +28,31 @@ def set_dependent_config(config):
     if config['smtp_password'].lower() == 'same_as_imap_auth':
         config['smtp_password'] = config['imap_password']
 
-    if isinstance(config['imap_imaplib_debuglevel'], str):
-        try:
-            config['imap_imaplib_debuglevel'] = int(config['imap_imaplib_debuglevel'])
-        except:
-            config['imap_imaplib_debuglevel'] = 0
-
     if config['Exchange_shared_mailbox_alias'] is not None:
         config['imap_username'] = config['imap_username'] + '\\' + config['Exchange_shared_mailbox_alias']
 
     if config['parse_config_and_stop']:
         config['send_notification_email_on_completion'] = False
+
+    if (config['daemon_monitor_inbox_delay'] < 1):
+        config['daemon_monitor_inbox_delay'] = 5
+
+    if (config['daemon_keepalive'] < 1):
+        config['daemon_keepalive'] = 20
+
+    if (config['full_scan_delay'] < 1):
+        config['full_scan_delay'] = 6
+
+    # Convert daemon stuff to seconds
+    config['daemon_monitor_inbox_delay'] = config['daemon_monitor_inbox_delay'] * 60
+    config['daemon_keepalive'] = config['daemon_keepalive'] * 60
+    config['full_scan_delay'] = config['full_scan_delay'] * 60 * 60
+
+    if config['full_scan_align_to_timing_base'] != '25:00':
+        if re.match('[0-9][0-9]:[0-9][0-9]', config['full_scan_align_to_timing_base']):
+            base = config['full_scan_align_to_timing_base'].split(':')
+            if (int(base[0]) < 24) and (int(base[1]) < 60):
+                config['full_scan_align_to_timing'] = True
 
     RuleActions.Action.set_actually_perform_actions(config['actually_perform_actions'])
 

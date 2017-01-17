@@ -37,11 +37,10 @@ def text_to_bool_force(text):
 
 
 def text_to_int(text, default=None):
-    ret_val = default
     try:
         ret_val = int(text)
     except:
-        pass
+        ret_val = default
     return ret_val
 
 
