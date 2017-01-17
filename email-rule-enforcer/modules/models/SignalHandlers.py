@@ -11,39 +11,13 @@ class Signal_GlobalShutdown(Exception):
     pass
 
 
-class Signal_DumpStats(Exception):
-    '''An exception thrown in main thread to dump stats to logger'''
-    pass
-
-
-def receive_sigusr(signum, stack):
-    print ('ALERT:  Received: SIGUSR1, {0}. Time to dump stats.'.format(signnum))
-    raise Signal_DumpStats
-
-
 def receive_sigterm(signum, stack):
-    print ('ALERT:  Received: SIGTERM, {0}. Time to shut down'.format(signnum))
+    print ('ALERT:  Received signal to shut down (Signal {0}, SIGTERM. Time to shut down.'.format(signnum))
     raise Signal_GlobalShutdown
 
 
 def register_sighandlers():
     try:
-        signal.signal(signal.SIGUSR1, receive_sigusr)
-    except ValueError:
-        pass
-
-    try:
-        signal.signal(signal.SIGUSR2, receive_sigusr)
-    except ValueError:
-        pass
-
-    try:
         signal.signal(signal.SIGTERM, receive_sigterm)
     except ValueError:
         pass
-
-    try:
-        signal.signal(signal.SIGTERM, receive_sigterm)
-    except ValueError:
-        pass
-
