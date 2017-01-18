@@ -63,7 +63,6 @@ def main():
         global_timers.stop('overall')
         die_with_errormsg('IMAP Server Connection failed before we did anything, so we are now exiting.')
 
-
     # Set up Timers to track things which occur at different times
     global_timer_flags = GlobalTimerFlags()
     global_timer_flags.set_from_config(config)

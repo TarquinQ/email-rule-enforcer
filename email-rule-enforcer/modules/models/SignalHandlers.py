@@ -12,7 +12,7 @@ class Signal_GlobalShutdown(Exception):
 
 
 def receive_sigterm(signum, stack):
-    print ('ALERT:  Received signal to shut down (Signal {0}, SIGTERM. Time to shut down.'.format(signnum))
+    print ('ALERT:  Received signal to shut down (Signal {0}, SIGTERM. Time to shut down.'.format(signum))
     raise Signal_GlobalShutdown
 
 

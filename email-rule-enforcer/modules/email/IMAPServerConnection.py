@@ -36,7 +36,7 @@ class RawEmailResponse():
         return self.__str__()
 
 
-class IMAPError():
+class IMAPError(Exception):
     pass
 
 
@@ -106,8 +106,7 @@ class IMAPServerConnection():
         def wrapped(inst, *args, **kwargs):
             try:
                 # this bit returns the _result_ of the instance method 'func', not the func itself
-                with inst.server_io_lock:
-                    return func(inst, *args, **kwargs)
+                return func(inst, *args, **kwargs)
             except imaplib.IMAP4.error:
                 LogMaster.exception('IMAP Error occurred, now handling gracefully.')
                 return None
@@ -165,23 +164,22 @@ class IMAPServerConnection():
 
     def _connect_to_server(self):
         LogMaster.info('Now attempting to connect to IMAP Server: %s', self.server_name)
-        with self.server_io_lock:
-            # First we connect to the server. This can throw gaierror or TimeoutError
-            if self.use_ssl:
-                ssl_context = ssl.create_default_context()
-                self.imap_connection = imaplib.IMAP4_SSL(self.server_name, self.server_port, ssl_context=ssl_context)
-            else:
-                self.imap_connection = imaplib.IMAP4(self.server_name, self.server_port)
-            self._is_connected = True
-            self._is_auth = False
+        # First we connect to the server. This can throw gaierror or TimeoutError
+        if self.use_ssl:
+            ssl_context = ssl.create_default_context()
+            self.imap_connection = imaplib.IMAP4_SSL(self.server_name, self.server_port, ssl_context=ssl_context)
+        else:
+            self.imap_connection = imaplib.IMAP4(self.server_name, self.server_port)
+        self._is_connected = True
+        self._is_auth = False
 
-            # Now we're connected, log in. This can throw (or raise) IMAP4.error
-            result = self.imap_connection.login(self.username, self.password)
-            if (result is None) or (not isinstance(result, tuple)) or (not result[0][0] != 'OK'):
-                raise self.LoginError('IMAP Server Login Failed, exiting')
-            else:
-                self._is_auth = True
-                LogMaster.critical('Successfully connected to IMAP Server: %s', self.server_name)
+        # Now we're connected, log in. This can throw (or raise) IMAP4.error
+        result = self.imap_connection.login(self.username, self.password)
+        if (result is None) or (not isinstance(result, tuple)) or (not result[0][0] != 'OK'):
+            raise self.LoginError('IMAP Server Login Failed, exiting')
+        else:
+            self._is_auth = True
+            LogMaster.critical('Successfully connected to IMAP Server: %s', self.server_name)
 
     def reconnect(self):
         self.disconnect()
@@ -194,8 +192,8 @@ class IMAPServerConnection():
         return self.reconnect()
 
     def _allow_next_login(self):
-        allow_10min = not self._timed_failures_exceeded(self.failed_logins, self.max_login_fails_10min, 600)
-        allow_24hrs = not self._timed_failures_exceeded(self.failed_logins, self.max_login_fails_24hrs, 86400)
+        allow_10min = not self._timed_failures_exceeded(self.failed_logins, self.max_loginfails_10min, 600)
+        allow_24hrs = not self._timed_failures_exceeded(self.failed_logins, self.max_loginfails_24hrs, 86400)
         return allow_10min and allow_24hrs
 
     def _allow_next_reconnect(self):

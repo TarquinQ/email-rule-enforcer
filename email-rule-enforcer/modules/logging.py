@@ -45,9 +45,9 @@ class LogController():
                 'ERROR': 'yellow',
                 'CRITICAL': 'bold_blue'
             }
-            return colorlog.ColoredFormatter('%(log_color)s(%(threadName)s) %(message)s', log_colors=log_colours)
+            return colorlog.ColoredFormatter('%(log_color)s%(message)s', log_colors=log_colours)
         else:
-            return logging.Formatter('(%(threadName)s) %(message)s')
+            return logging.Formatter('%(message)s')
 
     @staticmethod
     def get_formatter_msgwithtime():

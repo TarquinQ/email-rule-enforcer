@@ -25,9 +25,9 @@ class GlobalTimerFlags():
 
     def set_from_config(self, config):
         # Set Default increments
-        self.keepalive.timer.set_default_incr(config['daemon_keepalive'])
-        self.sync_new.timer.set_default_incr(config['daemon_monitor_inbox_delay'])
-        self.sync_full.timer.set_default_incr(config['full_scan_delay'])
+        self.keepalive.set_default_time_incr(config['daemon_keepalive'])
+        self.sync_new.set_default_time_incr(config['daemon_monitor_inbox_delay'])
+        self.sync_full.set_default_time_incr(config['full_scan_delay'])
         if config['full_scan_align_to_timing'] is True:
             self.sync_full.set_deadline_base(config['full_scan_align_to_timing_base'])
 
