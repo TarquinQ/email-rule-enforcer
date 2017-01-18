@@ -1,6 +1,8 @@
 import threading
 import datetime
 import re
+import time
+import gc
 
 
 class TimerFlag():
@@ -39,21 +41,26 @@ class TimerFlag():
         # Now we just work out when the next run should be, in order to hit the timing_base
         while compare_s < target_s:
             target_s = target_s - self.default_time_incr
-        next_deadline_hours = ((target_s//60)//60)
-        next_deadline_mins = int((target_s//60) % 60)
+        target_s = target_s + self.default_time_incr
+        next_deadline_hours = (target_s//60)//60
+        next_deadline_mins = (target_s//60) % 60
         if next_deadline_hours > 23:
+            next_deadline_days = next_deadline_hours // 24
             next_deadline_hours = next_deadline_hours - 24
-            next_deadline_days = 1
         else:
             next_deadline_days = 0
         next_deadline = now + datetime.timedelta(days=next_deadline_days)
-        next_deadline.replace(hour=next_deadline_hours, minute=next_deadline_mins)
+        next_deadline = next_deadline.replace(hour=next_deadline_hours, minute=next_deadline_mins)
+        next_deadline = next_deadline.replace(second=0, microsecond=0)
         self.reset_timer_datetime(next_deadline)
+        #import pdb; pdb.set_trace()
 
     def reset_timer(self, next):
         """Sets next timer. next is passed in as seconds"""
+        self.stop()
         self.clear_flag()
         self.next_deadline = datetime.datetime.now() + datetime.timedelta(seconds=next)
+        self.next_deadline = self.next_deadline.replace(microsecond=0)
         self.timer = threading.Timer(next, self.flag.set)
         self.timer.daemon = True
         self.timer.start()
@@ -70,10 +77,10 @@ class TimerFlag():
         if timediff.days < 0:
             timediff_s = 0
         else:
-            timediff_s = timediff.seconds
-        self.start_new_timer(timediff_s)
+            timediff_s = timediff.seconds + (timediff.days * 86400)
+        self.reset_timer(timediff_s)
 
-    def stop_timer(self):
+    def stop(self):
         if self.timer.is_alive():
             self.timer.cancel()
 
@@ -98,4 +105,21 @@ class TimerFlag():
 
     def reset_flag(self):
         self.clear_flag()
+
+    def __repr__(self):
+        ret_str = 'TimerFlag:\n'
+        ret_str += 'Name: %s\n' % self.name
+        ret_str += 'Configured Info:\n'
+        ret_str += '  Default Interval Increment: %s\n' % self.default_time_incr
+        ret_str += '  Is Deadline-Based? %s\n' % self.is_deadline_based
+        ret_str += '  Deadline-Base: %s\n' % self.deadline_base
+        ret_str += 'Specific Info:\n'
+        ret_str += '  Flag Set to: %s\n' % self.is_set()
+        ret_str += '  Is Timer Running? %s\n' % self.is_alive()
+        ret_str += '  Next Deadline: %s\n' % self.next_deadline
+        #time.sleep(2)
+        return ret_str
+
+    def __str__(self):
+        return self.__repr__()
 

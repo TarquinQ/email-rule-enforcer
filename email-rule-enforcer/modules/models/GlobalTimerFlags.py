@@ -1,4 +1,5 @@
 import datetime
+import threading
 from modules.models.TimerFlag import TimerFlag
 
 
@@ -10,7 +11,7 @@ class GlobalTimerFlags():
 
     def wait_for_next_deadline(self):
         """This blocks until the next available action gets called"""
-        self.get_Timer_with_next_deadline.join()
+        self.get_Timer_with_next_deadline().join()
 
     def get_name_of_Timer_with_next_deadline(self):
         return self.get_Timer_with_next_deadline().name
@@ -35,3 +36,18 @@ class GlobalTimerFlags():
         self.keepalive.reset_timer_default()
         self.sync_new.reset_timer_default()
         self.sync_full.reset_timer_default()
+
+    def __repr__(self):
+        ret_str = 'GlobalTimerFlags:\n'
+        ret_str += 'Sync-Full TimerFlag:\n'
+        ret_str += self.sync_full.__repr__()
+        ret_str += 'Sync-New TimerFlag:\n'
+        ret_str += self.sync_new.__repr__()
+        ret_str += 'KeepAlive TimerFlag:\n'
+        ret_str += self.keepalive.__repr__()
+        ret_str += '(Related Info: Python Thread Count: %s)\n' % threading.active_count()
+        return ret_str
+
+    def __str__(self):
+        return self.__repr__()
+
