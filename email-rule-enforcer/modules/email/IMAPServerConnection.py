@@ -3,7 +3,6 @@ import socket
 import ssl
 import email
 import traceback
-import threading
 import time
 import re
 import datetime
@@ -61,7 +60,6 @@ class IMAPServerConnection():
         self.initial_folder = 'INBOX'
         self.deletions_folder = 'Trash'
         self.currfolder_name = ''
-        self.server_io_lock = threading.RLock()
         self.perm_fail = False
         self._set_timeouts_and_maxfails()
         self.set_last_activity()
@@ -99,9 +97,6 @@ class IMAPServerConnection():
         None - this is designed for a common scenario when the result is unimportant
         (eg FETCH an email) and not when the error should be hanldled in a specific
         way (such as login errors).
-
-        This wrapper also handles thread-safety, and will ensure that only one thread
-        is using the IMAP connection at once.
 
         This wrapper function can only handle bound instance-methods, and cannot cope
         with @classmethod or @instancemethod. This is due to the 'inst' parameter, which
@@ -299,7 +294,7 @@ class IMAPServerConnection():
     @_handle_imap_errors
     def noop(self):
         # FIXME: Need to parse return codes and status here
-        self.imap_connection.noop()
+        return self.imap_connection.noop()
 
     @_handle_imap_errors
     def status(self, foldername=None):
