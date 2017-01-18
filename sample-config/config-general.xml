@@ -11,12 +11,12 @@
 			<!-- If off, the program simply scans the full mailbox and exits. If on, it stays alive, attaches itself to the inbox, and periodically repeats the full scans. -->
 			<!-- NB, this does background itself (like a traditional unix daemon), it simply stays active in the foreground. -->
 			<!-- This approach works just fine for manual runs, systemd-style daemons and Windows. -->
-			<daemon_monitor_the_inbox>yes</daemon_monitor_the_inbox> <!-- Optional; Default yes; checks the inbox for new messages, and processes them as they arrive. -->
+			<monitor_the_inbox>yes</monitor_the_inbox> <!-- Optional; Default yes; checks the inbox for new messages, and processes them as they arrive. -->
 			<monitor_inbox_every_x_minutes>5</monitor_inbox_every_x_minutes> <!-- Optional; Default 5 (Min 1). -->
-			<daemon_keepalive>20</daemon_keepalive> <!-- Optional; Default 20 (Min 1, Max 29); If no network activity, send IMAP No-Op to retain server connection. -->
-			<full_scan_at_program_start>yes</full_scan_at_program_start>  <!-- Optional; Default yes; Will run a full scan of inbox+All Folders at startup. -->
+			<full_scan_at_program_startup>yes</full_scan_at_program_startup>  <!-- Optional; Default yes; Will run a full scan of inbox+All Folders at startup. -->
 			<full_scan_every_x_hours>6</full_scan_every_x_hours>  <!-- Optional; Default 6; We re-run the full-scan every X hours. -->
-			<full_scan_align_to_timing>25:00</full_scan_align_to_timing>  <!-- Optional; If present, This value will run the first (non-startup) full scan at this time plus all mutiples of the "every_x_hours" setting -->
+			<full_scan_align_to_timing>25:00</full_scan_align_to_timing>  <!-- Optional; If present, This value will run the a full scan at this time plus all mutiples of the "every_x_hours" setting -->
+			<keepalive>20</keepalive> <!-- Optional; Default 20 (Min 1, Max 29); If no network activity, send IMAP No-Op to retain server connection. -->
 		</daemon_mode>
 		<notification_email_on_completion>  <!-- Optional -->
 			<recipient_email>admin@domain.com</recipient_email>  <!-- Can have multiple recipients, one line per email -->

@@ -83,10 +83,10 @@ def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):
 
         # Daemon Settings
         set_boolean_if_xmlnode_exists(config, 'daemon_mode', Node, './daemon_mode/daemon_mode')
-        set_boolean_if_xmlnode_exists(config, 'daemon_monitor_inbox', Node, './daemon_mode/daemon_monitor_inbox')
-        set_integer_if_xmlnode_exists(config, 'daemon_monitor_inbox_delay', Node, './daemon_mode/daemon_inbox_minutes')
-        set_integer_if_xmlnode_exists(config, 'daemon_keepalive', Node, './daemon_mode/daemon_keepalive')
-        set_value_if_xmlnode_exists(config, 'full_scan_at_startup', Node, './daemon_mode/full_scan_at_startup')
+        set_boolean_if_xmlnode_exists(config, 'daemon_monitor_inbox', Node, './daemon_mode/monitor_the_inbox')
+        set_integer_if_xmlnode_exists(config, 'daemon_monitor_inbox_delay', Node, './daemon_mode/monitor_inbox_every_x_minutes')
+        set_integer_if_xmlnode_exists(config, 'daemon_keepalive', Node, './daemon_mode/keepalive')
+        set_value_if_xmlnode_exists(config, 'full_scan_at_startup', Node, './daemon_mode/full_scan_at_program_startup')
         set_integer_if_xmlnode_exists(config, 'full_scan_delay', Node, './daemon_mode/full_scan_every_x_hours')
         set_value_if_xmlnode_exists(config, 'full_scan_align_to_timing_base', Node, './daemon_mode/full_scan_align_to_timing')
 
