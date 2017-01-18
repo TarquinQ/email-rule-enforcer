@@ -53,35 +53,72 @@ def main():
         global_timers.stop('overall')
         die_with_errormsg('Database Connection failed before we did anything, so we are now exiting.')
 
-    # Connect to IMAP
-    imap_connection = IMAPServerConnection()
-    imap_connection.set_parameters_from_config(config)
-    imap_connection.connect_to_server()
-    if imap_connection.is_connected():
-        imap_connection.connect_to_folder(config['imap_initial_folder'])
-    else:
-        global_timers.stop('overall')
-        die_with_errormsg('IMAP Server Connection failed before we did anything, so we are now exiting.')
-
-    # Set up Timers to track things which occur at different times
-    global_timer_flags = GlobalTimerFlags()
-    global_timer_flags.set_from_config(config)
-
     # Now we try to perform IMAP actions
     try:
+        # Connect to IMAP
+        imap_connection = IMAPServerConnection()
+        imap_connection.set_parameters_from_config(config)
+        # imap_connection.connect_to_server()
+        # if imap_connection.is_connected():
+        #     imap_connection.connect_to_folder(config['imap_initial_folder'])
+        # else:
+        #     global_timers.stop('overall')
+        #     die_with_errormsg('IMAP Server Connection failed before we did anything, so we are now exiting.')
+
         # Set up signal handling to handle shutdown of our long-lived process.
         # These signal handlers will throw Exceptions any time a kill signal is received, which will drop out of this section
         # and ensure a clean shutdown occurs
         register_sighandlers()
 
-        # Parse IMAP Emails
-        global_timers.start('mainfolder')
-        match_emails.iterate_rules_over_mainfolder(imap_connection, config, rules_mainfolder, rule_counters_mainfolder)
-        global_timers.stop('mainfolder')
+        if config['daemon_mode'] is False:
+            # Full sync of Mailbox here
+            pass
+        else:
+            # Determine Startup actions
+            if config['full_scan_at_startup'] is True:
+                # Full sync of Mailbox here
+                pass
+            else:
+                # Full Sync Folders here
+                pass
 
-        global_timers.start('allfolders')
-        match_emails.iterate_rules_over_allfolders(imap_connection, config, rules_allfolders, rule_counters_allfolders)
-        global_timers.stop('allfolders')
+            # Set up Timers to track things which occur at different times
+            global_timer_flags = GlobalTimerFlags()
+            global_timer_flags.set_from_config(config)
+
+            while True:
+                if global_timer_flags.sync_full.is_required():
+                    LogMaster.info('Full Mailbox Sync Required, now commencing.')
+                    pass  # FIXME: Full sync of Mailbox here
+                    # Parse IMAP Emails
+                    # global_timers.start('mainfolder')
+                    # match_emails.iterate_rules_over_mainfolder(imap_connection, config, rules_mainfolder, rule_counters_mainfolder)
+                    # global_timers.stop('mainfolder')
+
+                    # global_timers.start('allfolders')
+                    # match_emails.iterate_rules_over_allfolders(imap_connection, config, rules_allfolders, rule_counters_allfolders)
+                    # global_timers.stop('allfolders')
+                    global_timer_flags.sync_full.reset_timer_default()
+                    global_timer_flags.keepalive.reset_timer_default()
+
+                if global_timer_flags.sync_new.is_required():
+                    LogMaster.info('Sync of New Inbox Items Required, now commencing.')
+                    pass  # FIXME:  Sync New Inbox here
+                    global_timer_flags.sync_new.reset_timer_default()
+                    global_timer_flags.keepalive.reset_timer_default()
+
+                if global_timer_flags.keepalive.is_required():
+                    LogMaster.info('KeepAlive requested, now commencing.')
+                    pass  # FIXME:  KeepAlive here
+                    global_timer_flags.keepalive.reset_timer_default()
+
+                LogMaster.info('State of Global Timer Flags:\n%s', global_timer_flags)
+                nextEvent = global_timer_flags.get_Timer_with_next_deadline()
+                LogMaster.info('All required events processed, now sleeping until next event.')
+                LogMaster.info('The next event will be a %s, which will occur at: %s\n', nextEvent.name, nextEvent.next_deadline.isoformat())
+                del nextEvent
+
+                global_timer_flags.wait_for_next_deadline()
 
     except KeyboardInterrupt as KI:
         # Someone pressed Ctrl-C, so close & cleanup
@@ -99,7 +136,7 @@ def main():
         LogMaster.critical('We will now disconnect from IMAP and exit.')
         LogMaster.exception('Error was: %s', repr(socket_err))
 
-    except (TypeError, AttributeError, KeyError, IndexError, NameError) as e:
+    except (TypeError, AttributeError, KeyError, IndexError, NameError, RuntimeError) as e:
         # Something went wrong with the IMAP socket. Safely Disconnect just in case.
         LogMaster.critical('There has been an error with the email processing, and an unhandled error occurred.')
         LogMaster.critical('We will now safely disconnect from IMAP and exit.')
