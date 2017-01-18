@@ -23,7 +23,7 @@ class StartStopTimeRecorder():
         self.time_recorder.stop()
         self.stop_datetimes.append(self.time_recorder.stop_datetime)
         self.last_stop_datetime = self.time_recorder.stop_datetime
-        self._cumulative_seconds += self.time_recorder.final_seconds
+        self._cumulative_seconds += self.time_recorder.get_elapsed_seconds()
         self.time_recorder.reset()
         self._is_running = False
 
@@ -72,6 +72,7 @@ class StartStopTimeRecorder():
 
 class StartStopTimeRecorderBasic():
     def __init__(self, start=True):
+        self._is_running = False
         self.reset()
         if (start is True):
             self.start()
@@ -113,9 +114,7 @@ class StartStopTimeRecorderBasic():
             ret_val = time.perf_counter() - self.start_perf
         else:
             ret_val = self.final_seconds
-        if isinstance(ret_val, float):
-            ret_val = round(ret_val, 0)
-        return ret_val
+        return int(round(ret_val, 0))
 
     def get_elapsed_timedelta(self):
         if self._is_running is True:

@@ -147,7 +147,7 @@ def get_tbMessageID_from_MessageID(db, MessageID):
     try:
         row = db.execute("SELECT ID from tb_Messages WHERE Header_MessageID=?", (MessageID,)).fetchone()
         ID = row[0]
-    except IndexError, TypeError:
+    except (IndexError, TypeError):
         ID = 0
     return ID
 
@@ -157,7 +157,7 @@ def get_tbFolderID_from_FolderPath(db, FolderPath):
     try:
         row = db.execute("SELECT ID from tb_Folders WHERE FolderPath=?", (FolderPath,)).fetchone()
         ID = row[0]
-    except IndexError, TypeError:
+    except (IndexError, TypeError):
         ID = 0
     return ID
 

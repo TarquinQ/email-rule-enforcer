@@ -38,7 +38,7 @@ def ensure_schema_version(db):
 
 
 def date_minus_days(days=30):
-    return datetime.datetime.now() - timedelta(days=days)
+    return datetime.datetime.now() - datetime.timedelta(days=days)
 
 
 def clean_ActionsTaken(db, older_than=date_minus_days(days=30)):

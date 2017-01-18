@@ -14,7 +14,7 @@ from modules.settings.default_settings import set_defaults
 from modules.settings.set_dependent_config import set_dependent_config, set_headersonly_mode
 from modules.settings.supportingfunctions_xml import set_value_if_xmlnode_exists, get_value_if_xmlnode_exists, get_attributes_if_xmlnode_exists
 from modules.settings.supportingfunctions_xml import get_attribvalue_if_exists_in_xmlNode, strip_xml_whitespace, xpath_findall
-from modules.settings.supportingfunctions_xml import set_boolean_if_xmlnode_exists, set_invertedboolean_if_xmlnode_exists
+from modules.settings.supportingfunctions_xml import set_boolean_if_xmlnode_exists, set_invertedboolean_if_xmlnode_exists, set_integer_if_xmlnode_exists
 
 
 def parse_config_tree(xml_config_tree, config, rules_main, rules_allfolders):

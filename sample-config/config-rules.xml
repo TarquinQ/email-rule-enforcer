@@ -12,7 +12,7 @@
 					<match_from name="match_PhillPott_from_SwiggottPartners">sender@domain1</match_from>  <!-- Default match_type 'is' -->
 					<match_to type="contains">recipient@domain2</match_to>
 					<match_to this_recipient_only="false">recipient@domain2</match_to>
-					<match_subject type="starts_with">This matches a subject!</match_to>
+					<match_subject type="starts_with">This matches a subject!</match_subject>
 					<match_body type="ends_with">Undeliverable: </match_body>
 				</match_or>
 			</rule_matches>

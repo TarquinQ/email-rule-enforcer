@@ -49,12 +49,6 @@ class GlobalTimeRecorders(dict):
         except (KeyError, AttributeError):
             return None
 
-    def restart(self, counter_name):
-        try:
-            return self[counter_name].restart()
-        except (KeyError, AttributeError):
-            return None
-
     def is_running(self, counter_name):
         try:
             return self[counter_name].is_running()
