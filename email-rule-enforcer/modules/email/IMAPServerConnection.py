@@ -397,17 +397,12 @@ class IMAPServerConnection():
         """Returns a list of all IMAP folders in array format"""
         ret_list = []
         for folder_record in self.get_all_folders():
-            print('FolderRecord:', folder_record)
             folder_record_utf8 = convert_bytes_to_utf8(folder_record)
-            print('FolderRecordutf8:', folder_record_utf8)
             (folder_flags, folder_parent_and_name) = folder_record_utf8.split(')', 1)
             (empty_str, folder_parent, folder_name) = folder_parent_and_name.split('"', 2)
-            print('folder_parent, folder_name:', folder_parent, folder_name)
             folder_name = folder_name.strip()
             folder_name_noquotes = strip_quotes(folder_name)
-            print('folder_name_noquotes:', folder_name_noquotes)
             ret_list.append(folder_name_noquotes)
-            print('ret_list:', ret_list)
         return ret_list
 
     @_handle_imap_errors

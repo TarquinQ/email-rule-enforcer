@@ -280,7 +280,7 @@ def sync_folders(db, imap_connection):
             imap_folder_name = imap_folder_path.split('/')[-1]
         else:
             imap_folder_name = imap_folder_path
-        LogMaster.ultra_debug('For IMAP Folder %s (%s), the STATUS is:\n%s', imap_folder_path, imap_folder_name, status)
+        LogMaster.ultra_debug('For IMAP Folder %s (short: %s), the STATUS is:\n%s', imap_folder_path, imap_folder_name, status)
 
         # This will only add new entries, and  silently ignore existing ones
         db.execute("INSERT OR IGNORE INTO tb_Folders ( \
