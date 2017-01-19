@@ -66,13 +66,5 @@ def set_defaults(config):
     config['allow_body_match_for_all_folders'] = False
     config['allow_body_match_for_main_folder'] = True
 
-    # Daemon-Mode Settings
-    config['daemon_mode_enable'] = True
-    config['daemon_allow_multiple_imapconns'] = True
-    config['daemon_check_inbox_mins'] = 5
-    config['daemon_repeat_mainrules_hours'] = 24
-    config['daemon_repeat_mainrules_at'] = '00:00'
-    config['daemon_check_mainrules_at_startup'] = True
-
     # Finalise
     config['defaults_are_set'] = True
