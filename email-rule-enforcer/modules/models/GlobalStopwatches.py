@@ -1,8 +1,8 @@
 import datetime
-from modules.models.StartStopTimeRecorder import StartStopTimeRecorder
+from modules.models.Stopwatch import Stopwatch
 
 
-class GlobalTimeRecorders(dict):
+class GlobalStopwatches(dict):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -10,7 +10,7 @@ class GlobalTimeRecorders(dict):
         try:
             self[counter_name]
         except KeyError:
-            self[counter_name] = StartStopTimeRecorder(start=start)
+            self[counter_name] = Stopwatch(start=start)
         return self[counter_name]
 
     def get_start_datetime(self, counter_name):

@@ -2,9 +2,9 @@ import datetime
 import time
 
 
-class StartStopTimeRecorder():
+class Stopwatch():
     def __init__(self, start=True):
-        self.time_recorder = StartStopTimeRecorderBasic()
+        self.time_recorder = StopwatchBasic()
         self._is_running = False
         self.hard_reset()
         if (start is True):
@@ -50,7 +50,7 @@ class StartStopTimeRecorder():
         return self._cumulative_seconds + self.time_recorder.get_elapsed_seconds()
 
     def __repr__(self):
-        ret_str = 'TimeRecorder:\n'
+        ret_str = '%s:\n' % self.__class__.__name__
         ret_str += 'Is Running? %s\n' % self.is_running()
         if self.initial_datetime is not None:
             ret_str += 'Initial Start Time: %s\n' % self.initial_datetime.isoformat(' ')
@@ -70,7 +70,7 @@ class StartStopTimeRecorder():
         return self.__repr__()
 
 
-class StartStopTimeRecorderBasic():
+class StopwatchBasic():
     def __init__(self, start=True):
         self._is_running = False
         self.reset()
@@ -123,7 +123,7 @@ class StartStopTimeRecorderBasic():
             return self.final_timedelta
 
     def __repr__(self):
-        ret_str = 'TimeRecorderBasic:\n'
+        ret_str = '%s:\n' % self.__class__.__name__
         ret_str += 'Is Running? %s\n' % self.is_running()
         if self.start_datetime is not None:
             ret_str += 'Start Time: %s\n' % self.start_datetime.isoformat(' ')

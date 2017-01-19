@@ -1,5 +1,5 @@
 from modules.models.GlobalCounters import GlobalCounters
-from modules.models.GlobalTimeRecorders import GlobalTimeRecorders
+from modules.models.GlobalStopwatches import GlobalStopwatches
 
 
 def create_default_rule_counters():
@@ -13,8 +13,8 @@ def create_default_rule_counters():
     return ret_counters
 
 
-def create_default_timers():
-    ret_timers = GlobalTimeRecorders()
+def create_default_stopwatches():
+    ret_timers = GlobalStopwatches()
     ret_timers.new_counter('overall', start=True)
     ret_timers.new_counter('mainfolder', start=False)
     ret_timers.new_counter('allfolders', start=False)

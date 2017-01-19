@@ -38,14 +38,13 @@ class GlobalTimerFlags():
         self.sync_full.reset_timer_default()
 
     def __repr__(self):
-        ret_str = 'GlobalTimerFlags:\n'
+        ret_str = '%s:\n' % self.__class__.__name__
         ret_str += 'Sync-Full TimerFlag:\n'
         ret_str += self.sync_full.__repr__()
         ret_str += 'Sync-New TimerFlag:\n'
         ret_str += self.sync_new.__repr__()
         ret_str += 'KeepAlive TimerFlag:\n'
         ret_str += self.keepalive.__repr__()
-        ret_str += '(Related Info: Python Thread Count: %s)\n' % threading.active_count()
         return ret_str
 
     def __str__(self):

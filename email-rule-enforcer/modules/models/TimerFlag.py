@@ -1,8 +1,6 @@
 import threading
 import datetime
 import re
-import time
-import gc
 
 
 class TimerFlag():
@@ -107,7 +105,7 @@ class TimerFlag():
         self.clear_flag()
 
     def __repr__(self):
-        ret_str = 'TimerFlag:\n'
+        ret_str = '%s:\n' % self.__class__.__name__
         ret_str += 'Name: %s\n' % self.name
         ret_str += 'Configured Info:\n'
         ret_str += '  Default Interval Increment: %s\n' % self.default_time_incr
@@ -117,7 +115,6 @@ class TimerFlag():
         ret_str += '  Flag Set to: %s\n' % self.is_set()
         ret_str += '  Is Timer Running? %s\n' % self.is_alive()
         ret_str += '  Next Deadline: %s\n' % self.next_deadline
-        #time.sleep(2)
         return ret_str
 
     def __str__(self):
