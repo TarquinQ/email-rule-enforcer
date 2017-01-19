@@ -1,3 +1,4 @@
+import datetime
 from modules.logging import LogMaster
 from modules.models.RuleMatches import Match
 from modules.email.supportingfunctions_email import convert_bytes_to_utf8
@@ -186,7 +187,6 @@ def iterate_rules_over_mainfolder(imap_connection, config, rules, counters):
 
 
 def iterate_rules_over_allfolders(imap_connection, config, rules, counters):
-
     if (not config['assess_rules_againt_allfolders']):
         LogMaster.info('All Folders Rules Not Processed: this processing has been disabled in the program config files.')
         return None
@@ -202,13 +202,7 @@ def iterate_rules_over_allfolders(imap_connection, config, rules, counters):
     LogMaster.log(40, 'Now commencing iteration of a rule over all emails in all folders in the mailbox')
     LogMaster.info('\nNow looping over all folders in the mailbox.')
     LogMaster.ultra_debug("All folders: %s", imap_connection.get_all_folders())
-    for folder_record in imap_connection.get_all_folders():
-        folder_record_utf8 = convert_bytes_to_utf8(folder_record)
-        (folder_flags, folder_parent_and_name) = folder_record_utf8.split(')', 1)
-        (empty_str, folder_parent, folder_name) = folder_parent_and_name.split('"', 2)
-        folder_name = folder_name.strip()
-        folder_name_noquotes = strip_quotes(folder_name)
-
+    for folder_record in imap_connection.get_all_folders_parsed():
         LogMaster.ultra_debug('Now checking folder "%s" for folder exclusions.', folder_name)
         if folder_is_excluded(folder_name_noquotes, config['imap_folders_to_exclude']):
             LogMaster.info('Skipping folder "%s" due to folder exclusions.', folder_name)
@@ -243,5 +237,72 @@ def folder_is_excluded(folder_name, exclusion_set):
 
 
 def keepalive(imap_connection):
-    LogMaster.log(40, 'Now commencing keepalive of IMAP connection')
+    LogMaster.info('Now commencing keepalive of IMAP connection')
     return imap_connection.noop()
+
+
+def iterate_rules_over_mainfolder(imap_connection, config, rules, counters):
+    LogMaster.info('Now commencing iteration of Rules over all emails in Main folder')
+
+    if (not config['assess_rules_againt_mainfolder']):
+        LogMaster.info('Main Folder Rules Not Processed: this processing has been disabled in the program config files.')
+        return None
+
+    if (imap_connection.is_connected() is False):
+        LogMaster.log(40, 'Aborting: IMAP server is not connected')
+        return None
+
+    if (imap_connection.get_currfolder() == ''):
+        LogMaster.log(40, 'Aborting: IMAP server is connected, but not attached to a Folder')
+        return None
+
+    counters.incr('folders_processed')
+    return iterate_rules_over_mailfolder(imap_connection, config, rules, counters, headers_only=config['imap_headers_only_for_main_folder'])
+
+
+def sync_folders(db, imap_connection):
+    LogMaster.info('Now syncing all IMAP Folders into the local database')
+
+    db.execute("drop table if exists tb_Temp_FolderList")
+    db.execute("create temporary table tb_Temp_FolderList(FolderPath TEXT)")
+
+    for imap_folder_path in imap_connection.get_all_folders_parsed():
+        LogMaster.ultra_debug('Now atempting to insert a Folderpath of: %s', imap_folder_path)
+        db.execute("INSERT into tb_Temp_FolderList (FolderPath) values (?)", (imap_folder_path,))
+
+        # Get IMAP STATUS
+        status = imap_connection.status(imap_folder_path)
+        if status is None:
+            # We just ignore the folder
+            continue
+
+        if (imap_folder_path.find('/') >= 0):
+            imap_folder_name = imap_folder_path.split('/')[-1]
+        else:
+            imap_folder_name = imap_folder_path
+        LogMaster.ultra_debug('For IMAP Folder %s (%s), the STATUS is:\n%s', imap_folder_path, imap_folder_name, status)
+
+        # This will only add new entries, and  silently ignore existing ones
+        db.execute("INSERT OR IGNORE INTO tb_Folders ( \
+            FolderPath, FolderName, DateAdded ) values (?,?,?)",
+            (imap_folder_path, imap_folder_name, datetime.datetime.now())
+        )
+        db.execute("UPDATE tb_Folders SET \
+            UIDNEXT=?, UIDVALIDITY=?, CountMessages=?, CountUnread=?, LastSeen=? \
+            WHERE FolderPath=?",
+            (status['UIDNEXT'], status['UIDVALIDITY'], status['MESSAGES'], status['UNSEEN'], datetime.datetime.now(),
+                imap_folder_path)
+        )
+    # And now we remove all folders which no longer exist
+    # This will "cascade-delete" corresponding records in the tb_FolderUIDEntries table too
+    db.execute("DELETE FROM tb_Folders WHERE FolderPath NOT IN (SELECT FolderPath FROM tb_Temp_FolderList)")
+    # Now we remove all UID Entries which do not have matching UIDVALIDITY
+    for folder_row in db.execute("SELECT ID, FolderPath, UIDVALIDITY FROM tb_Folders").fetchall():
+        FolderID = folder_row["ID"]
+        UIDVALIDITY = folder_row["UIDVALIDITY"]
+        db.execute("DELETE FROM tb_FolderUIDEntries WHERE ID=? AND UIDVALIDITY!=?", (FolderID, UIDVALIDITY))
+
+    # Clean up
+    db.execute("drop table if exists tb_Temp_FolderList")
+
+

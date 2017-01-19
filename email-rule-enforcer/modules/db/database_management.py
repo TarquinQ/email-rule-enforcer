@@ -5,31 +5,31 @@ import os
 
 
 def open_or_create_database(filename):
-    db = None
     if os.path.exists(filename):
-        db = sqlite3.connect(filename, detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES, isolation_level=None)
-        # Leave Exceptions unhandled;  if db-open fails, let it fall right through to cause programme failure, since
-        # There is nothing else we can do at this point.
+        preexisting = True
+    else:
+        preexisting = False
 
-        try:
-            schema_matches = ensure_schema_version(db)
-        except Exception:
-            schema_matches = False
-        if not schema_matches:
+    db = new_db.connect(filename)
+    # Leave Exceptions unhandled;  if db-open fails, let it fall right through to cause programme failure, since
+    # There is nothing else we can do at this point.
+
+    if preexisting is True:
+        schema_matches = ensure_schema_version(db)
+        if schema_matches is False:
             # FIXME: There is no workaround at present, and will need to be rectified
             # at the first/next schema-version-revision (ie v0.2)
             # However it's an ok hack during first release (ie v0.1) and will ensure that newer schemas
-            # don't silently fail/corrupt with this code
-            db = None
-
+            # don't silently fail/corrupt with this version of the code
+            raise RuntimeError('Database schema version does not match, cannot proceed')
     else:
-        db = new_db.create_new_database(filename)
+        new_db.create_db_schema(db)
 
     return db
 
 
 def ensure_schema_version(db):
-    required_SchemaVersion = new_db.dbSchemaVersion
+    required_SchemaVersion = new_db.SchemaVersion
     schema_matches = False
     currSchemaVer = tuple(db.execute("select Major, Minor from vw_SchemaVersion LIMIT 1").fetchone())
     if (required_SchemaVersion == currSchemaVer):

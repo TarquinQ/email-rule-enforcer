@@ -1,7 +1,7 @@
 import sys
 import imaplib
 import modules.python_require_min_pyversion  # checks for py >= 3.4, which we need for newer IMAP TLS support
-import modules.match_emails as match_emails
+import modules.core_logic as core_logic
 from modules.settings.get_config import get_config
 from modules.settings.default_counters_and_timers import create_default_stopwatches, create_default_rule_counters
 from modules.settings.get_config import get_config
@@ -70,6 +70,8 @@ def main():
         # and ensure a clean shutdown occurs
         register_sighandlers()
 
+        core_logic.sync_folders(db, imap_connection)
+
         if config['daemon_mode'] is False:
             # Full sync of Mailbox here
             pass
@@ -92,11 +94,11 @@ def main():
                     pass  # FIXME: Full sync of Mailbox here
                     # Parse IMAP Emails
                     global_stopwatches.start('mainfolder')
-                    match_emails.iterate_rules_over_mainfolder(imap_connection, config, rules_mainfolder, rule_counters_mainfolder)
+                    core_logic.iterate_rules_over_mainfolder(imap_connection, config, rules_mainfolder, rule_counters_mainfolder)
                     global_stopwatches.stop('mainfolder')
 
                     global_stopwatches.start('allfolders')
-                    match_emails.iterate_rules_over_allfolders(imap_connection, config, rules_allfolders, rule_counters_allfolders)
+                    core_logic.iterate_rules_over_allfolders(imap_connection, config, rules_allfolders, rule_counters_allfolders)
                     global_stopwatches.stop('allfolders')
 
                     global_timer_flags.sync_full.reset_timer_default()
@@ -110,7 +112,7 @@ def main():
 
                 if global_timer_flags.keepalive.is_required():
                     LogMaster.info('KeepAlive requested, now commencing.')
-                    match_emails.keepalive(imap_connection)
+                    core_logic.keepalive(imap_connection)
                     global_timer_flags.keepalive.reset_timer_default()
 
                 #LogMaster.info('State of Global Timer Flags:\n%s', global_timer_flags)
@@ -135,9 +137,9 @@ def main():
         # Something went wrong with the IMAP socket. Safely Disconnect just in case.
         LogMaster.critical('There has been an error with the IMAP Server connection.')
         LogMaster.critical('We will now disconnect from IMAP and exit.')
-        LogMaster.exception('Error was: %s', repr(socket_err))
+        LogMaster.exception('Error was:')
 
-    except (TypeError, AttributeError, KeyError, IndexError, NameError, RuntimeError) as e:
+    except (Exception) as e:
         # Something went wrong with the IMAP socket. Safely Disconnect just in case.
         LogMaster.critical('There has been an error with the email processing, and an unhandled error occurred.')
         LogMaster.critical('We will now safely disconnect from IMAP and exit.')
@@ -149,7 +151,7 @@ def main():
     global_stopwatches.stop('overall')
     # Print the Footers
     final_output = get_completion_footer(config, global_stopwatches, rule_counters_mainfolder, rule_counters_allfolders)
-    LogMaster.critical(final_output)
+    #LogMaster.critical(final_output)
 
     # Send Completion Email
     smtp_send_completion_email(config, final_output)

@@ -43,7 +43,6 @@ def fix_imaplib_maxline():
 
 
 class IMAPServerConnection():
-    re_statusresponse = re.compile('.*\((.*)\)')
     fix_imaplib_maxline()
 
     class PermanentFailure(Exception):
@@ -275,11 +274,15 @@ class IMAPServerConnection():
     def connect_to_default_folder(self):
         return self.connect_to_folder(self.initial_folder)
 
+    @_handle_imap_errors
     def connect_to_folder(self, folder_name):
+        folder_name = strip_quotes(folder_name)
+        if folder_name.find(' ') != -1:
+            folder_name = '"%s"' % folder_name
         try:
             result = self.imap_connection.select(folder_name)
             msg_count = convert_bytes_to_utf8(result[1][0])
-            self.currfolder_name = strip_quotes(folder_name)
+            self.currfolder_name = folder_name
             LogMaster.info('Successfully connected to IMAP Folder: \"%s\". Message Count: %s', folder_name, msg_count)
             return msg_count
         except imaplib.IMAP4.error:
@@ -308,14 +311,22 @@ class IMAPServerConnection():
         return ret_val
 
     @_handle_imap_errors
-    def status(self, foldername=None):
+    def status(self, folder_name=None):
         ret_data = None
-        if foldername is None:
-            foldername = self.currfolder_name
-        response, data = self.imap_connection.status(foldername, '(MESSAGES RECENT UIDNEXT UIDVALIDITY UNSEEN)')
-        # Response_data looks like ('OK', ['"Archive.2008" (MESSAGES 1 RECENT 0 UIDNEXT 2 UIDVALIDITY 1222003831 UNSEEN 0)'])
+        if folder_name is None:
+            folder_name = self.currfolder_name
+        folder_name = strip_quotes(folder_name)
+        if folder_name.find(' ') != -1:
+            folder_name = '"%s"' % folder_name
+        response, data = self.imap_connection.status(folder_name, '(MESSAGES RECENT UIDNEXT UIDVALIDITY UNSEEN)')
+        # Response, data looks like ('OK', ['"Archive 2008" (MESSAGES 1 RECENT 0 UIDNEXT 2 UIDVALIDITY 1222003831 UNSEEN 0)'])
         if response == 'OK':
-            ret_data = dict_from_list(self.re_statusresponse.match(data[0].split(' ')))
+            data_utf8 = convert_bytes_to_utf8(data[0])
+            try:
+                extracted_data = re.search('.*\((.*)\)', data_utf8).group(1)
+                ret_data = dict_from_list(extracted_data.split(' '))
+            except AttributeError:  # brackets are missing in data[0], so no group(1)
+                pass
         return ret_data
 
     def get_currfolder(self):
@@ -330,17 +341,15 @@ class IMAPServerConnection():
         return list_allemails
 
     @_handle_imap_errors
-    def get_uids_range_in_currfolder(self, start=0, end=None):
+    def get_uids_range_in_currfolder(self, start=0, end='*'):
         """Searches and returns  a list of all uids in folder, byte-format"""
-        if end is None:
-            end = '*'
         result, data = self.imap_connection.uid('search', None, "UID {0}:{1}".format(start, end))
-        list_rangeemails = data[0].split()
+        list_uids = data[0].split()
         LogMaster.log(10, 'Range of UIDs of emails in current folder. \
             Start: {0}, End: {1}, List in range: {2}'.format(
-            start, end, convert_bytes_to_utf8(list_rangeemails))
+            start, end, convert_bytes_to_utf8(list_uids))
         )
-        return list_rangeemails
+        return list_uids
 
     def get_emails_all_in_currfolder(self, headers_only=False):
         """Return parsed emails from the curent folder, without marking as read"""
@@ -374,6 +383,7 @@ class IMAPServerConnection():
                 flags.extend(self.parse_flags(flag))
         return flags
 
+    @_handle_imap_errors
     def get_all_folders(self):
         """Returns a list of all IMAP folders"""
         ret_list = [None]
@@ -383,6 +393,24 @@ class IMAPServerConnection():
             pass
         return ret_list
 
+    def get_all_folders_parsed(self):
+        """Returns a list of all IMAP folders in array format"""
+        ret_list = []
+        for folder_record in self.get_all_folders():
+            print('FolderRecord:', folder_record)
+            folder_record_utf8 = convert_bytes_to_utf8(folder_record)
+            print('FolderRecordutf8:', folder_record_utf8)
+            (folder_flags, folder_parent_and_name) = folder_record_utf8.split(')', 1)
+            (empty_str, folder_parent, folder_name) = folder_parent_and_name.split('"', 2)
+            print('folder_parent, folder_name:', folder_parent, folder_name)
+            folder_name = folder_name.strip()
+            folder_name_noquotes = strip_quotes(folder_name)
+            print('folder_name_noquotes:', folder_name_noquotes)
+            ret_list.append(folder_name_noquotes)
+            print('ret_list:', ret_list)
+        return ret_list
+
+    @_handle_imap_errors
     def get_raw_email_byuid(self, uid, headers_only=False):
         if headers_only:
             header_text = 'HEADER'

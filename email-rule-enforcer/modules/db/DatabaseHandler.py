@@ -52,47 +52,6 @@ class DatabaseHandler():
         return self.db.commit()
 
 
-def sync_folders(db, imap_conn):
-    db.execute("drop table if exists tb_Temp_FolderList")
-    db.execute("create temporary table tb_Temp_FolderList(FolderPath TEXT)")
-
-    imap_folders = imap_conn.get_folder_list()
-    for imap_folder_path in imap_folders:
-        db.execute("INSERT into tb_Temp_FolderList (FolderPath) values (?)", (imap_folder_path))
-
-        # Get IMAP STATUS
-        status = imap_conn.status(imap_folder_path)
-
-        if (imap_folder_path.find('/') >= 0):
-            imap_folder_name = imap_folder_path.split('/')[-1]
-        else:
-            imap_folder_name = imap_folder_path
-
-        # This will only add new entries, and  silently ignore existing ones
-        db.execute("INSERT OR IGNORE INTO tb_Folders ( \
-            FolderPath, FolderName, DateAdded ) values (?,?,?)",
-            (imap_folder_path, imap_folder_name, datetime.datetime.now())
-        )
-        db.execute("UPDATE tb_Folders SET ( \
-            UIDNEXT=?, UIDVALIDITY=?, CountMessages=?, CountUnread=?, LastSeen=? \
-            ) WHERE FolderPath=?",
-            (status.UIDNEXT, status.UIDVALIDITY, status.CountMessages, status.CountUnread, datetime.datetime.now(),
-                imap_folder_path
-            )
-        )
-    # And now we remove all folders which no longer exist
-    # This will "cascade-delete" corresponding records in the tb_FolderUIDEntries table too
-    db.execute("DELETE FROM tb_Folders WHERE FolderPath NOT IN (SELECT FolderPath FROM tb_Temp_FolderList)")
-    # Now we remove all UID Entries which do not have matching UIDVALIDITY
-    for folder_row in db.execute("SELECT ID, FolderPath, UIDVALIDITY FROM tb_Folders").fetchall():
-        FolderID = folder_row["FolderID"]
-        UIDVALIDITY = folder_row["UIDVALIDITY"]
-        db.execute("DELETE FROM tb_FolderUIDEntries WHERE FolderID=? AND UIDVALIDITY!=?", (FolderID, UIDVALIDITY))
-
-    # Clean up
-    db.execute("drop table if exists tb_Temp_FolderList")
-
-
 def remove_messages_with_no_folderEntries(db):
     count = 0
     try:

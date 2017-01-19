@@ -6,13 +6,12 @@ import datetime
 SchemaVersion = (0, 1)
 
 
-def create_new_database(filename):
+def connect(filename):
     # The following lines connect to a new database, parse python types
     # and turn on foreign key suport and named columns (dictionary-style)
     db = sqlite3.connect(filename, detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES, isolation_level=None)
     db.execute("PRAGMA foreign_keys = ON;")
     db.row_factory = sqlite3.Row
-    create_db_schema(db)
     return db
 
 
