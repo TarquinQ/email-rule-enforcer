@@ -3,7 +3,7 @@ import imaplib
 import modules.python_require_min_pyversion  # checks for py >= 3.4, which we need for newer IMAP TLS support
 import modules.match_emails as match_emails
 from modules.settings.get_config import get_config
-from modules.settings.default_counters_and_timers import create_default_timers, create_default_rule_counters
+from modules.settings.default_counters_and_timers import create_default_stopwatches, create_default_rule_counters
 from modules.settings.get_config import get_config
 from modules.email.IMAPServerConnection import IMAPServerConnection
 from modules.email.smtp_send_completion_email import smtp_send_completion_email
@@ -25,7 +25,7 @@ def main():
     print(get_header_preconfig())
 
     # Create the Counters and Timers
-    global_timers = create_default_timers()
+    global_stopwatches = create_default_stopwatches()
     rule_counters_mainfolder = create_default_rule_counters()
     rule_counters_allfolders = create_default_rule_counters()
 
@@ -39,8 +39,8 @@ def main():
 
     # Die if in config-parse-only mode
     if config['parse_config_and_stop']:
-        global_timers.stop('overall')
-        print(get_completion_footer(config, global_timers, rule_counters_mainfolder, rule_counters_allfolders))
+        global_stopwatches.stop('overall')
+        print(get_completion_footer(config, global_stopwatches, rule_counters_mainfolder, rule_counters_allfolders))
         die_with_errormsg('Config Testing only, dont connect. Now exiting', 0)
 
     # Set up Logging
@@ -50,7 +50,7 @@ def main():
     # Set up database
     db = DatabaseHandler(db_filename=config['database_filename'], auto_open=True)
     if db.connected is False:
-        global_timers.stop('overall')
+        global_stopwatches.stop('overall')
         die_with_errormsg('Database Connection failed before we did anything, so we are now exiting.')
 
     # Now we try to perform IMAP actions
@@ -58,12 +58,12 @@ def main():
         # Connect to IMAP
         imap_connection = IMAPServerConnection()
         imap_connection.set_parameters_from_config(config)
-        # imap_connection.connect_to_server()
-        # if imap_connection.is_connected():
-        #     imap_connection.connect_to_folder(config['imap_initial_folder'])
-        # else:
-        #     global_timers.stop('overall')
-        #     die_with_errormsg('IMAP Server Connection failed before we did anything, so we are now exiting.')
+        imap_connection.connect_to_server()
+        if imap_connection.is_connected():
+            imap_connection.connect_to_folder(config['imap_initial_folder'])
+        else:
+            global_stopwatches.stop('overall')
+            die_with_errormsg('IMAP Server Connection failed before we did anything, so we are now exiting.')
 
         # Set up signal handling to handle shutdown of our long-lived process.
         # These signal handlers will throw Exceptions any time a kill signal is received, which will drop out of this section
@@ -91,13 +91,14 @@ def main():
                     LogMaster.info('Full Mailbox Sync Required, now commencing.')
                     pass  # FIXME: Full sync of Mailbox here
                     # Parse IMAP Emails
-                    # global_timers.start('mainfolder')
-                    # match_emails.iterate_rules_over_mainfolder(imap_connection, config, rules_mainfolder, rule_counters_mainfolder)
-                    # global_timers.stop('mainfolder')
+                    global_stopwatches.start('mainfolder')
+                    match_emails.iterate_rules_over_mainfolder(imap_connection, config, rules_mainfolder, rule_counters_mainfolder)
+                    global_stopwatches.stop('mainfolder')
 
-                    # global_timers.start('allfolders')
-                    # match_emails.iterate_rules_over_allfolders(imap_connection, config, rules_allfolders, rule_counters_allfolders)
-                    # global_timers.stop('allfolders')
+                    global_stopwatches.start('allfolders')
+                    match_emails.iterate_rules_over_allfolders(imap_connection, config, rules_allfolders, rule_counters_allfolders)
+                    global_stopwatches.stop('allfolders')
+
                     global_timer_flags.sync_full.reset_timer_default()
                     global_timer_flags.keepalive.reset_timer_default()
 
@@ -112,7 +113,7 @@ def main():
                     pass  # FIXME:  KeepAlive here
                     global_timer_flags.keepalive.reset_timer_default()
 
-                LogMaster.info('State of Global Timer Flags:\n%s', global_timer_flags)
+                #LogMaster.info('State of Global Timer Flags:\n%s', global_timer_flags)
                 nextEvent = global_timer_flags.get_Timer_with_next_deadline()
                 LogMaster.info('All required events processed, now sleeping until next event.')
                 LogMaster.info('The next event will be a %s, which will occur at: %s\n', nextEvent.name, nextEvent.next_deadline.isoformat())
@@ -145,9 +146,9 @@ def main():
     # Disconnect from all data sources
     graceful_shutdown_imap(imap_connection=imap_connection)
 
-    global_timers.stop('overall')
+    global_stopwatches.stop('overall')
     # Print the Footers
-    final_output = get_completion_footer(config, global_timers, rule_counters_mainfolder, rule_counters_allfolders)
+    final_output = get_completion_footer(config, global_stopwatches, rule_counters_mainfolder, rule_counters_allfolders)
     LogMaster.critical(final_output)
 
     # Send Completion Email
