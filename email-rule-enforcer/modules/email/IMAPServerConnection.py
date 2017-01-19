@@ -36,20 +36,17 @@ class RawEmailResponse():
         return self.__str__()
 
 
-class IMAPError(Exception):
-    pass
+def fix_imaplib_maxline():
+    """This method hotfixes a "bug" in python's imaplib (also fixed in later mainline py3.4 and 3.5 releases)"""
+    if imaplib._MAXLINE < 1000000:
+        imaplib._MAXLINE = 10000000
 
 
 class IMAPServerConnection():
     re_statusresponse = re.compile('.*\((.*)\)')
+    fix_imaplib_maxline()
 
-    class LoginError(IMAPError):
-        pass
-
-    class ConnectError(IMAPError):
-        pass
-
-    class PermanentFailure(IMAPError):
+    class PermanentFailure(Exception):
         pass
 
     def __init__(self):
@@ -60,15 +57,13 @@ class IMAPServerConnection():
         self.initial_folder = 'INBOX'
         self.deletions_folder = 'Trash'
         self.currfolder_name = ''
-        self.perm_fail = False
         self._set_timeouts_and_maxfails()
-        self.set_last_activity()
         LogMaster.ultra_debug('New IMAP Server Connection object created')
 
     def _set_timeouts_and_maxfails(self):
         self.failed_logins = deque()
         self.reconnections_from_failure = deque()
-        self.max_loginfails_10min = 2
+        self.max_loginfails_10min = 3
         self.max_loginfails_24hrs = 8
         self.max_reconnectfails_10min = 4
         self.max_reconnectfails_24hrs = 24
@@ -90,7 +85,7 @@ class IMAPServerConnection():
         self.deletions_folder = config["imap_deletions_folder"]
 
     def _handle_imap_errors(func):
-        """This willl handle common IMAP errors, and return None instead.
+        """This will handle common IMAP errors, and return None instead.
 
         This wrapper obviates the need to handle individual IMAP errors each time
         we access the server. This wrapper simply throws away the error and returns
@@ -111,18 +106,19 @@ class IMAPServerConnection():
                 LogMaster.exception('IMAP Error occurred, now handling gracefully.')
                 return None
             except (imaplib.IMAP4.abort, socket.gaierror, TimeoutError):
-                LogMaster.exception('IMAP Connection Error occurred, now attempting to reconnect.')
-                inst.disconnect()
-                if (inst.reconnect_from_failure()):
-                    try:
+                LogMaster.exception('IMAP Connection Error occurred, now attempting to reconnect to server and retry operation.')
+                try:
+                    if (inst._reconnect_from_failure()):
                         return func(inst, *args, **kwargs)
-                    except (imaplib.IMAP4.abort, socket.gaierror, TimeoutError, imaplib.IMAP4.error):
-                        LogMaster.exception('Permanent IMAP Connection Failure occurred, now closing.')
-                        raise inst.PermanentFailure('Permanent IMAP Connection Failure occurred, now closing.')
+                except imaplib.IMAP4.error:
+                    LogMaster.exception('IMAP Error occurred, now handling gracefully.')
+                    return None
+                except (imaplib.IMAP4.abort, socket.gaierror, TimeoutError, imaplib.IMAP4.error):
+                    LogMaster.exception('Permanent IMAP Connection Failure occurred, now closing.')
+                    raise inst.PermanentFailure('Permanent IMAP Connection Failure occurred, now closing.')
                 else:
                     raise inst.PermanentFailure('Permanent IMAP Connection Failure occurred, now closing.')
-            inst.set_last_activity()
-            return wrapped
+        return wrapped
 
     def connect(self):
         return self.connect_to_server()
@@ -137,30 +133,23 @@ class IMAPServerConnection():
 
         try:
             if self._connect_to_server():
-                self._reset_sleeptime_failure()
-                self._check_imapmove_supported()
-                self._fix_imaplib_maxline()
-                return True
-        except self.LoginError:
-            LogMaster.exception('Login Error: Login Failure when trying to connect to IMAP Server \"%s\"', self.server_name)
-            self._register_failure_login()
+                if self._login():
+                    self._reset_sleeptime_failure()
+                    self._check_imapmove_supported()
+                    return True
+            return False
+
         except TimeoutError:
             LogMaster.exception('Connection Error: Timeout when trying to connect to IMAP Server \"%s:%s\"', self.server_name, self.server_port)
-            self._register_failure_reconnect()
+            self._reconnect_from_failure()
+
         except socket.gaierror:
             LogMaster.exception('Connection Error: Invalid IMAP Server Hostname \"%s\"', self.server_name)
-            self._register_failure_reconnect()
+            self._reconnect_from_failure()
+
         except imaplib.IMAP4.error:
             LogMaster.exception('Connection Error: IMAP Error against Server: \"%s\"', self.server_name)
-            self._register_failure_reconnect()
-        finally:
-            LogMaster.exception('IMAP Server Connect Failed. Trying again or exiting, depending on past failure count.')
-            if self._allow_next_login() and (not self._is_connected):
-                time.sleep(self.sleep_between_logins)
-                self.connect_to_server()
-            else:
-                LogMaster.critical('IMAP Server has had too many connection failures. Now exiting.')
-                self.perm_fail = True
+            self._reconnect_from_failure()
 
     def _connect_to_server(self):
         LogMaster.info('Now attempting to connect to IMAP Server: %s', self.server_name)
@@ -172,24 +161,48 @@ class IMAPServerConnection():
             self.imap_connection = imaplib.IMAP4(self.server_name, self.server_port)
         self._is_connected = True
         self._is_auth = False
+        return True  # We either succeed here, or throw an Exception in earlier lines
 
-        # Now we're connected, log in. This can throw (or raise) IMAP4.error
-        result = self.imap_connection.login(self.username, self.password)
+    def _login(self):
+        ret_val = False
+        try:
+            LogMaster.info('Now atttempting IMAP login using username: \"%s\"', self.username)
+            result = self.imap_connection.login(self.username, self.password)
+        except imaplib.IMAP4.error:
+            LogMaster.exception('Connection Error: IMAP Login Failure using username: \"%s\"', self.username)
+            self._retry_login()
+
         if (result is None) or (not isinstance(result, tuple)) or (not result[0][0] != 'OK'):
-            raise self.LoginError('IMAP Server Login Failed, exiting')
+            self._retry_login()
         else:
             self._is_auth = True
             LogMaster.critical('Successfully connected to IMAP Server: %s', self.server_name)
+            ret_val = True
+        return ret_val
+
+    def _retry_login(self):
+        self._register_failure_login()
+        LogMaster.info('IMAP Login Failure occurred. Now sleeping for %s seconds, then retrying login using username: \"%s\"',
+            self.sleep_between_logins, self.username)
+        time.sleep(timeout=self.sleep_between_logins)
+        if self._allow_next_login():
+            self._login()
+        else:
+            LogMaster.critical('Failure: Too many IMAP Login Failures using username: \"%s\"', self.username)
+            raise self.PermanentFailure('Failure: Too many IMAP Login Failures using username: \"%s\"' % self.username)
 
     def reconnect(self):
         self.disconnect()
         time.sleep(self.sleep_between_dis_re_connect)
         return self.connect()
 
-    def reconnect_from_failure(self):
+    def _reconnect_from_failure(self):
         self._register_failure_reconnect()
         time.sleep(timeout=self._get_sleeptime_after_fail())
-        return self.reconnect()
+        if self._allow_next_reconnect():
+            return self.reconnect()
+        else:
+            raise self.PermanentFailure('IMAP Connection Failure: too many failed reconnection attempts, Now exiting.')
 
     def _allow_next_login(self):
         allow_10min = not self._timed_failures_exceeded(self.failed_logins, self.max_loginfails_10min, 600)
@@ -245,11 +258,19 @@ class IMAPServerConnection():
             exceeded = True
         return exceeded
 
-    @staticmethod
-    def _fix_imaplib_maxline():
-        """This method hotfixes a "bug" in python's imaplib (also fixed in later mainline py3.4 and 3.5 releases)"""
-        if imaplib._MAXLINE < 1000000:
-            imaplib._MAXLINE = 10000000
+    def disconnect(self):
+        try:
+            self.imap_connection.logout()
+        except Exception as e:
+            pass
+            #LogMaster.exception('Error occured during IMAP logout, although this won\'t matter.')
+        self._is_connected = False
+        self._is_auth = False
+        LogMaster.critical('Successfully disconnected from IMAP Server')
+        return True
+
+    def logout(self):
+        return self.disconnect()
 
     def connect_to_default_folder(self):
         return self.connect_to_folder(self.initial_folder)
@@ -265,19 +286,6 @@ class IMAPServerConnection():
             LogMaster.info('Failed to connect IMAP Folder: \"%s\". Returning -1 as msg_count.', folder_name)
             return -1
 
-    def disconnect(self):
-        try:
-            self.imap_connection.logout()
-        except Exception as e:
-            LogMaster.exception('Error occured during IMAP logout, although this won\'t matter.')
-        self._is_connected = False
-        self._is_auth = False
-        LogMaster.critical('Successfully disconnected from IMAP Server')
-        return True
-
-    def logout(self):
-        return self.disconnect()
-
     @_handle_imap_errors
     def _check_imapmove_supported(self):
         self.imap_connection._get_capabilities()  # Refresh capabilities list
@@ -291,8 +299,13 @@ class IMAPServerConnection():
 
     @_handle_imap_errors
     def noop(self):
-        # FIXME: Need to parse return codes and status here
-        return self.imap_connection.noop()
+        try:
+            ret_val = self.imap_connection.noop()
+        except TypeError:
+            # Ok, this is quite crap. A bug in imaplib itself! Issue detailed here: https://bugs.python.org/msg261615
+            # This acts a keepalive, to workaround lack of noop()
+            ret_val = self._check_imapmove_supported()
+        return ret_val
 
     @_handle_imap_errors
     def status(self, foldername=None):
@@ -527,6 +540,7 @@ class IMAPServerConnection():
         """Straight IMAP UID command passthrough"""
         return self.imap_connection.uid(*args, **kwargs)
 
+    @_handle_imap_errors
     def uid_safe(self, *args, **kwargs):
         """IMAP UID command wrapped safely"""
         try:
@@ -541,13 +555,11 @@ class IMAPServerConnection():
             data = [None]  # I didn't make up this value: [None] can also emanate from imaplib responses.
         return (result, data)
 
-    @classmethod
-    def set_imaplib_Debuglevel(cls, debuglevel):
+    @staticmethod
+    def set_imaplib_Debuglevel(debuglevel):
         imaplib.Debug = debuglevel  # Default: 0; Range 0->5 zero->high
 
-    def set_last_activity(self):
-        self.last_activity = datetime.datetime.now()
-
-    def get_last_activity(self):
-        return self.last_activity
+    @staticmethod
+    def get_imaplib_Debuglevel():
+        return imaplib.Debug   # Default: 0; Range 0->5 zero->high
 

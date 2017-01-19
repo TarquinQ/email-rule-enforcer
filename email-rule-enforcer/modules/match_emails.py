@@ -244,9 +244,4 @@ def folder_is_excluded(folder_name, exclusion_set):
 
 def keepalive(imap_connection):
     LogMaster.log(40, 'Now commencing keepalive of IMAP connection')
-
-    if (imap_connection.is_connected() is False):
-        LogMaster.log(40, 'Aborting: IMAP server is not connected')
-        return None
-
     return imap_connection.noop()

@@ -110,7 +110,7 @@ def main():
 
                 if global_timer_flags.keepalive.is_required():
                     LogMaster.info('KeepAlive requested, now commencing.')
-                    pass  # FIXME:  KeepAlive here
+                    match_emails.keepalive(imap_connection)
                     global_timer_flags.keepalive.reset_timer_default()
 
                 #LogMaster.info('State of Global Timer Flags:\n%s', global_timer_flags)
