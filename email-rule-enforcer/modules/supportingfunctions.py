@@ -190,3 +190,16 @@ def dict_from_list(list_):
 def null_func(inst, *args, **kwargs):
     return None
 
+def list_into_chunks(lst, chunk_size):
+    return [lst[x:x+chunk_size] for x in range(0, len(lst), chunk_size)]
+
+def iterable_into_chunks(iter, chunk_size):
+    curr_chunk_size = 0
+    curr_chunk = []
+    for s in iter:
+        curr_chunk.append(s)
+        curr_chunk_size = (curr_chunk_size + 1) % chunk_size
+        if curr_chunk_size == 0:
+            yield curr_chunk
+            curr_chunk = []
+    yield curr_chunk

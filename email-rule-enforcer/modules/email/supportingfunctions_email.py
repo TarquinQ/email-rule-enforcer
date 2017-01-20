@@ -20,6 +20,8 @@ def parse_email_address(email_str):
 def convert_bytes_to_utf8(byte_thing):
     if isinstance(byte_thing, list):
         return [convert_bytes_to_utf8(a) for a in byte_thing]
+    if isinstance(byte_thing, tuple):
+        return tuple(convert_bytes_to_utf8(a) for a in byte_thing)
     elif isinstance(byte_thing, bytes):
         return byte_thing.decode('utf-8', 'replace')
     else:
