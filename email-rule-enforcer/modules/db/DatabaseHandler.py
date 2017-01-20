@@ -43,7 +43,7 @@ class DatabaseHandler():
         return self.db.execute(*args, **kwargs)
 
     def executemany(self, *args, **kwargs):
-        return self.db.execute(*args, **kwargs)
+        return self.db.executemany(*args, **kwargs)
 
     def cursor(self):
         return self.db.cursor()
