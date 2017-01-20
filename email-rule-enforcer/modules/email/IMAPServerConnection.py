@@ -166,12 +166,13 @@ class IMAPServerConnection():
         ret_val = False
         try:
             LogMaster.info('Now atttempting IMAP login using username: \"%s\"', self.username)
-            result = self.imap_connection.login(self.username, self.password)
+            result, data = self.imap_connection.login(self.username, self.password)
+            print ('Login Result:', result)
         except imaplib.IMAP4.error:
             LogMaster.exception('Connection Error: IMAP Login Failure using username: \"%s\"', self.username)
             self._retry_login()
 
-        if (result is None) or (not isinstance(result, tuple)) or (not result[0][0] != 'OK'):
+        if (result is None) or (result != 'OK'):
             self._retry_login()
         else:
             self._is_auth = True
@@ -183,7 +184,7 @@ class IMAPServerConnection():
         self._register_failure_login()
         LogMaster.info('IMAP Login Failure occurred. Now sleeping for %s seconds, then retrying login using username: \"%s\"',
             self.sleep_between_logins, self.username)
-        time.sleep(timeout=self.sleep_between_logins)
+        time.sleep(self.sleep_between_logins)
         if self._allow_next_login():
             self._login()
         else:
@@ -197,7 +198,7 @@ class IMAPServerConnection():
 
     def _reconnect_from_failure(self):
         self._register_failure_reconnect()
-        time.sleep(timeout=self._get_sleeptime_after_fail())
+        time.sleep(self._get_sleeptime_after_fail())
         if self._allow_next_reconnect():
             return self.reconnect()
         else:
@@ -215,13 +216,13 @@ class IMAPServerConnection():
 
     def _register_failure_reconnect(self):
         max_age = 86400
-        self._clean_timed_deque(self.reconnections_from_failure, max_age)
         self._add_timestamp_to_deque(self.reconnections_from_failure)
+        self._clean_timed_deque(self.reconnections_from_failure, max_age)
 
     def _register_failure_login(self):
         max_age = 86400
-        self._clean_timed_deque(self.failed_logins, max_age)
         self._add_timestamp_to_deque(self.failed_logins)
+        self._clean_timed_deque(self.failed_logins, max_age)
 
     def _reset_sleeptime_failure(self):
         self._sleep_reconnect_next = 0
@@ -239,6 +240,8 @@ class IMAPServerConnection():
         now_int = int(time.time())
         while now_int - q[-1] <= max_age:
             q.pop()
+            if len(q) == 0:
+                break
         return q
 
     @staticmethod
@@ -279,15 +282,15 @@ class IMAPServerConnection():
         folder_name = strip_quotes(folder_name)
         if folder_name.find(' ') != -1:
             folder_name = '"%s"' % folder_name
-        try:
-            result = self.imap_connection.select(folder_name)
-            msg_count = convert_bytes_to_utf8(result[1][0])
+        result, data = self.imap_connection.select(folder_name)
+        #print ('Select result, data:', result, data)
+        if (result is None) or (result != 'OK'):
+            return None
+        else:
+            msg_count = convert_bytes_to_utf8(data[0])
             self.currfolder_name = folder_name
             LogMaster.info('Successfully connected to IMAP Folder: \"%s\". Message Count: %s', folder_name, msg_count)
             return msg_count
-        except imaplib.IMAP4.error:
-            LogMaster.info('Failed to connect IMAP Folder: \"%s\". Returning -1 as msg_count.', folder_name)
-            return -1
 
     @_handle_imap_errors
     def _check_imapmove_supported(self):
@@ -487,6 +490,64 @@ class IMAPServerConnection():
             # it into an imaplib error to match the rest of this class
             raise imaplib.IMAP4.error('Error parsing raw email. Email Error was: %s' % e)
         return ret_msg
+
+    @_handle_imap_errors
+    def get_MessageID_byuidlist(self, uid_list):
+        data_to_fetch = '(BODY.PEEK[HEADER.FIELDS (MESSAGE-ID)])'
+        uid_list_request = ','.join([str(uid) for uid in uid_list])
+
+        try:
+            result, data = self.imap_connection.uid('fetch', uid_list_request, data_to_fetch)
+        except imaplib.IMAP4.error as imap_error:
+            result = 'NO'
+            data = [None]  # I didn't make up this value: [None] can also emanate from imaplib responses.
+
+        print ('Multiple UIDs: result, data:\n', result, '\n', data)
+        result = dict()
+        data_utf8 = convert_bytes_to_utf8(data)
+        # Now we parse this in reverse-order
+        while len(data_utf8) > 0:
+            data_utf8.pop()  # Discard a fragment that looks like ')'
+            unparsed = data_utf8.pop()
+            # unparsed is a tuple that looks like:
+            # ('38 (UID 85 BODY[HEADER.FIELDS (MESSAGE-ID)] {98}', \
+            #    'Message-ID: <01000158cf076519-165f9a3e-e56e-4817-8c5b-96e1165ed919-000000@email.com>\r\n\r\n')
+            unparsed_UID = unparsed[0]
+            unparsed_MessageID = unparsed[1]
+
+            print ("unparsed: %s\nu_UID: %s\nu_MsgID: %s" % (unparsed, unparsed_UID, unparsed_MessageID))
+
+            UID = re.search('.* \(UID (.*) BODY.*', unparsed_UID).group(1)
+            MessageID = re.search('.*\<(.*)\>.*', unparsed_MessageID).group(1)
+            result[UID] = MessageID
+            print('UID, MessageID: %s, %s' % (UID, MessageID))
+        print('Final Result:', result)
+        return result
+
+
+        # if (result == 'OK') and isinstance(data, list) and (data[0] is not None):
+        #     response = data[0][0]
+        #     raw_email_contents = data[0][1]
+        #     email_size = 0
+        #     email_flags = None
+        #     server_date = None
+        #     if isinstance(response, bytes):
+        #         # Sample size_and_flags_response: b'1 RFC822.SIZE 9500 (FLAGS (\\Seen) BODY[HEADER] {1234}'
+        #         response_utf8 = response.decode('utf-8', 'replace')
+        #         tokens = response_utf8.split(' ')
+        #         if len(tokens) > 3:
+        #             email_size = tokens[2]
+        #         email_flags = self.parse_flags(response)
+        #         server_date = imaplib.Internaldate2tuple(response)
+        #     raw_email = RawEmailResponse(
+        #         raw_email_bytes=raw_email_contents,
+        #         flags=email_flags,
+        #         size=email_size,
+        #         server_date=server_date
+        #     )
+        # else:
+        #     raw_email = None
+        # return raw_email
 
     @_handle_imap_errors
     def move_email(self, uid, dest_folder, mark_as_read_on_move=False):

@@ -260,13 +260,56 @@ def iterate_rules_over_mainfolder(imap_connection, config, rules, counters):
     return iterate_rules_over_mailfolder(imap_connection, config, rules, counters, headers_only=config['imap_headers_only_for_main_folder'])
 
 
-def sync_folders(db, imap_connection):
+def sync_full_foldermessages_to_db(db, imap_connection, folder_path):
+    # FIXME: need to handle a failed "Select"/Connect() to folder
+    if imap_connection.connect_to_folder(folder_path) is None:
+        return
+
+    imap_uid_list = convert_bytes_to_utf8(imap_connection.get_uids_all_in_currfolder())
+    imap_uid_set = set([int(uid) for uid in imap_uid_list])
+    print ('List of all uids in current IMAP folder:', imap_uid_list)
+    print ('Set of all uids in current IMAP folder:', imap_uid_list)
+
+    prior_row_factory = db.db.row_factory
+    db.db.row_factory = lambda cursor, row: row[0]
+    db_uid_set = set(
+        db.execute("SELECT UID FROM tb_FolderUIDEntries where tbFolders_ID IN \
+        (SELECT ID from tb_Folders WHERE FolderPath=?)", (folder_path,)).fetchall()
+    )
+    db.db.row_factory = prior_row_factory
+    print ('Set of all uids in current SQL folder:', db_uid_set)
+
+    uids_in_imap_and_not_db = imap_uid_set - db_uid_set
+    uids_in_db_and_not_imap = db_uid_set - imap_uid_set
+    print ('Set of all uids in IMAP not in DB:', uids_in_imap_and_not_db)
+    print ('Set of all uids in DB not in IMAP:', uids_in_db_and_not_imap)
+
+    # Clear out old cached entries
+    db.execute("DROP TABLE IF EXISTS tb_Temp_UIDList")
+    db.execute("CREATE TEMPORARY TABLE tb_Temp_UIDList(UID INTEGER)")
+    db.executemany("INSERT INTO tb_Temp_UIDList(UID) values (?)", tuple(uids_in_db_and_not_imap))
+    db.execute("DELETE FROM tb_FolderUIDEntries WHERE UID IN \
+        (SELECT UID FROM tb_Temp_UIDList)")
+    db.execute("DROP TABLE tb_Temp_UIDList")
+
+    # For each UID in IMAP, get MessageID
+    message_IDs = imap_connection.get_MessageID_byuidlist(uids_in_imap_and_not_db)
+    # Check tb_Messages for MessageID
+    # If found, get ID of Message in tb_Messages
+    # Else, download and parse the email, store in tb_Messages, then add entry here
+
+
+def sync_full_folderlist_to_db(db, imap_connection):
     LogMaster.info('Now syncing all IMAP Folders into the local database')
 
-    db.execute("drop table if exists tb_Temp_FolderList")
-    db.execute("create temporary table tb_Temp_FolderList(FolderPath TEXT)")
+    db.execute("DROP TABLE IF EXISTS tb_Temp_FolderList")
+    db.execute("CREATE TEMPORARY TABLE tb_Temp_FolderList(FolderPath TEXT)")
 
     for imap_folder_path in imap_connection.get_all_folders_parsed():
+        # FIXME: This is here just for testing
+        sync_full_foldermessages_to_db(db, imap_connection, imap_folder_path)
+        continue
+
         LogMaster.ultra_debug('Now atempting to insert a Folderpath of: %s', imap_folder_path)
         db.execute("INSERT into tb_Temp_FolderList (FolderPath) values (?)", (imap_folder_path,))
 
@@ -296,6 +339,7 @@ def sync_folders(db, imap_connection):
     # And now we remove all folders which no longer exist
     # This will "cascade-delete" corresponding records in the tb_FolderUIDEntries table too
     db.execute("DELETE FROM tb_Folders WHERE FolderPath NOT IN (SELECT FolderPath FROM tb_Temp_FolderList)")
+
     # Now we remove all UID Entries which do not have matching UIDVALIDITY
     for folder_row in db.execute("SELECT ID, FolderPath, UIDVALIDITY FROM tb_Folders").fetchall():
         FolderID = folder_row["ID"]
@@ -303,6 +347,6 @@ def sync_folders(db, imap_connection):
         db.execute("DELETE FROM tb_FolderUIDEntries WHERE ID=? AND UIDVALIDITY!=?", (FolderID, UIDVALIDITY))
 
     # Clean up
-    db.execute("drop table if exists tb_Temp_FolderList")
+    db.execute("DROP TABLE IF EXISTS tb_Temp_FolderList")
 
 

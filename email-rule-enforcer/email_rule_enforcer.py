@@ -70,7 +70,7 @@ def main():
         # and ensure a clean shutdown occurs
         register_sighandlers()
 
-        core_logic.sync_folders(db, imap_connection)
+        core_logic.sync_full_folderlist_to_db(db, imap_connection)
 
         if config['daemon_mode'] is False:
             # Full sync of Mailbox here
