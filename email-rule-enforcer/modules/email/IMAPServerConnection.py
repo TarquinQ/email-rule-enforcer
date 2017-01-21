@@ -394,7 +394,7 @@ class IMAPServerConnection():
     @_handle_imap_errors
     def get_all_folders(self):
         """Returns a list of all IMAP folders"""
-        ret_list = [None]
+        ret_list = []
         try:
             result, data = self.imap_connection.list()
             if result == 'OK':
@@ -407,14 +407,13 @@ class IMAPServerConnection():
         """Returns a list of all IMAP folders in array format"""
         ret_list = []
         for folder_record in self.get_all_folders():
-            # FIXME: Replace his with an re expression
-            LogMaster.critical('FIXME: a folder_record in List of Folder records data looks like:\n%s', folder_record)
-            LogMaster.critical('REPLACEME with an re!')
-
-            (folder_flags, folder_parent_and_name) = folder_record.split(')', 1)
-            (empty_str, folder_parent, folder_name) = folder_parent_and_name.split('"', 2)
-            folder_name = strip_quotes(folder_name.strip())
-            ret_list.append(folder_name)
+            # folder_record looks like:  '(\All \HasNoChildren) "/" "[Gmail]/All Mail"''
+            try:
+                folder_path = re.search('.*\".*\" \"(.*)\".*', folder_record).group(1)
+                folder_path = strip_quotes(folder_path.strip())
+                ret_list.append(folder_path)
+            except AttributeError:
+                pass
         return ret_list
 
     @_handle_imap_errors
