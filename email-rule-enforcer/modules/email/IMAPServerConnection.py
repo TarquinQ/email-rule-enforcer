@@ -24,9 +24,20 @@ fix_imaplib_maxline()
 
 
 class IMAPServerConnection():
+    '''
+    A Class to handle IMAP Connections, at a higher-level than imaplib.
+
+    This class implements a lot of high-level functionality over the top of python's imaplib.
+    imaplib is extremely low-level - this class adapts the imaplib, saves state,
+    handles errors and reconnections, and presents results as standard python datatypes.
+    '''
+
+    ## Class Exceptions
 
     class PermanentFailure(Exception):
         pass
+
+    ## Initialisation Code
 
     def __init__(self):
         self.imap_connection = None
@@ -62,6 +73,12 @@ class IMAPServerConnection():
         self.empty_trash_on_exit = config["empty_trash_on_exit"]
         self.initial_folder = config["imap_initial_folder"]
         self.deletions_folder = config["imap_deletions_folder"]
+
+    ## Abstracted Error Handling.
+    #
+    # This section allows IMAP and connection errors to be handled for each and every
+    # interaction across the network between server and client. Network errors will result in
+    # reconenction attempts, and IMAP errors will result in a standard return of None.
 
     def _handle_imap_errors(func):
         """This will handle common IMAP errors, and return None instead.
@@ -106,6 +123,12 @@ class IMAPServerConnection():
                 else:
                     raise inst.PermanentFailure('Permanent IMAP Connection Failure occurred, now closing.')
         return wrapped
+
+    ## Connection-State Change Code.
+    #
+    # All code in this section deals with changing State in the client/server connection.
+    # This includes initiation, reconnection, Auth and Selection (folder selection).
+    # All functions should return True, False (or None for Errors).
 
     def connect(self):
         return self.connect_to_server()
@@ -152,6 +175,7 @@ class IMAPServerConnection():
 
     def _login(self):
         ret_val = False
+        result = None
         try:
             LogMaster.info('Now atttempting IMAP login using username: \"%s\"', self.username)
             result, data = self.imap_connection.login(self.username, self.password)
@@ -222,32 +246,6 @@ class IMAPServerConnection():
         self._sleep_reconnect_next = (self._sleep_reconnect_next + self.sleep_between_reconnects) * 3
         return ret_sleep
 
-    @staticmethod
-    def _clean_timed_deque(q, max_age):
-        ''' Clean old time values out of deque.
-
-        Queue must be values of epoch-seconds sorted in newest-first chronological order. '''
-        now_int = int(time.time())
-        while ((len(q) > 0) and (now_int - q[-1])) <= max_age:
-            q.pop()
-        return q
-
-    @staticmethod
-    def _add_timestamp_to_deque(q):
-        now_int = int(time.time())
-        q.appendleft(now_int)
-
-    @staticmethod
-    def _timed_failures_exceeded(q, max_failures, max_age):
-        if (max_failures <= 0) or (max_failures > len(q)):
-            return False
-        max_failures = max_failures - 1  # Account for 0-notation list
-        exceeded = False
-        now_int = int(time.time())
-        if now_int - q[max_failures] <= max_age:
-            exceeded = True
-        return exceeded
-
     def disconnect(self):
         try:
             self.imap_connection.logout()
@@ -299,8 +297,22 @@ class IMAPServerConnection():
             ret_val = self._check_imapmove_supported()
         return True
 
+    ## Data Request Functions
+    #
+    # These functions request/send data from the server, and receive the results.
+    # These functions should return either None or data.
+    # The data returned should primarily be either a Message object, a dictionary or an array.
+    # Where possible, returned data should be converted to utf8 prior to return.
+    # All data should be validated on the way in to each function to reduce IMAP connection errors.
+    #
+    # In general, error handling should be abstracted away from each method, and handled by
+    # the @_handle_imap_errors decorator. This should ensure that any IMAP errors result in a return of None,
+    # and any connection errors result in controlled connection retry attempts.
+    # In general, no Exceptions other than PermanentFailure should emerge from these methods.
+
     @_handle_imap_errors
     def status(self, folder_name=None):
+        '''Gets the IMAP Status of a given Folder. Is one of the few IMAP methods that does not require Folder Select'''
         ret_data = None
         if folder_name is None:
             folder_name = self.currfolder_name
@@ -326,9 +338,11 @@ class IMAPServerConnection():
     @_handle_imap_errors
     def get_uids_all_in_currfolder(self):
         """Searches and returns a list of all uids in folder, byte-format"""
+        LogMaster.critical('ERROR: Function Call made to "get_uids_all_in_currfolder" - this function is now deprecated, please change code')
+
         result, data = self.imap_connection.uid('search', None, "ALL")
         list_allemails = data[0].split()
-        LogMaster.log(10, 'List of all UIDs of emails in current folder: %s', convert_bytes_to_utf8(list_allemails))
+        LogMaster.info('List of all UIDs of emails in current folder: %s', convert_bytes_to_utf8(list_allemails))
         return list_allemails
 
     @_handle_imap_errors
@@ -339,19 +353,22 @@ class IMAPServerConnection():
         else:
             data_to_fetch = "UID {0}:{1}".format(start, end)
 
-        result, data = self.imap_connection.uid('search', None, data_to_fetch)
-        if result == 'OK':
-            list_uids = data[0].split()
+        data = self.parse_results_and_data(
+            output_from_imap=self.imap_connection.uid('search', None, data_to_fetch),
+            _convert_utf8=True
+        )
+        if data is not None:
+            list_uids = [int(i) for i in data[0].split()]
             LogMaster.log(10, 'Range of UIDs of emails in current folder. \
-                Start: {0}, End: {1}, List in range: {2}'.format(
-                start, end, convert_bytes_to_utf8(list_uids))
+                Start: {0}, End: {1}, List in range: {2}'.format(start, end, list_uids)
             )
         else:
-            list_uids = None
+            list_uids = []
         return list_uids
 
     def get_emails_all_in_currfolder(self, headers_only=False):
         """Return parsed emails from the curent folder, without marking as read"""
+        LogMaster.critical('ERROR: Function Call made to "get_emails_all_in_currfolder" - this function is now deprecated, please change code')
         for uid in self.get_uids_all_in_currfolder():
             yield self.get_parsed_email_byuid(uid, headers_only)
 
@@ -359,15 +376,6 @@ class IMAPServerConnection():
         """Return parsed emails from the curent folder, without marking as read"""
         for uid in self.get_uids_in_currfolder(start, end):
             yield self.get_parsed_email_byuid(uid, headers_only)
-
-    @staticmethod
-    def parse_flags(flags_raw):
-        flags = []
-        try:
-            flags = [parsedflag.decode('utf-8') for parsedflag in imaplib.ParseFlags(flags_raw)]
-        except Exception:
-            pass
-        return flags
 
     @_handle_imap_errors
     def get_imap_flags_byuid(self, uid):
@@ -378,8 +386,9 @@ class IMAPServerConnection():
         except imaplib.IMAP4.error:
             pass
         else:
-            for flag in flags_raw:
-                flags.extend(self.parse_flags(flag))
+            if result == 'OK':
+                for flag in flags_raw:
+                    flags.extend(self.parse_flags(flag))
         return flags
 
     @_handle_imap_errors
@@ -387,7 +396,9 @@ class IMAPServerConnection():
         """Returns a list of all IMAP folders"""
         ret_list = [None]
         try:
-            ret_list = self.imap_connection.list()[1]
+            result, data = self.imap_connection.list()
+            if result == 'OK':
+                ret_list = convert_bytes_to_utf8(data)
         except Exception:
             pass
         return ret_list
@@ -396,12 +407,14 @@ class IMAPServerConnection():
         """Returns a list of all IMAP folders in array format"""
         ret_list = []
         for folder_record in self.get_all_folders():
-            folder_record_utf8 = convert_bytes_to_utf8(folder_record)
-            (folder_flags, folder_parent_and_name) = folder_record_utf8.split(')', 1)
+            # FIXME: Replace his with an re expression
+            LogMaster.critical('FIXME: a folder_record in List of Folder records data looks like:\n%s', folder_record)
+            LogMaster.critical('REPLACEME with an re!')
+
+            (folder_flags, folder_parent_and_name) = folder_record.split(')', 1)
             (empty_str, folder_parent, folder_name) = folder_parent_and_name.split('"', 2)
-            folder_name = folder_name.strip()
-            folder_name_noquotes = strip_quotes(folder_name)
-            ret_list.append(folder_name_noquotes)
+            folder_name = strip_quotes(folder_name.strip())
+            ret_list.append(folder_name)
         return ret_list
 
     @_handle_imap_errors
@@ -470,24 +483,6 @@ class IMAPServerConnection():
         else:
             parsed_email = None
         return parsed_email
-
-    @staticmethod
-    def parse_raw_email(raw_email):
-        if isinstance(raw_email, bytes):
-            raw_email_bytes = raw_email
-        elif isinstance(raw_email, RawEmailResponse):
-            raw_email_bytes = raw_email.raw_email_bytes
-        else:
-            raw_email_bytes = b''
-
-        try:
-            ret_msg = email.message_from_bytes(raw_email_bytes)
-        except email.errors.MessageError as e:
-            # This isn't /handling/ the error per se: it's just changing
-            # it into an imaplib error to match the rest of this class
-            LogMaster.exception('Error converting raw email into parsed_email. Email MessageError was:')
-            raise imaplib.IMAP4.error('%s' % str(e))
-        return ret_msg
 
     @_handle_imap_errors
     def get_MessageID_byuid(self, uid):
@@ -591,9 +586,34 @@ class IMAPServerConnection():
     def capabilities(self):
         return self.imap_connection.capabilities
 
-    def uid(self, *args, **kwargs):
-        """Straight IMAP UID command passthrough"""
-        return self.imap_connection.uid(*args, **kwargs)
+    # def uid(self, *args, **kwargs):
+    #     """Straight IMAP UID command passthrough"""
+    #     return self.imap_connection.uid(*args, **kwargs)
+
+    @_handle_imap_errors
+    def uid_execute_and_parse(self, command, uid_request, *args, **kwargs):
+        if imaplib.Debug > 2:
+            print('UID_Execute called:\ncommand: %s\n uid_request: %s\n*args: %s\n**kwargs: %s' %
+                (command, uid_request, args, kwargs))
+
+        uid_req = self.validate_uidrequest(uid_request)
+        if uid_req is None:
+            return None
+
+        if '_convert_utf8' in kwargs:
+            conv = kwargs['_convert_utf8']
+            del kwargs['_convert_utf8']
+        else:
+            conv = True
+        # Exceptions are handlded by the @_handle wrapper
+        data = self.parse_results_and_data(
+            output_from_imap=self.imap_connection.uid(command, uid_req, *args, **kwargs),
+            _convert_utf8=conv
+        )
+
+        if imaplib.Debug > 2:
+            print('UID_Execute:\ndata:\n%s' % (data))
+        return data
 
     @staticmethod
     def validate_uidrequest(uid_request):
@@ -632,31 +652,6 @@ class IMAPServerConnection():
                 data = convert_bytes_to_utf8(data)
         return data
 
-    @_handle_imap_errors
-    def uid_execute_and_parse(self, command, uid_request, *args, **kwargs):
-        if imaplib.Debug > 2:
-            print('UID_Execute called:\ncommand: %s\n uid_request: %s\n*args: %s\n**kwargs: %s' %
-                (command, uid_request, args, kwargs))
-
-        uid_req = self.validate_uidrequest(uid_request)
-        if uid_req is None:
-            return None
-
-        if '_convert_utf8' in kwargs:
-            conv = kwargs['_convert_utf8']
-            del kwargs['_convert_utf8']
-        else:
-            conv = True
-        # Exceptions are handlded by the @_handle wrapper
-        data = self.parse_results_and_data(
-            output_from_imap=self.imap_connection.uid(command, uid_req, *args, **kwargs),
-            _convert_utf8=conv
-        )
-
-        if imaplib.Debug > 2:
-            print('UID_Execute:\ndata:\n%s' % (data))
-        return data
-
     @staticmethod
     def set_imaplib_Debuglevel(debuglevel):
         imaplib.Debug = debuglevel  # Default: 0; Range 0->5 zero->high
@@ -664,4 +659,62 @@ class IMAPServerConnection():
     @staticmethod
     def get_imaplib_Debuglevel():
         return imaplib.Debug
+
+    ## Helper Methods (internal)
+    #
+    # These methods are used as part of the other functions. They contain class-related functionalty.
+    # API for these is per-function-dependent, and subject to change.
+
+    @staticmethod
+    def parse_raw_email(raw_email):
+        if isinstance(raw_email, bytes):
+            raw_email_bytes = raw_email
+        elif isinstance(raw_email, RawEmailResponse):
+            raw_email_bytes = raw_email.raw_email_bytes
+        else:
+            raw_email_bytes = b''
+
+        try:
+            ret_msg = email.message_from_bytes(raw_email_bytes)
+        except email.errors.MessageError as e:
+            # This isn't /handling/ the error per se: it's just changing
+            # it into an imaplib error to match the rest of this class
+            LogMaster.exception('Error converting raw email into parsed_email. Email MessageError was:')
+            raise imaplib.IMAP4.error('%s' % str(e))
+        return ret_msg
+
+    @staticmethod
+    def _clean_timed_deque(q, max_age):
+        ''' Clean old time values out of deque.
+
+        Queue must be values of epoch-seconds sorted in newest-first chronological order. '''
+        now_int = int(time.time())
+        while ((len(q) > 0) and (now_int - q[-1])) <= max_age:
+            q.pop()
+        return q
+
+    @staticmethod
+    def _add_timestamp_to_deque(q):
+        now_int = int(time.time())
+        q.appendleft(now_int)
+
+    @staticmethod
+    def _timed_failures_exceeded(q, max_failures, max_age):
+        if (max_failures <= 0) or (max_failures > len(q)):
+            return False
+        max_failures = max_failures - 1  # Account for 0-notation list
+        exceeded = False
+        now_int = int(time.time())
+        if now_int - q[max_failures] <= max_age:
+            exceeded = True
+        return exceeded
+
+    @staticmethod
+    def parse_flags(flags_raw):
+        flags = []
+        try:
+            flags = [parsedflag.decode('utf-8') for parsedflag in imaplib.ParseFlags(flags_raw)]
+        except Exception:
+            pass
+        return flags
 
