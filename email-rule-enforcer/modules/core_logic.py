@@ -293,7 +293,7 @@ def sync_full_foldermessages_to_db(db, imap_connection, folder_path):
     db.execute("DROP TABLE tb_Temp_UIDList")
 
     # For each UID in IMAP, get MessageID
-    message_IDs = imap_connection.get_MessageID_byuidlist(uids_in_imap_and_not_db)
+    message_IDs = imap_connection.get_MessageID_byuid(uids_in_imap_and_not_db)
     # Check tb_Messages for MessageID
     # If found, get ID of Message in tb_Messages
     # Else, download and parse the email, store in tb_Messages, then add entry here
