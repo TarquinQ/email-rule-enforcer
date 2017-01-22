@@ -31,11 +31,10 @@ def convert_bytes_to_utf8(byte_thing):
 
 
 def get_email_uniqueid(parsed_message, raw_message):
-    uniqueid = None
     try:
         uniqueid = parsed_message["Message-ID"]
     except ValueError:
-        pass
+        uniqueid = None
     if uniqueid is None:
         try:
             uniqueid = hashlib.sha1(raw_message).hexdigest()

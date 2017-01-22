@@ -265,10 +265,8 @@ def sync_full_foldermessages_to_db(db, imap_connection, folder_path):
     if imap_connection.connect_to_folder(folder_path) is None:
         return
 
-    imap_uid_list = convert_bytes_to_utf8(imap_connection.get_uids_all_in_currfolder())
-    imap_uid_set = set([int(uid) for uid in imap_uid_list])
-    print ('List of all uids in current IMAP folder:', imap_uid_list)
-    print ('Set of all uids in current IMAP folder:', imap_uid_list)
+    imap_uid_set = set(imap_connection.get_uids_in_currfolder())
+    print ('Set of all uids in current IMAP folder:', imap_uid_set)
 
     prior_row_factory = db.db.row_factory
     db.db.row_factory = lambda cursor, row: row[0]
@@ -293,7 +291,19 @@ def sync_full_foldermessages_to_db(db, imap_connection, folder_path):
     db.execute("DROP TABLE tb_Temp_UIDList")
 
     # For each UID in IMAP, get MessageID
-    message_IDs = imap_connection.get_MessageID_byuid(uids_in_imap_and_not_db)
+
+    # message_IDs = imap_connection.get_MessageID_byuid(uids_in_imap_and_not_db)
+    message_IDs2 = imap_connection.minimum_foldersync_data(uids_in_imap_and_not_db)
+    # for uid in uids_in_imap_and_not_db:
+    #     Message_exists_in_db = False
+    #     msg = imap_connection.get_parsed_email_byuid(uid, headers_only=True)
+    #     if msg.unique_id in message_IDs:
+    #         pre_existing = db.execute("SELECT ID FROM tb_Messages WHERE MessageID=?", (message_IDs[uid],)).fetchone()
+    #         if pre_existing is None:
+    #             fetch_uids.append(uid)
+    #         else:
+    #             db.execute("INSERT INTO tb_FolderUIDEntries VALUES (?,?)")
+
     # Check tb_Messages for MessageID
     # If found, get ID of Message in tb_Messages
     # Else, download and parse the email, store in tb_Messages, then add entry here

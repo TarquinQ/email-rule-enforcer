@@ -6,15 +6,6 @@ import datetime
 SchemaVersion = (0, 1)
 
 
-def connect(filename):
-    # The following lines connect to a new database, parse python types
-    # and turn on foreign key suport and named columns (dictionary-style)
-    db = sqlite3.connect(filename, detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES, isolation_level=None)
-    db.execute("PRAGMA foreign_keys = ON;")
-    db.row_factory = sqlite3.Row
-    return db
-
-
 def create_db_schema(db):
     create_table_SchemaVersion(db)
     create_table_Messages(db)
@@ -89,8 +80,7 @@ def create_table_FolderUIDEntries(db):
         UIDVALIDITY  INTEGER, \
         DateAdded  Timestamp, \
         LastSeen  Timestamp, \
-        IMAP_Flag_Seen  INTEGER, \
-        IMAP_Flag_Deleted  INTEGER, \
+        IMAP_Flag_Seen  Boolean, \
         IMAP_AllFlags  TEXT, \
         FOREIGN KEY (tbFolders_ID) REFERENCES tb_Folders(ID)  ON UPDATE CASCADE  ON DELETE CASCADE, \
         FOREIGN KEY (tbMessages_ID) REFERENCES tb_Messages(ID)  ON UPDATE CASCADE  ON DELETE CASCADE\

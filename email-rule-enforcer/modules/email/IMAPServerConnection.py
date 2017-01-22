@@ -6,7 +6,7 @@ import traceback
 import time
 import re
 import datetime
-from collections import deque
+from collections import deque, namedtuple
 from functools import wraps
 from modules.logging import LogMaster
 from modules.supportingfunctions import strip_quotes, dict_from_list, null_func, is_list_like
@@ -364,6 +364,7 @@ class IMAPServerConnection():
             )
         else:
             list_uids = []
+#        import pdb; pdb.set_trace()
         return list_uids
 
     def get_emails_all_in_currfolder(self, headers_only=False):
@@ -375,6 +376,15 @@ class IMAPServerConnection():
     def get_emails_in_currfolder(self, headers_only=False, start=0, end='*'):
         """Return parsed emails from the curent folder, without marking as read"""
         for uid in self.get_uids_in_currfolder(start, end):
+            yield self.get_parsed_email_byuid(uid, headers_only)
+
+    def get_emails_in_currfolder_in_uidset(self, uid_set, headers_only=False):
+        """
+        Return parsed emails from the curent folder in the uid_set
+
+        uid_set can be a list, set, tuple, or similar iterable grouping.
+        """
+        for uid in uid_set:
             yield self.get_parsed_email_byuid(uid, headers_only)
 
     @_handle_imap_errors
@@ -468,8 +478,7 @@ class IMAPServerConnection():
                 parsed_email.size = raw_email.size
                 parsed_email.server_date = raw_email.server_date
                 parsed_email.headers_only = headers_only
-                parsed_email.uid = uid
-                parsed_email.uid_str = convert_bytes_to_utf8(uid)
+                parsed_email.uid = int(convert_bytes_to_utf8(uid))
                 parsed_email.imap_folder = self.currfolder_name
                 parsed_email.date_datetime = get_email_datetime(parsed_email)
                 parsed_email.addr_from = get_email_addrfield_from(parsed_email)
@@ -497,15 +506,49 @@ class IMAPServerConnection():
                 # unparsed is a tuple that looks like:
                 # ('38 (UID 85 BODY[HEADER.FIELDS (MESSAGE-ID)] {98}', \
                 #    'Message-ID: <01000158cf076519-165f9a3e-e56e-4817-8c5b-96e1165ed919-000000@email.com>\r\n\r\n')
-                unparsed_UID = unparsed[0]
-                unparsed_MessageID = unparsed[1]
+                unparsed_serverdata = unparsed[0]
+                unparsed_msgdata = unparsed[1]
                 try:
-                    UID = re.search('.* \(UID (.*) BODY.*', unparsed_UID).group(1)
-                    MessageID = re.search('.*\<(.*)\>.*', unparsed_MessageID).group(1)
+                    UID = re.search('.* \(UID (.*) .*', unparsed_serverdata).group(1)
+                    MessageID = re.search('.*\<(.*)\>.*', unparsed_msgdata).group(1)
                     result[UID] = MessageID
                     print('UID, MessageID: %s, %s' % (UID, MessageID))
                 except AttributeError:  # brackets are missing in data[0], so no group(1)
                     pass
+            print('Final Result:', result)
+        return result
+
+    @_handle_imap_errors
+    def minimum_foldersync_data(self, uid_set):
+        """Return the smallest amount of data required to sync a folder"""
+        data_to_fetch = '(BODY.PEEK[HEADER.FIELDS (MESSAGE-ID)] FLAGS INTERNALDATE)'
+        result = dict()
+        response_tuple = namedtuple('IMAP_FolderSyncData', ['messageid', 'seen', 'flags', 'server_date'])
+
+        data = self.uid_execute_and_parse('fetch', uid_set, data_to_fetch, _convert_utf8=False)
+
+        if (data is not None):
+            # Now we parse data in reverse-order
+            while len(data) > 0:
+                unparsed = data.pop()
+                # unparsed is a tuple that looks like:
+                # (b'38 (UID 85 BODY[HEADER.FIELDS (MESSAGE-ID)] {98}', \
+                #    b'Message-ID: <01000158cf076519-165f9a3e-e56e-4817-8c5b-96e1165ed919-000000@email.com>\r\n\r\n')
+                unparsed_serverdata = unparsed[0]
+                unparsed_serverdata_utf8 = convert_bytes_to_utf8(unparsed[0])
+                unparsed_msgdata = convert_bytes_to_utf8(unparsed[1])
+                # try:
+                UID = re.search('.* \(UID ([0-9]+) .*', unparsed_serverdata_utf8).group(1)
+                messageid = re.search('.*\<(.*)\>.*',
+                    convert_bytes_to_utf8(unparsed_msgdata)
+                ).group(1)
+                flags = self.parse_flags(unparsed_serverdata)
+                seen = self.is_email_currently_read_fromflags(flags)
+                server_date = imaplib.Internaldate2tuple(unparsed_serverdata)
+                result[UID] = response_tuple(messageid, seen, flags, server_date)
+                print('UID, result_tuple: %s, %s' % (UID, result[UID]))
+                # except AttributeError:  # brackets are missing in data[0], so no group(1)
+                #     pass
             print('Final Result:', result)
         return result
 
@@ -558,13 +601,6 @@ class IMAPServerConnection():
             self.get_imap_flags_byuid(uid)
         )
 
-    @staticmethod
-    def is_email_currently_read_fromflags(flags):
-        if '\\Seen' in flags:
-            return True
-        else:
-            return False
-
     def set_flag_byuid(self, uid, flag):
         return self.uid_execute_and_parse('STORE', uid, '+FLAGS', flag)
 
@@ -614,6 +650,11 @@ class IMAPServerConnection():
             print('UID_Execute:\ndata:\n%s' % (data))
         return data
 
+    ## Helper Methods (internal)
+    #
+    # These methods are used as part of the other functions. They contain class-related functionalty.
+    # API for these is per-function-dependent, and subject to change.
+
     @staticmethod
     def validate_uidrequest(uid_request):
         if uid_request is None:
@@ -646,7 +687,7 @@ class IMAPServerConnection():
             LogMaster.warning('WARNING: No data returned from IMAP: %s', result)
             data = None
         if (result == 'OK') and (data is not None):
-            data = clean_up_data(data)
+            clean_up_data(data)
             if _convert_utf8 is True:
                 data = convert_bytes_to_utf8(data)
         return data
@@ -659,10 +700,12 @@ class IMAPServerConnection():
     def get_imaplib_Debuglevel():
         return imaplib.Debug
 
-    ## Helper Methods (internal)
-    #
-    # These methods are used as part of the other functions. They contain class-related functionalty.
-    # API for these is per-function-dependent, and subject to change.
+    @staticmethod
+    def is_email_currently_read_fromflags(flags):
+        if '\\Seen' in flags:
+            return True
+        else:
+            return False
 
     @staticmethod
     def parse_raw_email(raw_email):
