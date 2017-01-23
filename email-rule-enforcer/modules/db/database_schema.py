@@ -80,7 +80,7 @@ def create_table_FolderUIDEntries(db):
         UIDVALIDITY  INTEGER, \
         DateAdded  Timestamp, \
         LastSeen  Timestamp, \
-        IMAP_Flag_Seen  Boolean, \
+        IMAP_Flag_Seen  BOOLEAN, \
         IMAP_AllFlags  TEXT, \
         FOREIGN KEY (tbFolders_ID) REFERENCES tb_Folders(ID)  ON UPDATE CASCADE  ON DELETE CASCADE, \
         FOREIGN KEY (tbMessages_ID) REFERENCES tb_Messages(ID)  ON UPDATE CASCADE  ON DELETE CASCADE\

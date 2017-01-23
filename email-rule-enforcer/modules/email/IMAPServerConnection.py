@@ -9,7 +9,7 @@ import datetime
 from collections import deque, namedtuple
 from functools import wraps
 from modules.logging import LogMaster
-from modules.supportingfunctions import strip_quotes, dict_from_list, null_func, is_list_like
+from modules.supportingfunctions import strip_quotes, dict_from_list, null_func, is_list_like, struct_time_to_datatime
 from modules.email.supportingfunctions_email import convert_bytes_to_utf8
 from modules.email.supportingfunctions_email import get_email_body, get_email_datetime, get_email_uniqueid
 from modules.email.supportingfunctions_email import get_email_addrfield_from, get_email_addrfield_to, get_email_addrfield_cc
@@ -450,7 +450,7 @@ class IMAPServerConnection():
                     except AttributeError:
                         email_size = 0
                     email_flags = self.parse_flags(response)
-                    server_date = imaplib.Internaldate2tuple(response)
+                    server_date = self.parse_imap_internaldate(response)
                 raw_email = RawEmailResponse(
                     raw_email_bytes=raw_email_contents,
                     flags=email_flags,
@@ -537,18 +537,18 @@ class IMAPServerConnection():
                 unparsed_serverdata = unparsed[0]
                 unparsed_serverdata_utf8 = convert_bytes_to_utf8(unparsed[0])
                 unparsed_msgdata = convert_bytes_to_utf8(unparsed[1])
-                # try:
-                UID = re.search('.* \(UID ([0-9]+) .*', unparsed_serverdata_utf8).group(1)
-                messageid = re.search('.*\<(.*)\>.*',
-                    convert_bytes_to_utf8(unparsed_msgdata)
-                ).group(1)
-                flags = self.parse_flags(unparsed_serverdata)
-                seen = self.is_email_currently_read_fromflags(flags)
-                server_date = imaplib.Internaldate2tuple(unparsed_serverdata)
-                result[UID] = response_tuple(messageid, seen, flags, server_date)
-                print('UID, result_tuple: %s, %s' % (UID, result[UID]))
-                # except AttributeError:  # brackets are missing in data[0], so no group(1)
-                #     pass
+                try:
+                    UID = re.search('.* \(UID ([0-9]+) .*', unparsed_serverdata_utf8).group(1)
+                    messageid = re.search('.*\<(.*)\>.*',
+                        convert_bytes_to_utf8(unparsed_msgdata)
+                    ).group(1)
+                    flags = self.parse_flags(unparsed_serverdata)
+                    seen = self.is_email_currently_read_fromflags(flags)
+                    server_date = self.parse_imap_internaldate(unparsed_serverdata)
+                    result[UID] = response_tuple(messageid, seen, flags, server_date)
+                    print('UID, result_tuple: %s, %s' % (UID, result[UID]))
+                except AttributeError:  # brackets are missing in data[0], so no group(1)
+                    pass
             print('Final Result:', result)
         return result
 
@@ -759,4 +759,14 @@ class IMAPServerConnection():
         except Exception:
             pass
         return flags
+
+    @staticmethod
+    def parse_imap_internaldate(response):
+        try:
+            date = imaplib.Internaldate2tuple(response)
+        except TypeError:
+            date = None
+        if date is not None:
+            date = struct_time_to_datatime(date)
+        return date
 

@@ -4,6 +4,7 @@ import os
 import socket
 import collections
 from collections import OrderedDict
+from time import mktime
 
 
 def die_with_errormsg(msg='', errnum=1):
@@ -215,3 +216,8 @@ def is_list_like(iter):
         return True
     else:
         return False
+
+
+def struct_time_to_datatime(st):
+    return datetime.datetime.fromtimestamp(mktime(struct))
+
