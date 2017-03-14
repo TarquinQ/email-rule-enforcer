@@ -115,7 +115,6 @@ def main():
                     core_logic.keepalive(imap_connection)
                     global_timer_flags.keepalive.reset_timer_default()
 
-                #LogMaster.info('State of Global Timer Flags:\n%s', global_timer_flags)
                 nextEvent = global_timer_flags.get_Timer_with_next_deadline()
                 LogMaster.info('All required events processed, now sleeping until next event.')
                 LogMaster.info('The next event will be a %s, which will occur at: %s\n', nextEvent.name, nextEvent.next_deadline.isoformat())

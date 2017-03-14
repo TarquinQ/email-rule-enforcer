@@ -1,9 +1,8 @@
 import datetime
 from modules.logging import LogMaster
 from modules.models.RuleMatches import Match
-from modules.email.supportingfunctions_email import convert_bytes_to_utf8
 from modules.email.supportingfunctions_email import get_extended_email_headers_for_logging, get_basic_email_headers_for_logging
-from modules.supportingfunctions import strip_quotes
+from modules.supportingfunctions import strip_quotes, convert_bytes_to_utf8
 
 
 def check_match_list(matches, email_to_validate):
@@ -260,7 +259,7 @@ def iterate_rules_over_mainfolder(imap_connection, config, rules, counters):
     return iterate_rules_over_mailfolder(imap_connection, config, rules, counters, headers_only=config['imap_headers_only_for_main_folder'])
 
 
-def sync_full_foldermessages_to_db(db, imap_connection, folder_path):
+def sync_full_foldermessages_to_db(db, imap_connection, folder_path, headers_only):
     # FIXME: need to handle a failed "Select"/Connect() to folder
     if imap_connection.connect_to_folder(folder_path) is None:
         return
@@ -268,19 +267,28 @@ def sync_full_foldermessages_to_db(db, imap_connection, folder_path):
     imap_uid_set = set(imap_connection.get_uids_in_currfolder())
     print ('Set of all uids in current IMAP folder:', imap_uid_set)
 
+    # Get Folder's ID
+    folder_record = db.execute("SELECT ID, UIDVALIDITY from tb_Folders WHERE FolderPath=?", (folder_path,)).fetchone()
+    if folder_record is None:
+        return False
+
+    folder_id = folder_record["ID"]
+    folder_uidvalidity = folder_record["UIDVALIDITY"]
+
     prior_row_factory = db.db.row_factory
     db.db.row_factory = lambda cursor, row: row[0]
     db_uid_set = set(
-        db.execute("SELECT UID FROM tb_FolderUIDEntries where tbFolders_ID IN \
-        (SELECT ID from tb_Folders WHERE FolderPath=?)", (folder_path,)).fetchall()
+        db.execute("SELECT UID FROM tb_FolderUIDEntries where tbFolders_ID=?", (folder_id,)).fetchall()
     )
     db.db.row_factory = prior_row_factory
     print ('Set of all uids in current SQL folder:', db_uid_set)
 
     uids_in_imap_and_not_db = imap_uid_set - db_uid_set
     uids_in_db_and_not_imap = db_uid_set - imap_uid_set
+    uids_in_db_and_imap = imap_uid_set.intersection(db_uid_set)
     print ('Set of all uids in IMAP not in DB:', uids_in_imap_and_not_db)
     print ('Set of all uids in DB not in IMAP:', uids_in_db_and_not_imap)
+    print ('Set of all uids in both:', uids_in_db_and_imap)
 
     # Clear out old cached entries
     db.execute("DROP TABLE IF EXISTS tb_Temp_UIDList")
@@ -290,23 +298,59 @@ def sync_full_foldermessages_to_db(db, imap_connection, folder_path):
         (SELECT UID FROM tb_Temp_UIDList)")
     db.execute("DROP TABLE tb_Temp_UIDList")
 
-    # For each UID in IMAP, get MessageID
+    # Update timestamp for known entries
+    for uid in uids_in_db_and_imap:
+        db.execute("UDPATE tb_FolderUIDEntries SET LastSeen=? WHERE FolderID=? AND UID=?",
+            (datetime.datetime.now(), folder_id, uid)
+        )
 
-    # message_IDs = imap_connection.get_MessageID_byuid(uids_in_imap_and_not_db)
-    message_IDs2 = imap_connection.minimum_foldersync_data(uids_in_imap_and_not_db)
-    # for uid in uids_in_imap_and_not_db:
-    #     Message_exists_in_db = False
-    #     msg = imap_connection.get_parsed_email_byuid(uid, headers_only=True)
-    #     if msg.unique_id in message_IDs:
-    #         pre_existing = db.execute("SELECT ID FROM tb_Messages WHERE MessageID=?", (message_IDs[uid],)).fetchone()
-    #         if pre_existing is None:
-    #             fetch_uids.append(uid)
-    #         else:
-    #             db.execute("INSERT INTO tb_FolderUIDEntries VALUES (?,?)")
+    # For each UID in IMAP, see if MessageID exists already (ie message data is already known in/from another folder)
 
-    # Check tb_Messages for MessageID
-    # If found, get ID of Message in tb_Messages
-    # Else, download and parse the email, store in tb_Messages, then add entry here
+    fetch_uids = set()
+    uid_metadata = imap_connection.minimum_foldersync_data(uids_in_imap_and_not_db)
+    for uid in uids_in_imap_and_not_db:
+        message_exists_in_db = False
+        response_tuple = uid_metadata[uid]
+        messageid = response_tuple.messageid
+        seen = response_tuple.seen
+        flags = response_tuple.flags
+        server_date = response_tuple.server_date
+        preexisting_msgid = db.execute("SELECT ID FROM tb_Messages WHERE Header_MessageID=?", (message_id,)).fetchone()
+
+        if preexisting_msgid is not None:
+            msg_id = preexisting_msgid
+        else:
+            message = imap_connection.get_parsed_email_byuid(uid, headers_only)
+            value_list = "Header_MessageID, Header_From, Header_Date, Header_Subject, Header_To, Header_CC, MsgSize, AllHeaders, Has_Body, DateAdded, LastSeen"
+            value_holders = ', '.join(['?']*len(value_list.split(' ')))
+            #table_data =
+            db.execute("INSERT INTO tb_Messages ({0}) VALUES ({1}".format(value_list, value_holders), table_data)
+            msgid = db.execute("SELECT ID FROM tb_Messages WHERE Header_MessageID=?", (message_id,)).fetchone()
+
+        db.execute("INSERT INTO tb_FolderUIDEntries \
+(tbFolders_ID, tbMessages_ID, IMAP_InternalDate, UID, UIDVALIDITY, DateAdded, LastSeen, IMAP_Flag_Seen, IMAP_AllFlags) \
+ VALUES (?,?,?,?,?)",
+                (folder_id, preexisting_msgid, server_date, uid, folder_uidvalidity,
+                    datetime.datetime.now(), datetime.datetime.now(), seen, flags)
+        )
+    # Now we download the missing emails
+
+
+def get_db_folder_id_by_path(db, folder_path):
+    folder_id = None
+    folder_record = db.execute("SELECT ID from tb_Folders WHERE FolderPath=?", (folder_path,)).fetchone()
+    if folder_record is not None:
+        folder_id = folder_record["ID"]
+    return folder_id
+
+
+def get_db_message_id_by_uniqueid(db, message_id):
+    msg_id = None
+    msg_record = db.execute("SELECT ID FROM tb_Messages WHERE Header_MessageID=?", (message_id,)).fetchone()
+    if msg_record is not None:
+        msg_id = msg_record["ID"]
+    return msg_id
+
 
 
 def sync_full_folderlist_to_db(db, imap_connection):

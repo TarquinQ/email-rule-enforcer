@@ -218,6 +218,19 @@ def is_list_like(iter):
         return False
 
 
-def struct_time_to_datatime(st):
-    return datetime.datetime.fromtimestamp(mktime(struct))
+def struct_time_to_datetime(struct_time):
+    return datetime.datetime.fromtimestamp(mktime(struct_time))
+
+
+def convert_bytes_to_utf8(byte_thing):
+    if isinstance(byte_thing, list):
+        return [convert_bytes_to_utf8(a) for a in byte_thing]
+    if isinstance(byte_thing, tuple):
+        return tuple(convert_bytes_to_utf8(a) for a in byte_thing)
+    if isinstance(byte_thing, set):
+        return set(convert_bytes_to_utf8(a) for a in byte_thing)
+    elif isinstance(byte_thing, bytes):
+        return byte_thing.decode('utf-8', 'replace')
+    else:
+        return byte_thing
 

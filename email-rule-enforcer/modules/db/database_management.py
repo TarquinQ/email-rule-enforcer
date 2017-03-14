@@ -1,7 +1,9 @@
+import os
+import json
 import sqlite3
 import datetime
 import modules.db.database_schema as db_schema
-import os
+from modules.supportingfunctions import strip_quotes, convert_bytes_to_utf8
 
 
 def open_or_create_database(filename):
@@ -12,7 +14,7 @@ def open_or_create_database(filename):
 
     db = connect(filename)
     # Leave Exceptions unhandled;  if db-open fails, let it fall right through to cause programme failure, since
-    # There is nothing else we can do at this point.
+    # there is nothing else we can do at this point.
 
     if preexisting is True:
         schema_matches = ensure_schema_version(db)
@@ -28,16 +30,29 @@ def open_or_create_database(filename):
     return db
 
 
-def connect(filename):
+def connect(filename=":memory:"):
     # The following lines connect to a new database, parse python types
     # and turn on foreign key suport and named columns (dictionary-style)
     db = sqlite3.connect(filename, detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES, isolation_level=None)
-    db.execute("PRAGMA foreign_keys = ON;")
     db.row_factory = sqlite3.Row
-    sqlite3.register_adapter(bool, int)
-    #sqlite3.register_converter("BOOLEAN", lambda v: bool(int(v)))
-    sqlite3.register_converter("BOOLEAN", lambda v: v != '0')
+    db.execute("PRAGMA foreign_keys = ON;")
+    register_adapters()
     return db
+
+
+def register_adapters():
+    '''Adds custom dataype handling from Python to Sqlite3.
+
+    NB: converters are always called with 'bytes' as their input-type, regardless of how
+        they get stored by sqlite3 in the underlying database (which in-turn depends on
+        their adapter-return-type)
+    '''
+    # To/from Booleans:
+    sqlite3.register_adapter(bool, int)
+    sqlite3.register_converter("BOOLEAN", lambda val: val != b'0')
+    # To/from List:
+    sqlite3.register_adapter(list, json.dumps)
+    sqlite3.register_converter("LIST", lambda val: json.loads(convert_bytes_to_utf8(val)))
 
 
 def ensure_schema_version(db):

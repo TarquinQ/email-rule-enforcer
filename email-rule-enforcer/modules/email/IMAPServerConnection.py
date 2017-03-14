@@ -9,17 +9,18 @@ import datetime
 from collections import deque, namedtuple
 from functools import wraps
 from modules.logging import LogMaster
-from modules.supportingfunctions import strip_quotes, dict_from_list, null_func, is_list_like, struct_time_to_datatime
-from modules.email.supportingfunctions_email import convert_bytes_to_utf8
+from modules.supportingfunctions import strip_quotes, dict_from_list, null_func, is_list_like, struct_time_to_datetime
+from modules.supportingfunctions import convert_bytes_to_utf8
 from modules.email.supportingfunctions_email import get_email_body, get_email_datetime, get_email_uniqueid
 from modules.email.supportingfunctions_email import get_email_addrfield_from, get_email_addrfield_to, get_email_addrfield_cc
-from modules.email.RawEmailResponse import RawEmailResponse
+from modules.email.EmailHandling import RawEmailResponse
 
 
 def fix_imaplib_maxline():
     """This method hotfixes a "bug" in python's imaplib (also fixed in later mainline py3.4 and 3.5 releases)"""
     if imaplib._MAXLINE < 1000000:
         imaplib._MAXLINE = 10000000
+
 fix_imaplib_maxline()
 
 
@@ -28,7 +29,7 @@ class IMAPServerConnection():
     A Class to handle IMAP Connections, at a higher-level than imaplib.
 
     This class implements a lot of high-level functionality over the top of python's imaplib.
-    imaplib is extremely low-level - this class adapts the imaplib, saves state,
+    imaplib is extremely low-level - this class adapts the imaplib, manages state,
     handles errors and reconnections, and presents results as standard python datatypes.
     '''
 
@@ -336,16 +337,6 @@ class IMAPServerConnection():
         return self.currfolder_name
 
     @_handle_imap_errors
-    def get_uids_all_in_currfolder(self):
-        """Searches and returns a list of all uids in folder, byte-format"""
-        LogMaster.critical('ERROR: Function Call made to "get_uids_all_in_currfolder" - this function is now deprecated, please change code')
-
-        result, data = self.imap_connection.uid('search', None, "ALL")
-        list_allemails = data[0].split()
-        LogMaster.info('List of all UIDs of emails in current folder: %s', convert_bytes_to_utf8(list_allemails))
-        return list_allemails
-
-    @_handle_imap_errors
     def get_uids_in_currfolder(self, start=0, end='*'):
         """Searches and returns a list of uids in folder, byte-format"""
         if (start == 0) and (end == '*'):
@@ -366,12 +357,6 @@ class IMAPServerConnection():
             list_uids = []
 #        import pdb; pdb.set_trace()
         return list_uids
-
-    def get_emails_all_in_currfolder(self, headers_only=False):
-        """Return parsed emails from the curent folder, without marking as read"""
-        LogMaster.critical('ERROR: Function Call made to "get_emails_all_in_currfolder" - this function is now deprecated, please change code')
-        for uid in self.get_uids_all_in_currfolder():
-            yield self.get_parsed_email_byuid(uid, headers_only)
 
     def get_emails_in_currfolder(self, headers_only=False, start=0, end='*'):
         """Return parsed emails from the curent folder, without marking as read"""
@@ -708,24 +693,6 @@ class IMAPServerConnection():
             return False
 
     @staticmethod
-    def parse_raw_email(raw_email):
-        if isinstance(raw_email, bytes):
-            raw_email_bytes = raw_email
-        elif isinstance(raw_email, RawEmailResponse):
-            raw_email_bytes = raw_email.raw_email_bytes
-        else:
-            raw_email_bytes = b''
-
-        try:
-            ret_msg = email.message_from_bytes(raw_email_bytes)
-        except email.errors.MessageError as e:
-            # This isn't /handling/ the error per se: it's just changing
-            # it into an imaplib error to match the rest of this class
-            LogMaster.exception('Error converting raw email into parsed_email. Email MessageError was:')
-            raise imaplib.IMAP4.error('%s' % str(e))
-        return ret_msg
-
-    @staticmethod
     def _clean_timed_deque(q, max_age):
         ''' Clean old time values out of deque.
 
@@ -767,6 +734,6 @@ class IMAPServerConnection():
         except TypeError:
             date = None
         if date is not None:
-            date = struct_time_to_datatime(date)
+            date = struct_time_to_datetime(date)
         return date
 

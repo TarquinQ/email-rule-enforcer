@@ -17,19 +17,6 @@ def parse_email_address(email_str):
     return email.utils.parseaddr(email_str)
 
 
-def convert_bytes_to_utf8(byte_thing):
-    if isinstance(byte_thing, list):
-        return [convert_bytes_to_utf8(a) for a in byte_thing]
-    if isinstance(byte_thing, tuple):
-        return tuple(convert_bytes_to_utf8(a) for a in byte_thing)
-    if isinstance(byte_thing, set):
-        return set(convert_bytes_to_utf8(a) for a in byte_thing)
-    elif isinstance(byte_thing, bytes):
-        return byte_thing.decode('utf-8', 'replace')
-    else:
-        return byte_thing
-
-
 def get_email_uniqueid(parsed_message, raw_message):
     try:
         uniqueid = parsed_message["Message-ID"]
@@ -115,7 +102,7 @@ def get_basic_email_headers_for_logging(email_message):
     return '; '.join(ret_val)
 
 
-def get_email_body(email_message):
+def get_email_body_text(email_message):
     body = ""
 
     if email_message.is_multipart():
@@ -133,9 +120,26 @@ def get_email_body(email_message):
             body = email_message.get_payload(decode=True)
         except Exception:
             try:
-                body = email_message.get_payload(decode=True)
-            except Exception:
                 body = email_message.get_payload()
+            except Exception:
+                pass
+
+    body = convert_bytes_to_utf8(body)
+    return body
+
+
+def get_email_body_html(email_message):
+    body = ""
+
+    if email_message.is_multipart():
+        for part in email_message.walk():
+            ctype = part.get_content_type()
+            cdispo = str(part.get('Content-Disposition'))
+
+            # skip any text/plain (txt) attachments
+            if ctype == 'text/html' and 'attachment' not in cdispo:
+                body = part.get_payload(decode=True)  # decode
+                break
 
     body = convert_bytes_to_utf8(body)
     return body
